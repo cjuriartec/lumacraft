@@ -1,0 +1,83 @@
+# 🗓️ Sprint Planning y Plan de Lanzamiento (Release Plan)
+
+Este documento proyecta la ejecución de las Historias de Usuario (detalladas en `USER_STORIES.md`) a lo largo de **Sprints de 2 semanas**, asumiendo una velocidad promedio del equipo de **~25 Story Points (SP) por Sprint**.
+
+## 🚀 Iteración 1: MVP Base y Data Engine (Sprints 1-3)
+
+### **Sprint 1: Setup y Autenticación**
+*Objetivo: Tener la arquitectura base corriendo e inicio de sesión funcional con Multi-Tenancy.*
+* **Setup Inicial**: Configuración de Next.js, Supabase CLI local y base de datos (PostgreSQL). (No estimado en US, esfuerzo base).
+* **US-1.01 (5 SP)**: Autenticación con Google OAuth vía Supabase Auth.
+* **US-1.02 (3 SP)**: Creación automática de Workspace (Trigger PostgreSQL).
+* **US-2.01 (3 SP)**: CRUD básico de Colecciones (Backend y UI base).
+* **Total Estimado**: 11 SP + Overhead de Setup inicial.
+
+### **Sprint 2: El Motor de Datos (Data Engine)**
+*Objetivo: Los administradores pueden crear tablas completas y los editores ver los grids.*
+* **US-2.02 (8 SP)**: Añadir campos y validaciones JSONB a las colecciones.
+* **US-2.03 (8 SP)**: Generación dinámica e inteligente de formularios con React Hook Form.
+* **US-2.04 (5 SP)**: Vista de Data Grid (tabla dinámica) con paginación usando los índices GIN.
+* **Total Estimado**: 21 SP.
+
+### **Sprint 3: Relaciones y Framework de Permisos**
+*Objetivo: Conectar entidades y proteger rutas según roles de cuenta.*
+* **US-3.01 (5 SP)**: Configuración de tipos de relación (1:1, 1:N) en la base de datos.
+* **US-3.02 (5 SP)**: Selector asíncrono para formularios (Lookup de relaciones).
+* **US-1.03 (3 SP)**: Selector global de Workspaces en el header.
+* **US-4.01 (5 SP)**: CRUD de roles personalizados en base de datos.
+* **Total Estimado**: 18 SP.
+
+---
+
+## 🔒 Iteración 2: Seguridad y Editor de Plantillas (Sprints 4-5)
+
+### **Sprint 4: Seguridad Zero-Trust y Contexto IA**
+*Objetivo: El sistema debe acoplar los permisos implícitos y resolver relaciones para la IA.*
+* **US-4.02 (5 SP)**: Ocultar UI y asegurar accesos (RLS en PostgreSQL) basados en permisos CRUD de colecciones.
+* **US-4.03 (5 SP)**: Lógica de override y acceso de lectura implícito en tablas dependientes (RLS).
+* **US-3.03 (8 SP)**: Construir el servicio de "Eager Loading" para armar árboles JSON profundos.
+* **Total Estimado**: 18 SP.
+
+### **Sprint 5: Template Engine Builder (Beta)**
+*Objetivo: Implementar el lienzo de Craft.js/Plate para armar documentos interactivos.*
+* **US-5.01 (13 SP)**: Lienzo Drag & Drop con serialización de bloques al backend.
+* **US-5.02 (5 SP)**: Bloques de Variables inyectando datos directamente del Eager Loading (Sprint 4).
+* **Total Estimado**: 18 SP.
+
+---
+
+## 🤖 Iteración 3: La Capa de IA y Refinamiento (Sprints 6-7)
+
+### **Sprint 6: Lógica Avanzada y Bloque IA**
+*Objetivo: Finalizar la generación de documentos e integrar Gemini.*
+* **US-5.03 (8 SP)**: Lógica de parseo "Condicional" y "Listas" al generar el documento.
+* **US-6.01 (5 SP)**: Arquitectura del Adapter Pattern para AI e integración del SDK de Google Gemini.
+* **US-6.02 (8 SP)**: UI del "Bloque IA" en el builder, Grounding de datos y streaming.
+* **Total Estimado**: 21 SP.
+
+### **Sprint 7: Exportaciones y Control de IA**
+*Objetivo: Entregar el valor tangible (PDFs) y estabilizar el sistema de modelos.*
+* **US-5.04 (8 SP)**: Exportación a PDF/DOCX vía Edge Functions y almacenamiento en Supabase Storage.
+* **US-6.03 (3 SP)**: Panel de control de la IA (`ai_config`) para A/B testing y Fallback dinámico.
+* **Total Estimado**: 11 SP + QA / Testing End-to-End.
+
+---
+
+## ⚡ Iteración 4: Automatizaciones (Post MVP) (Sprint 8)
+
+### **Sprint 8: Triggers Asíncronos**
+*Objetivo: Implementar el backend de automatizaciones y webhooks.*
+* **US-7.01 (8 SP)**: UI y lógica base para crear "Triggers" sobre colecciones.
+* **US-7.02 (5 SP)**: Implementación de Supabase Webhooks y pg_cron (o Inngest).
+* **Total Estimado**: 13 SP.
+
+---
+
+## 📈 Resumen del Roadmap
+
+| Fecha Relativa | Hito | Valor Entregado |
+| :--- | :--- | :--- |
+| **Mes 1 (Sprints 1-2)** | Data Engine Listo | Plataforma tipo "Airtable" funcional. Puedes crear tablas y guardar datos. |
+| **Mes 2 (Sprints 3-4)** | Core Completo | Multi-Tenancy robusto y grafos de relaciones navegables. |
+| **Mes 3 (Sprints 5-6)** | Smart Templates | Editor drag & drop funcional, inyección de variables y primera prueba de IA redactando con Gemini. |
+| **Mes 4 (Sprints 7-8)** | Beta Release Candidato | Exportación de PDFs, estabilización de fallbacks de IA y automatización. |
