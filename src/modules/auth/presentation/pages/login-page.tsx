@@ -7,7 +7,7 @@ export default function LoginPage() {
   const { signInWithGoogle, loading } = useAuth()
 
   return (
-    <div className="min-h-screen flex bg-[#050a0a] overflow-hidden">
+    <div className="min-h-screen flex bg-background overflow-hidden">
       {/* Grid pattern overlay - subtle */}
       <div
         className="fixed inset-0 pointer-events-none opacity-[0.02]"

@@ -11,16 +11,10 @@ export default function CollectionsPage() {
     return (
       <div className="p-8 flex items-center justify-center min-h-[400px]">
         <div className="flex flex-col items-center gap-4">
-          <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center animate-pulse"
-            style={{ background: 'rgba(16,185,129,0.08)' }}
-          >
-            <Database size={20} style={{ color: 'rgba(16,185,129,0.5)' }} />
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center animate-pulse bg-primary/10">
+            <Database size={20} className="text-primary/50" />
           </div>
-          <p
-            className="text-sm font-light"
-            style={{ color: 'rgba(232,240,236,0.6)' }}
-          >
+          <p className="text-sm font-light text-foreground/60">
             Cargando colecciones...
           </p>
         </div>
@@ -34,22 +28,13 @@ export default function CollectionsPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
         <div>
-          <p
-            className="text-[11px] font-semibold uppercase tracking-widest mb-2"
-            style={{ color: '#10b981', letterSpacing: '0.12em' }}
-          >
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] mb-2 text-primary">
             Motor de Datos
           </p>
-          <h1
-            className="text-[2.5rem] font-bold leading-tight"
-            style={{ color: '#e8f0ec', letterSpacing: '-0.02em' }}
-          >
+          <h1 className="text-[2.5rem] font-bold leading-tight text-foreground tracking-[-0.02em]">
             Colecciones
           </h1>
-          <p
-            className="text-sm font-light mt-1"
-            style={{ color: 'rgba(232,240,236,0.7)' }}
-          >
+          <p className="text-sm font-light mt-1 text-foreground/70">
             {collections.length > 0
               ? `${collections.length} colección${collections.length !== 1 ? 'es' : ''} configurada${collections.length !== 1 ? 's' : ''}`
               : 'Gestiona tus tablas dinámicas de datos.'}
@@ -60,26 +45,14 @@ export default function CollectionsPage() {
 
       {collections.length === 0 ? (
         /* Empty state */
-        <div
-          className="flex flex-col items-center justify-center py-24 rounded-2xl text-center"
-          style={{ background: '#080c0a' }}
-        >
-          <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center mb-5"
-            style={{ background: 'rgba(16,185,129,0.08)' }}
-          >
-            <Database size={28} style={{ color: 'rgba(16,185,129,0.5)' }} />
+        <div className="flex flex-col items-center justify-center py-24 rounded-2xl text-center bg-surface">
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-5 bg-primary/10">
+            <Database size={28} className="text-primary/50" />
           </div>
-          <h3
-            className="text-xl font-bold mb-2"
-            style={{ color: '#e8f0ec', letterSpacing: '-0.01em' }}
-          >
+          <h3 className="text-xl font-bold mb-2 text-foreground tracking-[-0.01em]">
             Sin colecciones todavía
           </h3>
-          <p
-            className="text-sm font-light max-w-sm mb-8"
-            style={{ color: 'rgba(232,240,236,0.7)', lineHeight: '1.7' }}
-          >
+          <p className="text-sm font-light max-w-sm mb-8 text-foreground/70 leading-[1.7]">
             Crea tu primera colección para comenzar a estructurar datos que
             alimentarán tus documentos e IA.
           </p>
@@ -90,70 +63,34 @@ export default function CollectionsPage() {
           {collections.map((collection) => (
             <div
               key={collection.id}
-              className="group rounded-xl p-5 transition-all duration-200 hover:-translate-y-0.5"
-              style={{ background: '#080c0a' }}
+              className="group rounded-xl p-5 transition-all duration-200 hover:-translate-y-0.5 bg-surface"
             >
               <div className="flex items-start justify-between mb-4">
-                <div
-                  className="w-10 h-10 rounded-lg flex items-center justify-center transition-transform duration-200 group-hover:scale-105"
-                  style={{ background: 'rgba(16,185,129,0.1)', color: '#10b981' }}
-                >
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center transition-transform duration-200 group-hover:scale-105 bg-primary/10 text-primary">
                   <Database size={18} />
                 </div>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
                   <button
-                    className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors duration-150"
-                    style={{ color: 'rgba(232,240,236,0.6)' }}
-                    onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLElement).style.color = '#f87171'
-                      ;(e.currentTarget as HTMLElement).style.background = 'rgba(248,113,113,0.08)'
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLElement).style.color = 'rgba(232,240,236,0.6)'
-                      ;(e.currentTarget as HTMLElement).style.background = 'transparent'
-                    }}
+                    className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors duration-150 text-foreground/60 hover:text-red-400 hover:bg-red-400/10"
                     onClick={() => deleteCollection(collection.id)}
                   >
                     <Trash2 size={14} />
                   </button>
-                  <button
-                    className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors duration-150"
-                    style={{ color: 'rgba(232,240,236,0.6)' }}
-                    onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLElement).style.color = '#10b981'
-                      ;(e.currentTarget as HTMLElement).style.background = 'rgba(16,185,129,0.08)'
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLElement).style.color = 'rgba(232,240,236,0.6)'
-                      ;(e.currentTarget as HTMLElement).style.background = 'transparent'
-                    }}
-                  >
+                  <button className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors duration-150 text-foreground/60 hover:text-primary hover:bg-primary/10">
                     <Settings2 size={14} />
                   </button>
                 </div>
               </div>
 
-              <h3
-                className="text-[14px] font-semibold mb-1 transition-colors duration-150 group-hover:text-emerald-400"
-                style={{ color: '#e8f0ec' }}
-              >
+              <h3 className="text-[14px] font-semibold mb-1 transition-colors duration-150 group-hover:text-primary text-foreground">
                 {collection.displayName || collection.name}
               </h3>
-              <p
-                className="text-[13px] font-light line-clamp-2 mb-5 leading-relaxed"
-                style={{ color: 'rgba(232,240,236,0.7)', minHeight: '2.6rem' }}
-              >
+              <p className="text-[13px] font-light line-clamp-2 mb-5 leading-relaxed text-foreground/70 min-h-[2.6rem]">
                 {collection.description || 'Sin descripción.'}
               </p>
 
-              <div
-                className="flex items-center justify-between pt-4"
-                style={{ borderTop: '1px solid rgba(232,240,236,0.05)' }}
-              >
-                <div
-                  className="flex items-center gap-1.5 text-[11px] font-medium"
-                  style={{ color: 'rgba(232,240,236,0.6)', textTransform: 'uppercase', letterSpacing: '0.05em' }}
-                >
+              <div className="flex items-center justify-between pt-4 border-t border-border">
+                <div className="flex items-center gap-1.5 text-[11px] font-medium text-foreground/60 uppercase tracking-[0.05em]">
                   <Clock size={11} />
                   <span>
                     {new Date(collection.createdAt).toLocaleDateString('es', {
@@ -161,16 +98,7 @@ export default function CollectionsPage() {
                     })}
                   </span>
                 </div>
-                <button
-                  className="flex items-center gap-1 text-[12px] font-semibold transition-colors duration-150 group/btn"
-                  style={{ color: 'rgba(16,185,129,0.4)' }}
-                  onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLElement).style.color = '#10b981'
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLElement).style.color = 'rgba(16,185,129,0.4)'
-                  }}
-                >
+                <button className="flex items-center gap-1 text-[12px] font-semibold transition-colors duration-150 group/btn text-primary/60 hover:text-primary">
                   Ver Datos
                   <ExternalLink size={11} className="group-hover/btn:translate-x-0.5 transition-transform" />
                 </button>
@@ -180,26 +108,11 @@ export default function CollectionsPage() {
 
           {/* Add new card */}
           <CreateCollectionDialog>
-            <div
-              className="rounded-xl p-5 flex flex-col items-center justify-center gap-2.5 cursor-pointer transition-all duration-200 hover:-translate-y-0.5 min-h-[180px]"
-              style={{ background: 'transparent' }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.background = '#0c1512'
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.background = 'transparent'
-              }}
-            >
-              <div
-                className="w-9 h-9 rounded-lg flex items-center justify-center"
-                style={{ background: 'rgba(16,185,129,0.07)', color: 'rgba(16,185,129,0.5)' }}
-              >
+            <div className="rounded-xl p-5 flex flex-col items-center justify-center gap-2.5 cursor-pointer transition-all duration-200 hover:-translate-y-0.5 min-h-[180px] bg-transparent hover:bg-surface/50">
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-primary/10 text-primary/50">
                 <Plus size={18} />
               </div>
-              <p
-                className="text-[13px] font-light"
-                style={{ color: 'rgba(232,240,236,0.6)' }}
-              >
+              <p className="text-[13px] font-light text-foreground/60">
                 Nueva colección
               </p>
             </div>

@@ -4,6 +4,7 @@ import './globals.css'
 import SupabaseProvider from '@/shared/presentation/providers/supabase-provider'
 import AuthProvider from '@/modules/auth/presentation/providers/auth-provider'
 import WorkspaceProvider from '@/modules/workspace/presentation/providers/workspace-provider'
+import { ThemeProvider } from '@/shared/presentation/providers/theme-provider'
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -23,13 +24,20 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="es" className={`${poppins.variable} h-full`}>
-      <body className="min-h-full flex flex-col bg-[#050a0a] text-emerald-50" style={{ fontFamily: "'Poppins', sans-serif" }}>
-        <SupabaseProvider>
-          <AuthProvider>
-            <WorkspaceProvider>{children}</WorkspaceProvider>
-          </AuthProvider>
-        </SupabaseProvider>
+    <html lang="es" className={`${poppins.variable} h-full`} suppressHydrationWarning>
+      <body className="min-h-full flex flex-col bg-background text-foreground antialiased" style={{ fontFamily: "'Poppins', sans-serif" }}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <SupabaseProvider>
+            <AuthProvider>
+              <WorkspaceProvider>{children}</WorkspaceProvider>
+            </AuthProvider>
+          </SupabaseProvider>
+        </ThemeProvider>
       </body>
     </html>
   )

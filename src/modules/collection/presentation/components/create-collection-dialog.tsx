@@ -69,16 +69,7 @@ export function CreateCollectionDialog({ children }: CreateCollectionDialogProps
   }
 
   const triggerEl = children ?? (
-    <button
-      className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-[13px] text-white transition-all duration-150 hover:-translate-y-0.5"
-      style={{ background: '#10b981' }}
-      onMouseEnter={(e) => {
-        (e.currentTarget as HTMLElement).style.background = '#059669'
-      }}
-      onMouseLeave={(e) => {
-        (e.currentTarget as HTMLElement).style.background = '#10b981'
-      }}
-    >
+    <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-[13px] text-primary-foreground bg-primary hover:bg-primary-hover transition-all duration-150 hover:-translate-y-0.5">
       <Plus size={15} />
       Nueva Colección
     </button>
@@ -89,31 +80,15 @@ export function CreateCollectionDialog({ children }: CreateCollectionDialogProps
       <DialogTrigger asChild>
         {triggerEl}
       </DialogTrigger>
-      <DialogContent
-        className="sm:max-w-[420px] rounded-2xl p-8"
-        style={{
-          background: '#080c0a',
-          border: 'none',
-          boxShadow: '0 32px 64px rgba(0,0,0,0.6)',
-        }}
-      >
+      <DialogContent className="sm:max-w-[420px] rounded-2xl p-8 bg-surface border-none shadow-[0_32px_64px_rgba(0,0,0,0.6)]">
         <DialogHeader>
-          <div
-            className="w-11 h-11 rounded-xl flex items-center justify-center mb-5"
-            style={{ background: 'rgba(16,185,129,0.1)', color: '#10b981' }}
-          >
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-5 bg-primary/10 text-primary">
             <Database size={20} />
           </div>
-          <DialogTitle
-            className="text-xl font-bold"
-            style={{ color: '#e8f0ec', letterSpacing: '-0.01em' }}
-          >
+          <DialogTitle className="text-xl font-bold text-foreground tracking-[-0.01em]">
             Nueva Colección
           </DialogTitle>
-          <DialogDescription
-            className="font-light text-sm"
-            style={{ color: 'rgba(232,240,236,0.7)' }}
-          >
+          <DialogDescription className="font-light text-sm text-foreground/70">
             Define los metadatos de tu nueva tabla dinámica de datos.
           </DialogDescription>
         </DialogHeader>
@@ -122,12 +97,11 @@ export function CreateCollectionDialog({ children }: CreateCollectionDialogProps
           <div className="space-y-2">
             <Label
               htmlFor="name"
-              className="text-[11px] font-semibold uppercase tracking-widest flex justify-between"
-              style={{ color: 'rgba(232,240,236,0.7)', letterSpacing: '0.1em' }}
+              className="text-[11px] font-semibold uppercase flex justify-between text-foreground/70"
             >
               <span>Nombre Técnico *</span>
               {errors.name && (
-                <span className="text-red-400 flex items-center gap-1 normal-case" style={{ letterSpacing: 'normal' }}>
+                <span className="text-red-400 flex items-center gap-1 normal-case tracking-normal">
                   <AlertCircle size={10} />
                   {errors.name.message}
                 </span>
@@ -137,18 +111,10 @@ export function CreateCollectionDialog({ children }: CreateCollectionDialogProps
               id="name"
               placeholder="ej: proyectos_v2"
               {...register('name')}
-              className={`rounded-lg text-sm h-10 placeholder:font-light transition-colors ${errors.name ? 'focus-visible:ring-red-500/50' : ''}`}
-              style={{
-                background: 'rgba(232,240,236,0.04)',
-                border: errors.name ? '1px solid rgba(248,113,113,0.5)' : '1px solid rgba(232,240,236,0.07)',
-                color: '#e8f0ec',
-              }}
+              className={`rounded-lg text-sm h-10 placeholder:font-light transition-colors bg-foreground/5 text-foreground ${errors.name ? 'border-red-400/50 focus-visible:ring-red-500/50' : 'border-border'}`}
             />
             {!errors.name && (
-              <p
-                className="text-[11px] font-light italic"
-                style={{ color: 'rgba(232,240,236,0.6)' }}
-              >
+              <p className="text-[11px] font-light italic text-foreground/60">
                 Identificador interno único para el motor de datos.
               </p>
             )}
@@ -157,12 +123,11 @@ export function CreateCollectionDialog({ children }: CreateCollectionDialogProps
           <div className="space-y-2">
             <Label
               htmlFor="displayName"
-              className="text-[11px] font-semibold uppercase tracking-widest flex justify-between"
-              style={{ color: 'rgba(232,240,236,0.7)', letterSpacing: '0.1em' }}
+              className="text-[11px] font-semibold uppercase flex justify-between text-foreground/70"
             >
               <span>Nombre Público</span>
               {errors.displayName && (
-                <span className="text-red-400 flex items-center gap-1 normal-case" style={{ letterSpacing: 'normal' }}>
+                <span className="text-red-400 flex items-center gap-1 normal-case tracking-normal">
                   <AlertCircle size={10} />
                   {errors.displayName.message}
                 </span>
@@ -172,24 +137,18 @@ export function CreateCollectionDialog({ children }: CreateCollectionDialogProps
               id="displayName"
               placeholder="ej: Portafolio de Proyectos"
               {...register('displayName')}
-              className="rounded-lg text-sm h-10 placeholder:font-light transition-colors"
-              style={{
-                background: 'rgba(232,240,236,0.04)',
-                border: errors.displayName ? '1px solid rgba(248,113,113,0.5)' : '1px solid rgba(232,240,236,0.07)',
-                color: '#e8f0ec',
-              }}
+              className="rounded-lg text-sm h-10 placeholder:font-light transition-colors bg-foreground/5 text-foreground border-border"
             />
           </div>
 
           <div className="space-y-2">
             <Label
               htmlFor="description"
-              className="text-[11px] font-semibold uppercase tracking-widest flex justify-between"
-              style={{ color: 'rgba(232,240,236,0.7)', letterSpacing: '0.1em' }}
+              className="text-[11px] font-semibold uppercase flex justify-between text-foreground/70"
             >
               <span>Descripción</span>
               {errors.description && (
-                <span className="text-red-400 flex items-center gap-1 normal-case" style={{ letterSpacing: 'normal' }}>
+                <span className="text-red-400 flex items-center gap-1 normal-case tracking-normal">
                   <AlertCircle size={10} />
                   {errors.description.message}
                 </span>
@@ -199,28 +158,14 @@ export function CreateCollectionDialog({ children }: CreateCollectionDialogProps
               id="description"
               placeholder="Describe el propósito de esta colección..."
               {...register('description')}
-              className="rounded-lg text-sm min-h-[80px] resize-none placeholder:font-light transition-colors"
-              style={{
-                background: 'rgba(232,240,236,0.04)',
-                border: errors.description ? '1px solid rgba(248,113,113,0.5)' : '1px solid rgba(232,240,236,0.07)',
-                color: '#e8f0ec',
-              }}
+              className="rounded-lg text-sm min-h-[80px] resize-none placeholder:font-light transition-colors bg-foreground/5 text-foreground border-border"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading || !isValid}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-lg font-semibold text-sm text-white transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed mt-2 hover:-translate-y-0.5"
-            style={{ background: '#10b981' }}
-            onMouseEnter={(e) => {
-              if (!loading && isValid) {
-                (e.currentTarget as HTMLElement).style.background = '#059669'
-              }
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLElement).style.background = '#10b981'
-            }}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-lg font-semibold text-sm text-white transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed mt-2 hover:-translate-y-0.5 bg-primary hover:bg-primary-hover disabled:hover:translate-y-0"
           >
             {loading ? (
               <>

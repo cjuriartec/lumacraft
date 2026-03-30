@@ -9,13 +9,19 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuPortal,
 } from '@/shared/presentation/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/presentation/components/ui/avatar'
-import { LogOut, User as UserIcon, Settings } from 'lucide-react'
+import { LogOut, User as UserIcon, Settings, Sun, Moon, Laptop, Check } from 'lucide-react'
+import { useTheme } from 'next-themes'
 
 export default function UserMenu() {
   const { user, signOut } = useAuth()
   const { currentWorkspace } = useWorkspace()
+  const { setTheme, theme } = useTheme()
 
   if (!user) return null
 
@@ -28,111 +34,98 @@ export default function UserMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button
-          className="flex items-center gap-2 px-2 py-1.5 rounded-lg transition-all duration-150 outline-none"
-          style={{ color: 'rgba(232,240,236,0.7)' }}
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLElement).style.background = 'rgba(232,240,236,0.05)'
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLElement).style.background = 'transparent'
-          }}
-        >
+        <button className="flex items-center gap-2 px-2 py-1.5 rounded-lg transition-all duration-150 outline-none text-foreground/70 hover:bg-foreground/5">
           <Avatar className="h-7 w-7">
             <AvatarImage src={user.avatarUrl} alt={user.fullName} />
-            <AvatarFallback
-              className="text-[11px] font-bold"
-              style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981' }}
-            >
+            <AvatarFallback className="text-[11px] font-bold bg-primary/10 text-primary">
               {initials}
             </AvatarFallback>
           </Avatar>
-          <div className="hidden md:flex flex-col text-left justify-center pl-1">
-            <p
-              className="text-[10px] font-bold uppercase tracking-widest leading-none mb-1 text-emerald-500"
-              style={{ letterSpacing: '0.08em' }}
-            >
-              {workspaceName}
+          <div className="hidden md:flex flex-col text-left justify-center pl-1 gap-1">
+            <p className="text-[13px] font-semibold leading-none text-foreground truncate max-w-[130px]">
+              {user.fullName || 'Usuario'}
             </p>
-            <p
-              className="text-[12.5px] font-medium leading-none"
-              style={{ color: 'rgba(232,240,236,0.9)' }}
-            >
-              {user.fullName?.split(' ')[0] || 'Usuario'}
-            </p>
+            <div className="flex items-center gap-1.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_var(--color-primary)]" />
+              <p className="text-[10px] font-medium uppercase tracking-[0.05em] leading-none text-foreground/50 truncate max-w-[100px]">
+                {workspaceName}
+              </p>
+            </div>
           </div>
         </button>
       </DropdownMenuTrigger>
 
       <DropdownMenuContent
         align="end"
-        className="w-52 mt-2 rounded-xl p-1.5"
-        style={{
-          background: '#030906',
-          border: '1px solid rgba(232,240,236,0.07)',
-          boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
-        }}
+        className="w-52 mt-2 rounded-xl p-1.5 bg-sidebar border-border/10 shadow-2xl"
       >
         <DropdownMenuLabel className="font-normal p-3 pb-2 flex items-center gap-3">
           <Avatar className="h-9 w-9">
             <AvatarImage src={user.avatarUrl} alt={user.fullName} />
-            <AvatarFallback
-              className="text-[12px] font-bold"
-              style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981' }}
-            >
+            <AvatarFallback className="text-[12px] font-bold bg-primary/10 text-primary">
               {initials}
             </AvatarFallback>
           </Avatar>
           <div className="flex flex-col space-y-0.5 min-w-0">
-            <p
-              className="text-sm font-semibold leading-none truncate"
-              style={{ color: '#e8f0ec' }}
-            >
+            <p className="text-sm font-semibold leading-none truncate text-foreground">
               {user.fullName || 'Usuario'}
             </p>
-            <p
-              className="text-[11px] leading-none truncate"
-              style={{ color: 'rgba(232,240,236,0.5)' }}
-            >
+            <p className="text-[11px] leading-none truncate text-foreground/50">
               {user.email.value}
             </p>
           </div>
         </DropdownMenuLabel>
         
         <div className="px-3 pb-2 pt-1">
-          <div className="rounded-lg p-2.5 flex items-center gap-2.5" style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.1)' }}>
-            <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#10b981', boxShadow: '0 0 8px #10b981' }} />
-            <span className="text-[12px] font-semibold" style={{ color: '#10b981' }}>{workspaceName}</span>
+          <div className="rounded-lg p-2.5 flex items-center gap-2.5 bg-primary/5 border-primary/10 border">
+            <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_var(--color-primary)]" />
+            <span className="text-[12px] font-semibold text-primary">{workspaceName}</span>
           </div>
         </div>
 
-        <DropdownMenuSeparator
-          style={{ background: 'rgba(232,240,236,0.06)', margin: '4px 0' }}
-        />
+        <DropdownMenuSeparator className="bg-foreground/5 my-1" />
 
-        <DropdownMenuItem
-          className="rounded-lg gap-2.5 cursor-pointer text-sm py-2 px-2.5 transition-colors duration-150"
-          style={{ color: 'rgba(232,240,236,0.75)' }}
-        >
+        <DropdownMenuItem className="rounded-lg gap-2.5 cursor-pointer text-sm py-2 px-2.5 transition-colors duration-150 text-foreground/75 hover:bg-foreground/5 hover:text-foreground">
           <UserIcon size={14} />
           Mi Perfil
         </DropdownMenuItem>
-        <DropdownMenuItem
-          className="rounded-lg gap-2.5 cursor-pointer text-sm py-2 px-2.5 transition-colors duration-150"
-          style={{ color: 'rgba(232,240,236,0.75)' }}
-        >
+        <DropdownMenuItem className="rounded-lg gap-2.5 cursor-pointer text-sm py-2 px-2.5 transition-colors duration-150 text-foreground/75 hover:bg-foreground/5 hover:text-foreground">
           <Settings size={14} />
           Ajustes
         </DropdownMenuItem>
 
-        <DropdownMenuSeparator
-          style={{ background: 'rgba(232,240,236,0.06)', margin: '4px 0' }}
-        />
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger className="rounded-lg gap-2.5 cursor-pointer text-sm py-2 px-2.5 transition-colors duration-150 text-foreground/75 hover:bg-foreground/5 hover:text-foreground focus:bg-foreground/5">
+            <Sun size={14} className="rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+            <Moon size={14} className="absolute rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+            Apariencia
+          </DropdownMenuSubTrigger>
+          <DropdownMenuPortal>
+            <DropdownMenuSubContent className="bg-sidebar border-border/10">
+              <DropdownMenuItem onClick={() => setTheme('light')} className={`text-xs gap-2 ${theme === 'light' ? 'bg-primary/10 text-primary focus:bg-primary/10 focus:text-primary' : 'text-foreground/75 hover:text-foreground focus:text-foreground hover:bg-foreground/5 focus:bg-foreground/5'}`}>
+                <Sun size={14} />
+                Claro
+                {theme === 'light' && <Check size={14} className="ml-auto" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setTheme('dark')} className={`text-xs gap-2 ${theme === 'dark' ? 'bg-primary/10 text-primary focus:bg-primary/10 focus:text-primary' : 'text-foreground/75 hover:text-foreground focus:text-foreground hover:bg-foreground/5 focus:bg-foreground/5'}`}>
+                <Moon size={14} />
+                Oscuro
+                {theme === 'dark' && <Check size={14} className="ml-auto" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setTheme('system')} className={`text-xs gap-2 ${theme === 'system' ? 'bg-primary/10 text-primary focus:bg-primary/10 focus:text-primary' : 'text-foreground/75 hover:text-foreground focus:text-foreground hover:bg-foreground/5 focus:bg-foreground/5'}`}>
+                <Laptop size={14} />
+                Sistema
+                {theme === 'system' && <Check size={14} className="ml-auto" />}
+              </DropdownMenuItem>
+            </DropdownMenuSubContent>
+          </DropdownMenuPortal>
+        </DropdownMenuSub>
+
+        <DropdownMenuSeparator className="bg-foreground/5 my-1" />
 
         <DropdownMenuItem
           onClick={() => signOut()}
-          className="rounded-lg gap-2.5 cursor-pointer text-sm py-2 px-2.5 transition-colors duration-150"
-          style={{ color: 'rgba(248,113,113)' }}
+          className="rounded-lg gap-2.5 cursor-pointer text-sm py-2 px-2.5 transition-colors duration-150 text-red-500 hover:bg-red-500/10 hover:text-red-600 focus:bg-red-500/10 focus:text-red-500"
         >
           <LogOut size={14} />
           Cerrar Sesión
