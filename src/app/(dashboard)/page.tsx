@@ -84,7 +84,7 @@ export default function DashboardPage() {
       {/* AI Banner */}
       <div
         className="rounded-2xl p-8 relative overflow-hidden mt-8"
-        style={{ background: '#0c1512' }}
+        style={{ background: '#080c0a' }}
       >
         {/* Accent line top */}
         <div
@@ -137,7 +137,7 @@ function StatCard({
   return (
     <div
       className="rounded-xl p-5 group transition-all duration-200 hover:-translate-y-0.5"
-      style={{ background: '#0c1512' }}
+      style={{ background: '#080c0a' }}
     >
       <div className="flex items-center justify-between mb-5">
         <div
@@ -178,7 +178,7 @@ function QuickAction({
     <Link
       href={href}
       className="group block rounded-xl p-5 transition-all duration-200 hover:-translate-y-0.5"
-      style={{ background: '#0c1512' }}
+      style={{ background: '#080c0a' }}
     >
       <div className="flex items-start gap-4">
         <div

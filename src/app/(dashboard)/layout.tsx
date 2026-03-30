@@ -30,7 +30,7 @@ export default function DashboardLayout({
         <aside
           className={`fixed lg:static inset-y-0 left-0 z-40 flex flex-col w-60 transition-transform duration-300 ease-out lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
             }`}
-          style={{ background: '#030906' }}>
+          style={{ background: '#080c0a' }}>
           {/* Logo */}
           <div className="h-14 flex items-center px-5 mb-2">
             <Link href="/" className="flex items-center gap-2.5 group">

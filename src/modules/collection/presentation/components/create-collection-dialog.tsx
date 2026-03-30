@@ -12,8 +12,23 @@ import {
 import { Input } from '@/shared/presentation/components/ui/input'
 import { Label } from '@/shared/presentation/components/ui/label'
 import { Textarea } from '@/shared/presentation/components/ui/textarea'
-import { Plus, Database } from 'lucide-react'
+import { Plus, Database, AlertCircle } from 'lucide-react'
 import { useCollections } from '../hooks/use-collections'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+
+const collectionSchema = z.object({
+  name: z
+    .string()
+    .min(3, { message: 'Mínimo 3 caracteres' })
+    .max(50, { message: 'Máximo 50 caracteres' })
+    .regex(/^[a-z0-9_]+$/, { message: 'Solo letras, números y guiones bajos' }),
+  displayName: z.string().max(100, { message: 'Máximo 100 caracteres' }).optional(),
+  description: z.string().max(500, { message: 'Máximo 500 caracteres' }).optional(),
+})
+
+type CollectionFormValues = z.infer<typeof collectionSchema>
 
 interface CreateCollectionDialogProps {
   children?: React.ReactNode
@@ -21,19 +36,35 @@ interface CreateCollectionDialogProps {
 
 export function CreateCollectionDialog({ children }: CreateCollectionDialogProps) {
   const [open, setOpen] = useState(false)
-  const [name, setName] = useState('')
-  const [displayName, setDisplayName] = useState('')
-  const [description, setDescription] = useState('')
   const { createCollection, loading } = useCollections()
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const res = await createCollection({ name, displayName, description })
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isValid },
+  } = useForm<CollectionFormValues>({
+    resolver: zodResolver(collectionSchema),
+    mode: 'onChange',
+    defaultValues: {
+      name: '',
+      displayName: '',
+      description: '',
+    },
+  })
+
+  const onSubmit = async (data: CollectionFormValues) => {
+    const res = await createCollection(data)
     if (res?.ok) {
       setOpen(false)
-      setName('')
-      setDisplayName('')
-      setDescription('')
+      reset()
+    }
+  }
+
+  const handleOpenChange = (newOpen: boolean) => {
+    setOpen(newOpen)
+    if (!newOpen) {
+      reset() // Limpiar cuando se cierra manualmente
     }
   }
 
@@ -54,14 +85,14 @@ export function CreateCollectionDialog({ children }: CreateCollectionDialogProps
   )
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         {triggerEl}
       </DialogTrigger>
       <DialogContent
         className="sm:max-w-[420px] rounded-2xl p-8"
         style={{
-          background: '#0c1512',
+          background: '#080c0a',
           border: 'none',
           boxShadow: '0 32px 64px rgba(0,0,0,0.6)',
         }}
@@ -87,53 +118,64 @@ export function CreateCollectionDialog({ children }: CreateCollectionDialogProps
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-5 mt-6">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 mt-6">
           <div className="space-y-2">
             <Label
               htmlFor="name"
-              className="text-[11px] font-semibold uppercase tracking-widest"
+              className="text-[11px] font-semibold uppercase tracking-widest flex justify-between"
               style={{ color: 'rgba(232,240,236,0.7)', letterSpacing: '0.1em' }}
             >
-              Nombre Técnico *
+              <span>Nombre Técnico *</span>
+              {errors.name && (
+                <span className="text-red-400 flex items-center gap-1 normal-case" style={{ letterSpacing: 'normal' }}>
+                  <AlertCircle size={10} />
+                  {errors.name.message}
+                </span>
+              )}
             </Label>
             <Input
               id="name"
               placeholder="ej: proyectos_v2"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              className="rounded-lg text-sm h-10 placeholder:font-light"
+              {...register('name')}
+              className={`rounded-lg text-sm h-10 placeholder:font-light transition-colors ${errors.name ? 'focus-visible:ring-red-500/50' : ''}`}
               style={{
                 background: 'rgba(232,240,236,0.04)',
-                border: '1px solid rgba(232,240,236,0.07)',
+                border: errors.name ? '1px solid rgba(248,113,113,0.5)' : '1px solid rgba(232,240,236,0.07)',
                 color: '#e8f0ec',
               }}
             />
-            <p
-              className="text-[11px] font-light italic"
-              style={{ color: 'rgba(232,240,236,0.6)' }}
-            >
-              Identificador interno único para el motor de datos.
-            </p>
+            {!errors.name && (
+              <p
+                className="text-[11px] font-light italic"
+                style={{ color: 'rgba(232,240,236,0.6)' }}
+              >
+                Identificador interno único para el motor de datos.
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
             <Label
               htmlFor="displayName"
-              className="text-[11px] font-semibold uppercase tracking-widest"
+              className="text-[11px] font-semibold uppercase tracking-widest flex justify-between"
               style={{ color: 'rgba(232,240,236,0.7)', letterSpacing: '0.1em' }}
             >
-              Nombre Público
+              <span>Nombre Público</span>
+              {errors.displayName && (
+                <span className="text-red-400 flex items-center gap-1 normal-case" style={{ letterSpacing: 'normal' }}>
+                  <AlertCircle size={10} />
+                  {errors.displayName.message}
+                </span>
+              )}
             </Label>
             <Input
               id="displayName"
               placeholder="ej: Portafolio de Proyectos"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              className="rounded-lg text-sm h-10 placeholder:font-light"
+              {...register('displayName')}
+              className="rounded-lg text-sm h-10 placeholder:font-light transition-colors"
               style={{
                 background: 'rgba(232,240,236,0.04)',
-                border: '1px solid rgba(232,240,236,0.07)',
+                border: errors.displayName ? '1px solid rgba(248,113,113,0.5)' : '1px solid rgba(232,240,236,0.07)',
                 color: '#e8f0ec',
               }}
             />
@@ -142,20 +184,25 @@ export function CreateCollectionDialog({ children }: CreateCollectionDialogProps
           <div className="space-y-2">
             <Label
               htmlFor="description"
-              className="text-[11px] font-semibold uppercase tracking-widest"
+              className="text-[11px] font-semibold uppercase tracking-widest flex justify-between"
               style={{ color: 'rgba(232,240,236,0.7)', letterSpacing: '0.1em' }}
             >
-              Descripción
+              <span>Descripción</span>
+              {errors.description && (
+                <span className="text-red-400 flex items-center gap-1 normal-case" style={{ letterSpacing: 'normal' }}>
+                  <AlertCircle size={10} />
+                  {errors.description.message}
+                </span>
+              )}
             </Label>
             <Textarea
               id="description"
               placeholder="Describe el propósito de esta colección..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="rounded-lg text-sm min-h-[80px] resize-none placeholder:font-light"
+              {...register('description')}
+              className="rounded-lg text-sm min-h-[80px] resize-none placeholder:font-light transition-colors"
               style={{
                 background: 'rgba(232,240,236,0.04)',
-                border: '1px solid rgba(232,240,236,0.07)',
+                border: errors.description ? '1px solid rgba(248,113,113,0.5)' : '1px solid rgba(232,240,236,0.07)',
                 color: '#e8f0ec',
               }}
             />
@@ -163,11 +210,11 @@ export function CreateCollectionDialog({ children }: CreateCollectionDialogProps
 
           <button
             type="submit"
-            disabled={loading || !name}
+            disabled={loading || !isValid}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-lg font-semibold text-sm text-white transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed mt-2 hover:-translate-y-0.5"
             style={{ background: '#10b981' }}
             onMouseEnter={(e) => {
-              if (!loading && name) {
+              if (!loading && isValid) {
                 (e.currentTarget as HTMLElement).style.background = '#059669'
               }
             }}

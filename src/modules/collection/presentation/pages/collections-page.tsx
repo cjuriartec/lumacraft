@@ -62,7 +62,7 @@ export default function CollectionsPage() {
         /* Empty state */
         <div
           className="flex flex-col items-center justify-center py-24 rounded-2xl text-center"
-          style={{ background: '#0c1512' }}
+          style={{ background: '#080c0a' }}
         >
           <div
             className="w-16 h-16 rounded-2xl flex items-center justify-center mb-5"
@@ -91,7 +91,7 @@ export default function CollectionsPage() {
             <div
               key={collection.id}
               className="group rounded-xl p-5 transition-all duration-200 hover:-translate-y-0.5"
-              style={{ background: '#0c1512' }}
+              style={{ background: '#080c0a' }}
             >
               <div className="flex items-start justify-between mb-4">
                 <div
