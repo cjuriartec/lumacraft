@@ -32,9 +32,10 @@ type CollectionFormValues = z.infer<typeof collectionSchema>
 
 interface CreateCollectionDialogProps {
   children?: React.ReactNode
+  onSuccess?: () => void
 }
 
-export function CreateCollectionDialog({ children }: CreateCollectionDialogProps) {
+export function CreateCollectionDialog({ children, onSuccess }: CreateCollectionDialogProps) {
   const [open, setOpen] = useState(false)
   const { createCollection, loading } = useCollections()
 
@@ -58,6 +59,7 @@ export function CreateCollectionDialog({ children }: CreateCollectionDialogProps
     if (res?.ok) {
       setOpen(false)
       reset()
+      onSuccess?.()
     }
   }
 

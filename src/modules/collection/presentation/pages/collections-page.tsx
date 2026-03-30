@@ -5,7 +5,7 @@ import { CreateCollectionDialog } from '../components/create-collection-dialog'
 import { Database, Trash2, ExternalLink, Settings2, Clock, Plus } from 'lucide-react'
 
 export default function CollectionsPage() {
-  const { collections, loading, deleteCollection } = useCollections()
+  const { collections, loading, deleteCollection, refresh } = useCollections()
 
   if (loading) {
     return (
@@ -40,7 +40,7 @@ export default function CollectionsPage() {
               : 'Gestiona tus tablas dinámicas de datos.'}
           </p>
         </div>
-        <CreateCollectionDialog />
+        <CreateCollectionDialog onSuccess={refresh} />
       </div>
 
       {collections.length === 0 ? (
@@ -56,7 +56,7 @@ export default function CollectionsPage() {
             Crea tu primera colección para comenzar a estructurar datos que
             alimentarán tus documentos e IA.
           </p>
-          <CreateCollectionDialog />
+          <CreateCollectionDialog onSuccess={refresh} />
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -107,7 +107,7 @@ export default function CollectionsPage() {
           ))}
 
           {/* Add new card */}
-          <CreateCollectionDialog>
+          <CreateCollectionDialog onSuccess={refresh}>
             <div className="rounded-xl p-5 flex flex-col items-center justify-center gap-2.5 cursor-pointer transition-all duration-200 hover:-translate-y-0.5 min-h-[180px] bg-transparent hover:bg-surface/50">
               <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-primary/10 text-primary/50">
                 <Plus size={18} />

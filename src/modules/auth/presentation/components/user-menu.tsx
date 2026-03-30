@@ -47,7 +47,7 @@ export default function UserMenu() {
             </p>
             <div className="flex items-center gap-1.5">
               <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_var(--color-primary)]" />
-              <p className="text-[10px] font-medium uppercase tracking-[0.05em] leading-none text-foreground/50 truncate max-w-[100px]">
+              <p className="text-[10px] font-medium tracking-[0.05em] leading-none text-foreground/50 truncate max-w-[100px]">
                 {workspaceName}
               </p>
             </div>
@@ -75,7 +75,7 @@ export default function UserMenu() {
             </p>
           </div>
         </DropdownMenuLabel>
-        
+
         <div className="px-3 pb-2 pt-1">
           <div className="rounded-lg p-2.5 flex items-center gap-2.5 bg-primary/5 border-primary/10 border">
             <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_var(--color-primary)]" />
