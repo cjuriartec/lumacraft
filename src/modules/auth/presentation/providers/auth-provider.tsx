@@ -5,6 +5,7 @@ import { User } from '@/modules/auth/domain/entities/user.entity'
 import { SupabaseAuthService } from '@/modules/auth/infrastructure/services/supabase-auth.service'
 import { SignInWithGoogleUseCase } from '@/modules/auth/application/use-cases/sign-in-with-google.use-case'
 import { SignOutUseCase } from '@/modules/auth/application/use-cases/sign-out.use-case'
+import { IAuthProvider } from '@/modules/auth/domain/ports/auth-provider.port'
 
 type AuthContext = {
   user: User | null
@@ -15,31 +16,46 @@ type AuthContext = {
 
 const Context = createContext<AuthContext | undefined>(undefined)
 
-export default function AuthProvider({ children }: { children: React.ReactNode }) {
+export default function AuthProvider({
+  children,
+  authService,
+}: {
+  children: React.ReactNode
+  authService?: IAuthProvider
+}) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const authService = useMemo(() => new SupabaseAuthService(), [])
-  const signInUseCase = useMemo(() => new SignInWithGoogleUseCase(authService), [authService])
-  const signOutUseCase = useMemo(() => new SignOutUseCase(authService), [authService])
+  const service = useMemo(() => authService ?? new SupabaseAuthService(), [authService])
+  const signInUseCase = useMemo(() => new SignInWithGoogleUseCase(service), [service])
+  const signOutUseCase = useMemo(() => new SignOutUseCase(service), [service])
 
   useEffect(() => {
+    let active = true
+
     const checkUser = async () => {
-      const res = await authService.getCurrentUser()
-      if (res.ok) {
+      const res = await service.getCurrentUser()
+      if (active && res.ok) {
         setUser(res.value)
       }
-      setLoading(false)
+      if (active) {
+        setLoading(false)
+      }
     }
 
     checkUser()
 
-    const unsubscribe = authService.onAuthStateChange((user) => {
-      setUser(user)
+    const unsubscribe = service.onAuthStateChange((nextUser) => {
+      if (active) {
+        setUser(nextUser)
+      }
     })
 
-    return () => unsubscribe()
-  }, [authService])
+    return () => {
+      active = false
+      unsubscribe()
+    }
+  }, [service])
 
   const signInWithGoogle = useCallback(async () => {
     await signInUseCase.execute()

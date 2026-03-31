@@ -1,0 +1,209 @@
+import { User, UserProps } from '@/modules/auth/domain/entities/user.entity'
+import { Email } from '@/modules/auth/domain/value-objects/email.vo'
+import { Collection } from '@/modules/collection/domain/entities/collection.entity'
+import { Field } from '@/modules/collection/domain/entities/field.entity'
+import { DataRecord } from '@/modules/collection/domain/entities/record.entity'
+import { FieldConfig } from '@/modules/collection/domain/value-objects/field-config.vo'
+import { FieldType, FieldTypeValue } from '@/modules/collection/domain/value-objects/field-type.vo'
+import { Workspace } from '@/modules/workspace/domain/entities/workspace.entity'
+import { WorkspaceMember } from '@/modules/workspace/domain/entities/workspace-member.entity'
+
+let sequence = 0
+
+function nextSequence() {
+  sequence += 1
+  return sequence
+}
+
+function dateFor(sequenceValue: number) {
+  return new Date(Date.UTC(2024, 0, sequenceValue, 12, 0, 0))
+}
+
+export function resetFactories() {
+  sequence = 0
+}
+
+export function makeId(prefix = 'id') {
+  return `${prefix}-${String(nextSequence()).padStart(4, '0')}`
+}
+
+export function makeEmail(raw = `user${nextSequence()}@example.com`) {
+  const result = Email.create(raw)
+
+  if (!result.ok) {
+    throw result.error
+  }
+
+  return result.value
+}
+
+export function makeFieldType(value: FieldTypeValue = 'TEXT') {
+  const result = FieldType.create(value)
+
+  if (!result.ok) {
+    throw result.error
+  }
+
+  return result.value
+}
+
+export function makeFieldConfig(fieldType: FieldTypeValue = 'TEXT', raw?: Record<string, unknown>) {
+  const baseConfig =
+    raw ??
+    (fieldType === 'ENUM'
+      ? { options: ['draft', 'published'] }
+      : {})
+
+  const result = FieldConfig.create(fieldType, baseConfig)
+
+  if (!result.ok) {
+    throw result.error
+  }
+
+  return result.value
+}
+
+export function makeUser(overrides: Partial<UserProps> = {}) {
+  const order = nextSequence()
+
+  return new User({
+    id: overrides.id ?? `user-${String(order).padStart(4, '0')}`,
+    email: overrides.email ?? makeEmail(`user${order}@example.com`),
+    fullName: overrides.fullName ?? `Test User ${order}`,
+    avatarUrl: overrides.avatarUrl ?? `https://example.com/avatar-${order}.png`,
+    createdAt: overrides.createdAt ?? dateFor(order),
+    updatedAt: overrides.updatedAt ?? dateFor(order),
+  })
+}
+
+export function makeWorkspace(
+  overrides: Partial<{
+    id: string
+    name: string
+    ownerId: string
+    settings: Record<string, unknown>
+    isActive: boolean
+    createdAt: Date
+    updatedAt: Date
+  }> = {}
+) {
+  const order = nextSequence()
+
+  return new Workspace({
+    id: overrides.id ?? `workspace-${String(order).padStart(4, '0')}`,
+    name: overrides.name ?? `Workspace ${order}`,
+    ownerId: overrides.ownerId ?? `user-${String(order).padStart(4, '0')}`,
+    settings: overrides.settings,
+    isActive: overrides.isActive,
+    createdAt: overrides.createdAt ?? dateFor(order),
+    updatedAt: overrides.updatedAt ?? dateFor(order),
+  })
+}
+
+export function makeWorkspaceMember(
+  overrides: Partial<{
+    id: string
+    workspaceId: string
+    userId: string
+    roleId: string
+    joinedAt: Date
+  }> = {}
+) {
+  const order = nextSequence()
+
+  return new WorkspaceMember({
+    id: overrides.id ?? `member-${String(order).padStart(4, '0')}`,
+    workspaceId: overrides.workspaceId ?? `workspace-${String(order).padStart(4, '0')}`,
+    userId: overrides.userId ?? `user-${String(order).padStart(4, '0')}`,
+    roleId: overrides.roleId ?? `role-${String(order).padStart(4, '0')}`,
+    joinedAt: overrides.joinedAt ?? dateFor(order),
+  })
+}
+
+export function makeCollection(
+  overrides: Partial<{
+    id: string
+    accountId: string
+    name: string
+    displayName: string
+    description: string
+    icon: string
+    createdAt: Date
+    updatedAt: Date
+  }> = {}
+) {
+  const order = nextSequence()
+
+  return new Collection({
+    id: overrides.id ?? `collection-${String(order).padStart(4, '0')}`,
+    accountId: overrides.accountId ?? `workspace-${String(order).padStart(4, '0')}`,
+    name: overrides.name ?? `collection_${order}`,
+    displayName: overrides.displayName ?? `Collection ${order}`,
+    description: overrides.description ?? `Description ${order}`,
+    icon: overrides.icon ?? 'database',
+    createdAt: overrides.createdAt ?? dateFor(order),
+    updatedAt: overrides.updatedAt ?? dateFor(order),
+  })
+}
+
+export function makeField(
+  overrides: Partial<{
+    id: string
+    collectionId: string
+    name: string
+    displayName: string
+    fieldType: FieldTypeValue
+    isRequired: boolean
+    isUnique: boolean
+    defaultValue: string
+    config: Record<string, unknown>
+    sortOrder: number
+    createdAt: Date
+    updatedAt: Date
+  }> = {}
+) {
+  const order = nextSequence()
+  const fieldType = makeFieldType(overrides.fieldType ?? 'TEXT')
+
+  return new Field({
+    id: overrides.id ?? `field-${String(order).padStart(4, '0')}`,
+    collectionId: overrides.collectionId ?? `collection-${String(order).padStart(4, '0')}`,
+    name: overrides.name ?? `field_${order}`,
+    displayName: overrides.displayName ?? `Field ${order}`,
+    fieldType,
+    isRequired: overrides.isRequired,
+    isUnique: overrides.isUnique,
+    defaultValue: overrides.defaultValue,
+    config: makeFieldConfig(fieldType.value, overrides.config),
+    sortOrder: overrides.sortOrder ?? order - 1,
+    createdAt: overrides.createdAt ?? dateFor(order),
+    updatedAt: overrides.updatedAt ?? dateFor(order),
+  })
+}
+
+export function makeRecord(
+  overrides: Partial<{
+    id: string
+    collectionId: string
+    accountId: string
+    data: Record<string, unknown>
+    createdBy: string
+    updatedBy: string
+    createdAt: Date
+    updatedAt: Date
+  }> = {}
+) {
+  const order = nextSequence()
+
+  return new DataRecord({
+    id: overrides.id ?? `record-${String(order).padStart(4, '0')}`,
+    collectionId: overrides.collectionId ?? `collection-${String(order).padStart(4, '0')}`,
+    accountId: overrides.accountId ?? `workspace-${String(order).padStart(4, '0')}`,
+    data: overrides.data ?? { title: `Record ${order}` },
+    createdBy: overrides.createdBy ?? `user-${String(order).padStart(4, '0')}`,
+    updatedBy: overrides.updatedBy,
+    createdAt: overrides.createdAt ?? dateFor(order),
+    updatedAt: overrides.updatedAt ?? dateFor(order),
+  })
+}
+

@@ -122,6 +122,7 @@ export function DataGrid({
                       <Button
                         variant="ghost"
                         size="icon"
+                        aria-label={`Editar registro ${record.id}`}
                         className="h-8 w-8 text-muted hover:text-foreground hover:bg-surface-hover"
                         onClick={() => onEdit(record as DataRecord)}
                       >
@@ -130,6 +131,7 @@ export function DataGrid({
                       <Button
                         variant="ghost"
                         size="icon"
+                        aria-label={`Eliminar registro ${record.id}`}
                         className="h-8 w-8 text-muted hover:text-red-500 hover:bg-red-500/10"
                         onClick={() => onDelete(record.id)}
                       >

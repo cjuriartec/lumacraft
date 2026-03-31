@@ -21,7 +21,11 @@ export function useCollections() {
   const deleteUseCase = useMemo(() => new DeleteCollectionUseCase(repository), [repository])
 
   const fetchCollections = useCallback(async () => {
-    if (!currentWorkspace) return
+    if (!currentWorkspace) {
+      setCollections([])
+      setLoading(false)
+      return
+    }
     setLoading(true)
     const res = await listUseCase.execute(currentWorkspace.id)
     if (res.ok) {
@@ -31,17 +35,26 @@ export function useCollections() {
   }, [currentWorkspace, listUseCase])
 
   useEffect(() => {
-    const ignore = false
+    let ignore = false
     const load = async () => {
+      if (!currentWorkspace) {
+        if (!ignore) {
+          setCollections([])
+          setLoading(false)
+        }
+        return
+      }
+
       setLoading(true)
-      const res = await listUseCase.execute(currentWorkspace!.id)
+      const res = await listUseCase.execute(currentWorkspace.id)
       if (!ignore) {
         if (res.ok) setCollections(res.value)
         setLoading(false)
       }
     }
-    if (currentWorkspace) {
-      load()
+    load()
+    return () => {
+      ignore = true
     }
   }, [currentWorkspace, listUseCase])
 

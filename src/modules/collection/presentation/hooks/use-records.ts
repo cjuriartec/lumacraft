@@ -34,7 +34,12 @@ export function useRecords(collectionId: string) {
   const deleteUseCase = useMemo(() => new DeleteRecordUseCase(recordRepository), [recordRepository])
 
   const fetchRecords = useCallback(async () => {
-    if (!collectionId) return
+    if (!collectionId) {
+      setData([])
+      setTotal(0)
+      setLoading(false)
+      return
+    }
     setLoading(true)
     const res = await listUseCase.execute(collectionId, pagination)
     if (res.ok) {

@@ -72,12 +72,16 @@ export default function CollectionsPage() {
                 </div>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
                   <button
+                    aria-label={`Eliminar colección ${collection.displayName || collection.name}`}
                     className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors duration-150 text-foreground/60 hover:text-red-400 hover:bg-red-400/10"
                     onClick={() => deleteCollection(collection.id)}
                   >
                     <Trash2 size={14} />
                   </button>
-                  <button className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors duration-150 text-foreground/60 hover:text-primary hover:bg-primary/10">
+                  <button
+                    aria-label={`Configurar colección ${collection.displayName || collection.name}`}
+                    className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors duration-150 text-foreground/60 hover:text-primary hover:bg-primary/10"
+                  >
                     <Settings2 size={14} />
                   </button>
                 </div>

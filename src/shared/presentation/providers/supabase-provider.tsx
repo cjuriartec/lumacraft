@@ -12,10 +12,12 @@ const Context = createContext<SupabaseContext | undefined>(undefined)
 
 export default function SupabaseProvider({
   children,
+  client,
 }: {
   children: React.ReactNode
+  client?: SupabaseClient
 }) {
-  const [supabase] = useState(() => createClient())
+  const [supabase] = useState(() => client ?? createClient())
 
   return (
     <Context.Provider value={{ supabase }}>

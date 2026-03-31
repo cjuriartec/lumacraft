@@ -7,9 +7,18 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test:unit": "vitest run --dir src/__tests__/unit",
-    "test:integration": "vitest run --dir src/__tests__/integration",
-    "test:coverage": "vitest run --coverage"
+    "test": "npm run test:unit && npm run test:component && npm run test:integration",
+    "test:unit": "vitest run --project unit",
+    "test:component": "vitest run --project component",
+    "test:integration": "node scripts/with-local-supabase-env.mjs vitest run --project integration",
+    "test:smoke": "node scripts/with-local-supabase-env.mjs playwright test --project smoke",
+    "test:e2e": "node scripts/with-local-supabase-env.mjs playwright test --project full",
+    "test:coverage": "node scripts/with-local-supabase-env.mjs vitest run --coverage --project unit --project component --project integration",
+    "test:coverage:strict": "node scripts/with-local-supabase-env.mjs env STRICT_COVERAGE=true vitest run --coverage --project unit --project component --project integration",
+    "test:all": "npm test && npm run test:smoke && npm run test:e2e",
+    "supabase:stop": "npx supabase stop",
+    "supabase:clean": "npx supabase stop --no-backup && docker rmi $(docker images 'supabase/*' -q) 2>/dev/null; docker rmi $(docker images 'public.ecr.aws/supabase/*' -q) 2>/dev/null; docker rmi $(docker images 'postgrest/postgrest' -q) 2>/dev/null; echo '✅ Supabase eliminado completamente (contenedores + volúmenes + imágenes ECR).'",
+    "supabase:local": "node scripts/setup-local.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -39,6 +48,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@playwright/test": "^1.51.1",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",

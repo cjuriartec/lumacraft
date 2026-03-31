@@ -108,13 +108,19 @@ export function FieldManager({
                   <TableCell className="py-4 px-4 text-right">
                     <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <FieldFormDialog field={field} onSubmit={(values) => updateField({ ...values, id: field.id })}>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted hover:text-foreground hover:bg-surface-hover">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label={`Editar campo ${field.displayName || field.name}`}
+                          className="h-8 w-8 text-muted hover:text-foreground hover:bg-surface-hover"
+                        >
                           <Settings2 size={14} />
                         </Button>
                       </FieldFormDialog>
                       <Button
                         variant="ghost"
                         size="icon"
+                        aria-label={`Eliminar campo ${field.displayName || field.name}`}
                         className="h-8 w-8 text-muted hover:text-red-500 hover:bg-red-500/10"
                         onClick={() => deleteField(field.id)}
                       >

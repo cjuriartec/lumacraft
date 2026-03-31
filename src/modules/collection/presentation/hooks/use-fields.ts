@@ -19,7 +19,11 @@ export function useFields(collectionId: string) {
   const deleteUseCase = useMemo(() => new DeleteFieldUseCase(repository), [repository])
 
   const fetchFields = useCallback(async () => {
-    if (!collectionId) return
+    if (!collectionId) {
+      setFields([])
+      setLoading(false)
+      return
+    }
     setLoading(true)
     const res = await listUseCase.execute(collectionId)
     if (res.ok) {
