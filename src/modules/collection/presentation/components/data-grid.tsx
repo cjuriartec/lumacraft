@@ -129,6 +129,99 @@ const RelationCell = React.memo(({
 })
 RelationCell.displayName = 'RelationCell'
 
+const RelationFilterInput = ({ 
+  field, 
+  value, 
+  onChange 
+}: { 
+  field: Field, 
+  value: string, 
+  onChange: (val: string) => void 
+}) => {
+  const { options, loading, searchRelations, fetchOptionsByIds } = useRelationRecords()
+  const [query, setQuery] = useState('')
+  const [isOpen, setIsOpen] = useState(false)
+
+  const fieldOptions = options[field.name] || []
+  const isLoading = loading[field.name]
+
+  // Resolve initial label if value exists but no options
+  useEffect(() => {
+    if (value && !fieldOptions.find(o => o.id === value)) {
+      void fetchOptionsByIds(field, [value])
+    }
+  }, [value, field, fetchOptionsByIds, fieldOptions])
+
+  const handleSearch = (q: string) => {
+    setQuery(q)
+    void searchRelations(field, q)
+  }
+
+  const selectedLabel = fieldOptions.find(o => o.id === value)?.label || value
+
+  return (
+    <div className="relative">
+      <div className="relative">
+        <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted opacity-50" />
+        <Input
+          value={isOpen ? query : (value ? selectedLabel : query)}
+          onChange={(e) => handleSearch(e.target.value)}
+          onFocus={() => {
+            setIsOpen(true)
+            void searchRelations(field, query)
+          }}
+          placeholder="Buscar relación..."
+          className="h-8 pl-8 text-xs bg-background border-border/20 focus:ring-1 focus:ring-primary/30"
+        />
+        {value && !isOpen && (
+          <button 
+            onClick={() => {
+              onChange('')
+              setQuery('')
+            }}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted hover:text-red-400"
+          >
+            <ChevronDown size={12} className="rotate-45" />
+          </button>
+        )}
+      </div>
+
+      {isOpen && (
+        <div className="mt-2 border border-border/20 bg-background/40 rounded-lg max-h-40 overflow-y-auto py-1 animate-in fade-in slide-in-from-top-1 duration-200 shadow-inner">
+          {isLoading && (
+            <div className="px-3 py-2 text-[10px] text-muted flex items-center gap-2">
+              <Loader2 size={10} className="animate-spin" />
+              Buscando registros...
+            </div>
+          )}
+          {!isLoading && fieldOptions.length === 0 && (
+            <div className="px-3 py-2 text-[10px] text-muted italic">No se encontraron resultados</div>
+          )}
+          {fieldOptions.map((opt) => (
+            <button
+              key={opt.id}
+              onClick={() => {
+                onChange(opt.id)
+                setQuery('')
+                setIsOpen(false)
+              }}
+              className={cn(
+                "w-full text-left px-3 py-1.5 text-[11px] transition-colors flex items-center justify-between",
+                value === opt.id 
+                  ? "bg-primary/10 text-primary font-medium" 
+                  : "text-foreground/70 hover:bg-surface-hover/30 hover:text-foreground"
+              )}
+            >
+              <span className="truncate">{opt.label}</span>
+              {value === opt.id && <Plus size={10} className="rotate-45" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function DataGrid({
   fields,
   records,
@@ -159,6 +252,40 @@ export function DataGrid({
 
 
   const totalPages = Math.ceil(total / pageSize)
+
+  // Debounced effect for multiple filters
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const updated = Object.entries(filterValues)
+        .filter(([, v]) => v.trim() !== '')
+        .map(([name, val]) => {
+          const f = fields.find(i => i.name === name)
+          const type = f?.fieldType.value
+          
+          let operator: ColumnFilter['operator'] = 'contains'
+          let value: any = val
+
+          if (type === 'NUMBER') {
+            operator = 'eq'
+            value = Number(val)
+          } else if (type === 'BOOLEAN' || type === 'ENUM') {
+            operator = 'eq'
+            value = val
+          } else if (type === 'RELATION') {
+            // Relaciones usan 'contains' para buscar dentro de strings o arreglos stringificados
+            operator = 'contains'
+            value = val
+          }
+
+          return { field: name, operator, value }
+        })
+
+      // Only notify parent if values actually differ or it's the first run
+      onFiltersChange(updated as ColumnFilter[])
+    }, 600) // 600ms debounce
+
+    return () => clearTimeout(timer)
+  }, [filterValues, fields, onFiltersChange])
 
   const activeFilters = useMemo(() => {
     const nextFilters: ColumnFilter[] = []
@@ -455,7 +582,7 @@ export function DataGrid({
                   )}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-96 p-0 overflow-hidden bg-surface border-border/50 shadow-2xl" align="end">
+              <PopoverContent className="w-[420px] p-0 overflow-hidden bg-surface border-border/50 shadow-2xl" align="end">
                 <div className="px-4 py-3 border-b border-border/20 bg-surface-hover/10 flex items-center justify-between">
                   <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted">Configurar Filtros</h3>
                   {activeFilters.length > 0 && (
@@ -516,31 +643,45 @@ export function DataGrid({
 
                         {isActive && (
                           <div className="animate-in fade-in slide-in-from-top-1 duration-200">
-                            <Input
-                              autoFocus
-                              value={filterValues[field.name]}
-                              placeholder={`Filtrar ${field.displayName || field.name}...`}
-                              className="h-8 text-xs bg-background border-border/20 focus:ring-1 focus:ring-primary/30"
-                              onChange={(event) => {
-                                const next = { ...filterValues, [field.name]: event.target.value }
-                                setFilterValues(next)
-                                const updated = Object.entries(next)
-                                  .filter(([, v]) => v.trim() !== '')
-                                  .map(([name, val]) => {
-                                    const f = fields.find(i => i.name === name)
-                                    const operator = (f?.fieldType.value === 'NUMBER' || f?.fieldType.value === 'BOOLEAN' || f?.fieldType.value === 'ENUM') ? 'eq' : 'contains'
-                                    const value = f?.fieldType.value === 'NUMBER' ? Number(val) : val
-                                    return { field: name, operator, value }
-                                  })
-                                onFiltersChange(updated as ColumnFilter[])
-                              }}
-                            />
+                            {field.fieldType.value === 'RELATION' ? (
+                              <RelationFilterInput 
+                                field={field} 
+                                value={filterValues[field.name]} 
+                                onChange={(val) => setFilterValues({ ...filterValues, [field.name]: val })}
+                              />
+                            ) : (
+                              <Input
+                                autoFocus
+                                value={filterValues[field.name]}
+                                placeholder={`Filtrar ${field.displayName || field.name}...`}
+                                className="h-8 text-xs bg-background border-border/20 focus:ring-1 focus:ring-primary/30"
+                                onChange={(event) => {
+                                  setFilterValues({ ...filterValues, [field.name]: event.target.value })
+                                }}
+                              />
+                            )}
                           </div>
                         )}
                       </div>
                     )
                   })}
                 </div>
+                {activeFilters.length > 0 && (
+                   <div className="p-3 border-t border-border/10 bg-background/30 flex items-center justify-between">
+                      <span className="text-[10px] text-muted uppercase font-medium tracking-tight">Activo: {activeFilters.length} filtros</span>
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        className="h-7 text-[10px] text-primary font-bold uppercase transition-transform active:scale-95"
+                        onClick={() => {
+                           // Trigger immediate sync if needed
+                           setFilterValues({ ...filterValues })
+                        }}
+                      >
+                        Actualizado
+                      </Button>
+                   </div>
+                )}
               </PopoverContent>
             </Popover>
 

@@ -105,10 +105,10 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
         </TabsList>
 
         <TabsContent value="data" className="mt-0 outline-none">
-          {loadingFields || (loadingRecords && records.length === 0) ? (
+          {loadingFields ? (
             <div className="h-[400px] flex flex-col items-center justify-center gap-4 bg-surface rounded-2xl">
               <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-primary" />
-              <p className="text-muted text-xs font-light">Sincronizando datos...</p>
+              <p className="text-muted text-xs font-light">Sincronizando esquema...</p>
             </div>
           ) : (
             <div className="space-y-4">
