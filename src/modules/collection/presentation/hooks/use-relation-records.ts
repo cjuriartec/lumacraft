@@ -54,9 +54,8 @@ export function useRelationRecords() {
 
     try {
       const collRes = await getCollectionUseCase.execute(targetCollectionId)
-      const displayFieldToUse =
-        config.displayField || (collRes.ok && collRes.value?.primaryFieldName ? collRes.value.primaryFieldName : 'id')
-
+      const primaryField = collRes.ok ? collRes.value?.primaryFieldName : null
+      const displayFieldToUse = primaryField || config.displayField || 'id'
 
       const res = await listUseCase.execute(targetCollectionId, {
         page: 1,
@@ -87,9 +86,8 @@ export function useRelationRecords() {
 
     try {
       const collRes = await getCollectionUseCase.execute(targetCollectionId)
-      const displayFieldToUse =
-        config.displayField || (collRes.ok && collRes.value?.primaryFieldName ? collRes.value.primaryFieldName : 'id')
-
+      const primaryField = collRes.ok ? collRes.value?.primaryFieldName : null
+      const displayFieldToUse = primaryField || config.displayField || 'id'
 
       const res = await listUseCase.execute(targetCollectionId, {
         page: 1,
@@ -134,8 +132,8 @@ export function useRelationRecords() {
         if (!targetCollectionId) return
 
         const collRes = await getCollectionUseCase.execute(targetCollectionId)
-        const displayFieldToUse =
-          config.displayField || (collRes.ok && collRes.value?.primaryFieldName ? collRes.value.primaryFieldName : 'id')
+        const primaryField = collRes.ok ? collRes.value?.primaryFieldName : null
+        const displayFieldToUse = primaryField || config.displayField || 'id'
 
         const res = await listUseCase.execute(targetCollectionId, {
           page: 1,

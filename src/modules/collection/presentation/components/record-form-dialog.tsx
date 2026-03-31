@@ -100,22 +100,47 @@ export function RecordFormDialog({
           : z.string().uuid().optional()
       } else if (field.fieldType.value === 'FILE') {
         validator = z.any().optional()
-      } else if (field.isRequired) {
+      } else {
+        const config = field.config?.value as any
+
         switch (field.fieldType.value) {
-          case 'NUMBER':
-            validator = z.coerce.number({ message: 'Debe ser un número' })
+          case 'NUMBER': {
+            let numVal = z.coerce.number({ message: 'Debe ser un número' })
+            if (config?.min !== undefined) numVal = numVal.min(config.min, `Mínimo ${config.min}`)
+            if (config?.max !== undefined) numVal = numVal.max(config.max, `Máximo ${config.max}`)
+            
+            if (field.isRequired) {
+              validator = numVal
+            } else {
+              validator = z.preprocess((val) => val === '' || val === null ? undefined : val, numVal.optional())
+            }
             break
+          }
+          case 'TEXT': {
+            let strVal = z.string()
+            if (config?.minLength !== undefined) strVal = strVal.min(config.minLength, `Mínimo ${config.minLength} caracteres`)
+            if (config?.maxLength !== undefined) strVal = strVal.max(config.maxLength, `Máximo ${config.maxLength} caracteres`)
+            
+            if (field.isRequired) {
+              validator = strVal.min(1, 'Este campo es obligatorio')
+            } else {
+              validator = strVal.optional().or(z.literal(''))
+            }
+            break
+          }
           case 'BOOLEAN':
             validator = z.boolean().default(false)
             break
           case 'DATE':
-            validator = z.string().min(1, 'La fecha es obligatoria')
+            validator = field.isRequired 
+              ? z.string().min(1, 'La fecha es obligatoria') 
+              : z.string().optional().or(z.literal(''))
             break
           default:
-            validator = z.string().min(1, 'Este campo es obligatorio')
+            validator = field.isRequired 
+              ? z.string().min(1, 'Este campo es obligatorio') 
+              : z.any().optional()
         }
-      } else {
-        validator = z.any().optional()
       }
 
       shape[field.name] = validator
@@ -381,7 +406,8 @@ export function RecordFormDialog({
             <Input
               id={name}
               type="number"
-              className="bg-background border-border text-foreground"
+              className="bg-background border-border text-foreground placeholder:text-muted/40"
+              placeholder={(config?.value as any)?.placeholder || ''}
               {...form.register(name)}
               value={(form.watch(name) as any) ?? ''}
             />

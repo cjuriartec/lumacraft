@@ -199,7 +199,107 @@ export function FieldFormDialog({
               </SelectContent>
             </Select>
           </div>
+          {selectedType === 'TEXT' && (
+            <div className="space-y-4 rounded-xl border border-border/30 p-4">
+              <div className="space-y-2">
+                <Label className="text-muted">Placeholder (Ejemplo)</Label>
+                <Input
+                  value={String((form.watch('config') as any)?.placeholder || '')}
+                  onChange={(e) =>
+                    form.setValue('config', {
+                      ...(form.getValues('config') as object),
+                      placeholder: e.target.value,
+                    })
+                  }
+                  placeholder="ej: Juan Pérez"
+                  className="bg-background border-border text-foreground"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-muted text-[10px] uppercase">Mínimo (Caracteres)</Label>
+                  <Input
+                    type="number"
+                    value={String((form.watch('config') as any)?.minLength || '')}
+                    onChange={(e) =>
+                      form.setValue('config', {
+                        ...(form.getValues('config') as object),
+                        minLength: e.target.value ? parseInt(e.target.value) : undefined,
+                      })
+                    }
+                    placeholder="0"
+                    className="bg-background border-border text-foreground h-8 text-xs"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-muted text-[10px] uppercase">Máximo (Caracteres)</Label>
+                  <Input
+                    type="number"
+                    value={String((form.watch('config') as any)?.maxLength || '')}
+                    onChange={(e) =>
+                      form.setValue('config', {
+                        ...(form.getValues('config') as object),
+                        maxLength: e.target.value ? parseInt(e.target.value) : undefined,
+                      })
+                    }
+                    placeholder="255"
+                    className="bg-background border-border text-foreground h-8 text-xs"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
+          {selectedType === 'NUMBER' && (
+            <div className="space-y-4 rounded-xl border border-border/30 p-4">
+              <div className="space-y-2">
+                <Label className="text-muted">Placeholder (Ejemplo)</Label>
+                <Input
+                  value={String((form.watch('config') as any)?.placeholder || '')}
+                  onChange={(e) =>
+                    form.setValue('config', {
+                      ...(form.getValues('config') as object),
+                      placeholder: e.target.value,
+                    })
+                  }
+                  placeholder="ej: 100"
+                  className="bg-background border-border text-foreground"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-muted text-[10px] uppercase">Valor Mínimo</Label>
+                  <Input
+                    type="number"
+                    value={String((form.watch('config') as any)?.min || '')}
+                    onChange={(e) =>
+                      form.setValue('config', {
+                        ...(form.getValues('config') as object),
+                        min: e.target.value ? Number(e.target.value) : undefined,
+                      })
+                    }
+                    placeholder="0"
+                    className="bg-background border-border text-foreground h-8 text-xs"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-muted text-[10px] uppercase">Valor Máximo</Label>
+                  <Input
+                    type="number"
+                    value={String((form.watch('config') as any)?.max || '')}
+                    onChange={(e) =>
+                      form.setValue('config', {
+                        ...(form.getValues('config') as object),
+                        max: e.target.value ? Number(e.target.value) : undefined,
+                      })
+                    }
+                    placeholder="1000"
+                    className="bg-background border-border text-foreground h-8 text-xs"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
           {selectedType === 'ENUM' && (
             <div className="space-y-3">
               <Label className="text-muted flex justify-between">
@@ -266,24 +366,7 @@ export function FieldFormDialog({
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="relation-display-field" className="text-muted">Campo de visualización</Label>
-                <Input
-                  id="relation-display-field"
-                  placeholder="id"
-                  className="bg-background border-border text-foreground"
-                  value={String((form.watch('config') as any)?.displayField || '')}
-                  onChange={(event) =>
-                    form.setValue('config', {
-                      ...form.getValues('config'),
-                      displayField: event.target.value,
-                    })
-                  }
-                />
-                <p className="text-[10px] text-muted">
-                  Campo de la colección destino que se mostrará en los selects de relación.
-                </p>
-              </div>
+
 
             </div>
           )}
@@ -479,59 +562,6 @@ export function FieldFormDialog({
             <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Configuración Avanzada</Label>
 
             <div className="grid grid-cols-2 gap-4">
-              {selectedType === 'NUMBER' && (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="min" className="text-muted text-xs">Mínimo</Label>
-                    <Input
-                      id="min"
-                      type="number"
-                      placeholder="0"
-                      className="bg-background border-border text-foreground h-9"
-                      defaultValue={(form.watch('config') as any)?.min}
-                      onChange={(e) => form.setValue('config', { ...form.getValues('config'), min: e.target.value ? Number(e.target.value) : undefined })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="max" className="text-muted text-xs">Máximo</Label>
-                    <Input
-                      id="max"
-                      type="number"
-                      placeholder="999"
-                      className="bg-background border-border text-foreground h-9"
-                      defaultValue={(form.watch('config') as any)?.max}
-                      onChange={(e) => form.setValue('config', { ...form.getValues('config'), max: e.target.value ? Number(e.target.value) : undefined })}
-                    />
-                  </div>
-                </>
-              )}
-
-              {selectedType === 'TEXT' && (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="minLength" className="text-muted text-xs">Longitud Mín.</Label>
-                    <Input
-                      id="minLength"
-                      type="number"
-                      placeholder="0"
-                      className="bg-background border-border text-foreground h-9"
-                      defaultValue={(form.watch('config') as any)?.minLength}
-                      onChange={(e) => form.setValue('config', { ...form.getValues('config'), minLength: e.target.value ? Number(e.target.value) : undefined })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="maxLength" className="text-muted text-xs">Longitud Máx.</Label>
-                    <Input
-                      id="maxLength"
-                      type="number"
-                      placeholder="255"
-                      className="bg-background border-border text-foreground h-9"
-                      defaultValue={(form.watch('config') as any)?.maxLength}
-                      onChange={(e) => form.setValue('config', { ...form.getValues('config'), maxLength: e.target.value ? Number(e.target.value) : undefined })}
-                    />
-                  </div>
-                </>
-              )}
             </div>
 
             {!['RELATION', 'FILE', 'LOCATION'].includes(selectedType) && (
