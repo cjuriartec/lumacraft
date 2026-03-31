@@ -4,7 +4,9 @@ import { makeCollection, resetFactories } from '@/__tests__/factories/domain-fac
 import { InMemoryCollectionRepository } from '@/__tests__/helpers/fakes'
 import { CreateCollectionUseCase } from '@/modules/collection/application/use-cases/create-collection.use-case'
 import { DeleteCollectionUseCase } from '@/modules/collection/application/use-cases/delete-collection.use-case'
+import { GetCollectionUseCase } from '@/modules/collection/application/use-cases/get-collection.use-case'
 import { ListCollectionsUseCase } from '@/modules/collection/application/use-cases/list-collections.use-case'
+import { UpdateCollectionUseCase } from '@/modules/collection/application/use-cases/update-collection.use-case'
 
 describe('collection use cases', () => {
   it('creates a collection entity before persisting it', async () => {
@@ -54,5 +56,67 @@ describe('collection use cases', () => {
     expect(result.ok).toBe(true)
     expect(repository.delete).toHaveBeenCalledWith('collection-1')
   })
-})
 
+  it('gets collection by id', async () => {
+    resetFactories()
+    const collection = makeCollection({ id: 'collection-1', accountId: 'workspace-1' })
+    const repository = new InMemoryCollectionRepository([collection])
+    const useCase = new GetCollectionUseCase(repository)
+
+    const result = await useCase.execute('collection-1')
+
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.value?.id).toBe('collection-1')
+    }
+  })
+
+  it('updates collection when account matches', async () => {
+    resetFactories()
+    const collection = makeCollection({
+      id: 'collection-1',
+      accountId: 'workspace-1',
+      name: 'projects',
+      displayName: 'Projects',
+    })
+    const repository = new InMemoryCollectionRepository([collection])
+    const useCase = new UpdateCollectionUseCase(repository)
+
+    const result = await useCase.execute({
+      id: 'collection-1',
+      accountId: 'workspace-1',
+      name: 'projects',
+      displayName: 'Projects Updated',
+      primaryFieldName: 'title',
+    })
+
+    expect(result.ok).toBe(true)
+    expect(repository.update).toHaveBeenCalledOnce()
+    if (result.ok) {
+      expect(result.value.displayName).toBe('Projects Updated')
+      expect(result.value.primaryFieldName).toBe('title')
+    }
+  })
+
+  it('rejects update when collection belongs to another account', async () => {
+    resetFactories()
+    const collection = makeCollection({
+      id: 'collection-1',
+      accountId: 'workspace-1',
+    })
+    const repository = new InMemoryCollectionRepository([collection])
+    const useCase = new UpdateCollectionUseCase(repository)
+
+    const result = await useCase.execute({
+      id: 'collection-1',
+      accountId: 'workspace-2',
+      name: 'projects',
+      displayName: 'Projects Updated',
+    })
+
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect((result.error as Error & { code?: string }).code).toBe('COLLECTION_ACCOUNT_MISMATCH')
+    }
+  })
+})

@@ -37,7 +37,7 @@ describe('field use cases', () => {
     const result = await useCase.execute({
       collectionId: 'collection-1',
       name: 'relation',
-      fieldType: 'RELATION',
+      fieldType: 'CURRENCY',
     })
 
     expect(result.ok).toBe(false)
@@ -63,6 +63,25 @@ describe('field use cases', () => {
     expect(repository.update.mock.calls[0][0].fieldType.value).toBe('NUMBER')
   })
 
+  it('requires displayField when creating relation fields', async () => {
+    const repository = new InMemoryFieldRepository()
+    const useCase = new CreateFieldUseCase(repository)
+
+    const missingDisplayField = await useCase.execute({
+      collectionId: 'collection-1',
+      name: 'client',
+      displayName: 'Client',
+      fieldType: 'RELATION',
+      config: {
+        targetCollectionId: '4f83f5eb-48ad-4c8f-aebb-f8030d7d32f9',
+        relationType: 'ONE_TO_ONE',
+      },
+    })
+
+    expect(missingDisplayField.ok).toBe(false)
+    expect(repository.create).not.toHaveBeenCalled()
+  })
+
   it('lists and deletes fields via the repository port', async () => {
     resetFactories()
     const field = makeField({ collectionId: 'collection-1' })
@@ -79,4 +98,3 @@ describe('field use cases', () => {
     expect(repository.delete).toHaveBeenCalledWith(field.id)
   })
 })
-

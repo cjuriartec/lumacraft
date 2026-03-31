@@ -78,12 +78,22 @@ export default function CollectionsPage() {
                   >
                     <Trash2 size={14} />
                   </button>
-                  <button
-                    aria-label={`Configurar colección ${collection.displayName || collection.name}`}
-                    className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors duration-150 text-foreground/60 hover:text-primary hover:bg-primary/10"
+                  <CreateCollectionDialog
+                    collectionToEdit={{
+                      id: collection.id,
+                      name: collection.name,
+                      displayName: collection.displayName || '',
+                      description: collection.description || '',
+                    }}
+                    onSuccess={refresh}
                   >
-                    <Settings2 size={14} />
-                  </button>
+                    <button
+                      aria-label={`Configurar colección ${collection.displayName || collection.name}`}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors duration-150 text-foreground/60 hover:text-primary hover:bg-primary/10"
+                    >
+                      <Settings2 size={14} />
+                    </button>
+                  </CreateCollectionDialog>
                 </div>
               </div>
 

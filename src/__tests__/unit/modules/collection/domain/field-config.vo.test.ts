@@ -28,5 +28,31 @@ describe('FieldConfig value object', () => {
     expect(config.value).toEqual({})
     expect(config.fieldType).toBe('TEXT')
   })
-})
 
+  it('accepts relation config for advanced relation fields', () => {
+    const result = FieldConfig.create('RELATION', {
+      targetCollectionId: '4f83f5eb-48ad-4c8f-aebb-f8030d7d32f9',
+      relationType: 'MANY_TO_MANY',
+      displayField: 'title',
+    })
+
+    expect(result.ok).toBe(true)
+  })
+
+  it('fails relation config when displayField is missing', () => {
+    const result = FieldConfig.create('RELATION', {
+      targetCollectionId: '4f83f5eb-48ad-4c8f-aebb-f8030d7d32f9',
+      relationType: 'ONE_TO_ONE',
+    })
+
+    expect(result.ok).toBe(false)
+  })
+
+  it('validates location coordinate bounds', () => {
+    const result = FieldConfig.create('LOCATION', {
+      minLat: -100,
+    })
+
+    expect(result.ok).toBe(false)
+  })
+})

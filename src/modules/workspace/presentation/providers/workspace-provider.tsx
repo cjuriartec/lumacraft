@@ -8,6 +8,8 @@ import { useAuth } from '@/modules/auth/presentation/providers/auth-provider'
 import { useSupabase } from '@/shared/presentation/providers/supabase-provider'
 import { IWorkspaceRepository } from '../../domain/ports/workspace-repository.port'
 
+const CURRENT_WORKSPACE_STORAGE_KEY = 'lumacraft.currentWorkspaceId'
+
 type WorkspaceContext = {
   workspaces: Workspace[]
   currentWorkspace: Workspace | null
@@ -57,11 +59,18 @@ export default function WorkspaceProvider({
       if (!active) return
 
       if (res.ok) {
+        const persistedWorkspaceId =
+          typeof window !== 'undefined' && typeof window.localStorage?.getItem === 'function'
+            ? window.localStorage.getItem(CURRENT_WORKSPACE_STORAGE_KEY)
+            : null
+
         setWorkspaces(res.value)
         setCurrentWorkspace((current) =>
           current && res.value.some((workspace) => workspace.id === current.id)
             ? current
-            : (res.value[0] ?? null)
+            : (persistedWorkspaceId
+              ? (res.value.find((workspace) => workspace.id === persistedWorkspaceId) ?? res.value[0] ?? null)
+              : (res.value[0] ?? null))
         )
       }
       setLoading(false)
@@ -72,6 +81,17 @@ export default function WorkspaceProvider({
       active = false
     }
   }, [user, getWorkspacesUseCase])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const storage = window.localStorage as Storage | undefined
+
+    if (currentWorkspace?.id && typeof storage?.setItem === 'function') {
+      storage.setItem(CURRENT_WORKSPACE_STORAGE_KEY, currentWorkspace.id)
+    } else if (!currentWorkspace?.id && typeof storage?.removeItem === 'function') {
+      storage.removeItem(CURRENT_WORKSPACE_STORAGE_KEY)
+    }
+  }, [currentWorkspace])
 
   return (
     <Context.Provider value={{ workspaces, currentWorkspace, setCurrentWorkspace, loading }}>

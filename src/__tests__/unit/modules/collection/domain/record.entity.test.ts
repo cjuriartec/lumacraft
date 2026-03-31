@@ -73,6 +73,83 @@ describe('DataRecord entity', () => {
     }
   })
 
+  it('rejects relation values that are not UUIDs', () => {
+    resetFactories()
+    const field = makeField({
+      name: 'client',
+      fieldType: 'RELATION',
+      config: {
+        targetCollectionId: '4f83f5eb-48ad-4c8f-aebb-f8030d7d32f9',
+        relationType: 'ONE_TO_ONE',
+        displayField: 'name',
+      },
+    })
+    const record = makeRecord({ data: { client: 'not-uuid' } })
+
+    const result = record.validateAgainstSchema([field])
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect((result.error as Error & { code?: string }).code).toBe('INVALID_RELATION_VALUE')
+    }
+  })
+
+  it('accepts valid file metadata and rejects malformed file values', () => {
+    resetFactories()
+    const field = makeField({
+      name: 'contract',
+      fieldType: 'FILE',
+    })
+    const validRecord = makeRecord({
+      data: {
+        contract: {
+          bucket: 'record_files',
+          path: 'workspace-1/collection-1/contract/file.pdf',
+          name: 'file.pdf',
+          mimeType: 'application/pdf',
+          size: 100,
+        },
+      },
+    })
+    const invalidRecord = makeRecord({
+      data: {
+        contract: {
+          path: 'missing-bucket.pdf',
+        },
+      },
+    })
+
+    const validResult = validRecord.validateAgainstSchema([field])
+    const invalidResult = invalidRecord.validateAgainstSchema([field])
+
+    expect(validResult.ok).toBe(true)
+    expect(invalidResult.ok).toBe(false)
+    if (!invalidResult.ok) {
+      expect((invalidResult.error as Error & { code?: string }).code).toBe('INVALID_FILE_VALUE')
+    }
+  })
+
+  it('validates location coordinate ranges', () => {
+    resetFactories()
+    const field = makeField({
+      name: 'office_location',
+      fieldType: 'LOCATION',
+    })
+    const record = makeRecord({
+      data: {
+        office_location: {
+          lat: 120,
+          lng: 30,
+        },
+      },
+    })
+
+    const result = record.validateAgainstSchema([field])
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect((result.error as Error & { code?: string }).code).toBe('INVALID_LOCATION_VALUE')
+    }
+  })
+
   it('serializes validated data records', () => {
     resetFactories()
     const record = makeRecord({

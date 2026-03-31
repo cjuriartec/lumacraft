@@ -29,7 +29,7 @@ describeIfLocalSupabase('Supabase auth + workspace integration', () => {
     const accountId = await getPersonalAccountId(owner.id)
     const repository = new SupabaseWorkspaceRepository(owner.client)
 
-    const result = await repository.findByOwnerId(owner.id)
+    const result = await repository.findByUserId(owner.id)
 
     expect(result.ok).toBe(true)
     if (result.ok) {

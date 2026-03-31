@@ -3,6 +3,7 @@
 import { LayoutDashboard, Database, FileText, Settings, Share2, PanelLeft, ChevronRight, Layers } from 'lucide-react'
 import UserMenu from '@/modules/auth/presentation/components/user-menu'
 import AuthGuard from '@/modules/auth/presentation/components/auth-guard'
+import { WorkspaceSwitcher } from '@/modules/workspace/presentation/components/workspace-switcher'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
@@ -31,16 +32,9 @@ export default function DashboardLayout({
           className={`fixed lg:static inset-y-0 left-0 z-40 flex flex-col w-60 transition-transform duration-300 ease-out lg:translate-x-0 bg-sidebar ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
             }`}
         >
-          {/* Logo */}
-          <div className="h-14 flex items-center px-5 mb-2">
-            <Link href="/" className="flex items-center gap-2.5 group">
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-primary">
-                <Layers size={14} className="text-white" />
-              </div>
-              <span className="font-bold text-[15px] tracking-tight text-foreground">
-                Lumacraft
-              </span>
-            </Link>
+          {/* Brand + Workspace Switcher */}
+          <div className="px-3 py-4">
+            <WorkspaceSwitcher />
           </div>
 
           {/* Nav */}

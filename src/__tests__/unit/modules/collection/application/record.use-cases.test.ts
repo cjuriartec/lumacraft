@@ -5,7 +5,11 @@ import {
   makeRecord,
   resetFactories,
 } from '@/__tests__/factories/domain-factories'
-import { InMemoryFieldRepository, InMemoryRecordRepository } from '@/__tests__/helpers/fakes'
+import {
+  InMemoryFieldRepository,
+  InMemoryRecordRepository,
+  InMemoryRelationRepository,
+} from '@/__tests__/helpers/fakes'
 import { CreateRecordUseCase } from '@/modules/collection/application/use-cases/create-record.use-case'
 import { DeleteRecordUseCase } from '@/modules/collection/application/use-cases/delete-record.use-case'
 import { ListRecordsUseCase } from '@/modules/collection/application/use-cases/list-records.use-case'
@@ -102,5 +106,90 @@ describe('record use cases', () => {
     }
     expect(deleted.ok).toBe(true)
     expect(recordRepository.delete).toHaveBeenCalledWith(record.id)
+  })
+
+  it('syncs relation links when creating relation fields', async () => {
+    resetFactories()
+    const relationField = makeField({
+      id: 'field-relation-1',
+      collectionId: 'collection-1',
+      name: 'client',
+      fieldType: 'RELATION',
+      config: {
+        targetCollectionId: '4f83f5eb-48ad-4c8f-aebb-f8030d7d32f9',
+        relationType: 'ONE_TO_ONE',
+        displayField: 'name',
+      },
+    })
+    const fieldRepository = new InMemoryFieldRepository([relationField])
+    const recordRepository = new InMemoryRecordRepository()
+    const relationRepository = new InMemoryRelationRepository()
+    const useCase = new CreateRecordUseCase(recordRepository, fieldRepository, relationRepository)
+    const uuidSpy = vi.spyOn(crypto, 'randomUUID').mockReturnValue('record-123')
+
+    const result = await useCase.execute({
+      collectionId: 'collection-1',
+      accountId: 'workspace-1',
+      data: { client: '4f83f5eb-48ad-4c8f-aebb-f8030d7d32f9' },
+    })
+
+    expect(result.ok).toBe(true)
+    expect(relationRepository.validateCardinality).toHaveBeenCalledOnce()
+    expect(relationRepository.syncFieldRelationsForSource).toHaveBeenCalledOnce()
+    uuidSpy.mockRestore()
+  })
+
+  it('fails create/update when relation cardinality is violated', async () => {
+    resetFactories()
+    const relationField = makeField({
+      id: 'field-relation-2',
+      collectionId: 'collection-1',
+      name: 'client',
+      fieldType: 'RELATION',
+      config: {
+        targetCollectionId: '4f83f5eb-48ad-4c8f-aebb-f8030d7d32f9',
+        relationType: 'ONE_TO_ONE',
+        displayField: 'name',
+      },
+    })
+    const fieldRepository = new InMemoryFieldRepository([relationField])
+    const relationRepository = new InMemoryRelationRepository([
+      {
+        id: 'rel-1',
+        accountId: 'workspace-1',
+        fieldId: relationField.id,
+        sourceRecordId: 'record-existing',
+        targetRecordId: '4f83f5eb-48ad-4c8f-aebb-f8030d7d32f9',
+        createdAt: new Date(),
+      },
+    ])
+    const recordRepository = new InMemoryRecordRepository([
+      makeRecord({
+        id: 'record-2',
+        collectionId: 'collection-1',
+        accountId: 'workspace-1',
+        data: { client: '4f83f5eb-48ad-4c8f-aebb-f8030d7d32f9' },
+      }),
+    ])
+
+    const createUseCase = new CreateRecordUseCase(recordRepository, fieldRepository, relationRepository)
+    const updateUseCase = new UpdateRecordUseCase(recordRepository, fieldRepository, relationRepository)
+
+    const createResult = await createUseCase.execute({
+      collectionId: 'collection-1',
+      accountId: 'workspace-1',
+      data: { client: '4f83f5eb-48ad-4c8f-aebb-f8030d7d32f9' },
+    })
+    const updateResult = await updateUseCase.execute({
+      id: 'record-2',
+      collectionId: 'collection-1',
+      accountId: 'workspace-1',
+      data: { client: '4f83f5eb-48ad-4c8f-aebb-f8030d7d32f9' },
+    })
+
+    expect(createResult.ok).toBe(false)
+    expect(updateResult.ok).toBe(false)
+    expect(recordRepository.create).not.toHaveBeenCalled()
+    expect(recordRepository.update).not.toHaveBeenCalled()
   })
 })

@@ -16,6 +16,7 @@ import {
 import { SupabaseCollectionRepository } from '@/modules/collection/infrastructure/repositories/supabase-collection.repository'
 import { SupabaseFieldRepository } from '@/modules/collection/infrastructure/repositories/supabase-field.repository'
 import { SupabaseRecordRepository } from '@/modules/collection/infrastructure/repositories/supabase-record.repository'
+import { SupabaseRelationRepository } from '@/modules/collection/infrastructure/repositories/supabase-relation.repository'
 
 const describeIfLocalSupabase = canRunLocalSupabaseTests ? describe : describe.skip
 
@@ -207,5 +208,124 @@ describeIfLocalSupabase('Supabase repositories integration', () => {
       expect(count.value).toBe(1)
     }
     expect(outsiderCreate.ok).toBe(false)
+  })
+
+  it('enforces relation graph RLS and cardinality checks', async () => {
+    const ownerCollections = new SupabaseCollectionRepository(owner.client)
+    const ownerFields = new SupabaseFieldRepository(owner.client)
+    const ownerRecords = new SupabaseRecordRepository(owner.client)
+    const ownerRelations = new SupabaseRelationRepository(owner.client)
+    const memberRelations = new SupabaseRelationRepository(member.client)
+    const outsiderRelations = new SupabaseRelationRepository(outsider.client)
+
+    const projects = await ownerCollections.create(
+      makeCollection({
+        id: crypto.randomUUID(),
+        accountId,
+        name: `projects_rel_${crypto.randomUUID().slice(0, 6)}`,
+        displayName: 'Projects relations',
+      })
+    )
+    const clients = await ownerCollections.create(
+      makeCollection({
+        id: crypto.randomUUID(),
+        accountId,
+        name: `clients_rel_${crypto.randomUUID().slice(0, 6)}`,
+        displayName: 'Clients relations',
+      })
+    )
+
+    if (!projects.ok) throw projects.error
+    if (!clients.ok) throw clients.error
+
+    const relationField = await ownerFields.create(
+      makeField({
+        id: crypto.randomUUID(),
+        collectionId: projects.value.id,
+        name: 'client',
+        fieldType: 'RELATION',
+        config: {
+          targetCollectionId: clients.value.id,
+          relationType: 'ONE_TO_ONE',
+          displayField: 'name',
+        },
+      })
+    )
+
+    if (!relationField.ok) {
+      throw relationField.error
+    }
+
+    const sourceRecord = await ownerRecords.create(
+      makeRecord({
+        id: crypto.randomUUID(),
+        collectionId: projects.value.id,
+        accountId,
+        data: { name: 'Project Alpha' },
+      })
+    )
+    const targetRecord = await ownerRecords.create(
+      makeRecord({
+        id: crypto.randomUUID(),
+        collectionId: clients.value.id,
+        accountId,
+        data: { name: 'Client A' },
+      })
+    )
+
+    if (!sourceRecord.ok) throw sourceRecord.error
+    if (!targetRecord.ok) throw targetRecord.error
+
+    const cardinality = await ownerRelations.validateCardinality({
+      fieldId: relationField.value.id,
+      sourceRecordId: sourceRecord.value.id,
+      targetRecordIds: [targetRecord.value.id],
+      relationType: 'ONE_TO_ONE',
+    })
+    const sync = await ownerRelations.syncFieldRelationsForSource({
+      accountId,
+      fieldId: relationField.value.id,
+      sourceRecordId: sourceRecord.value.id,
+      targetRecordIds: [targetRecord.value.id],
+    })
+
+    expect(cardinality.ok).toBe(true)
+    expect(sync.ok).toBe(true)
+
+    const memberVisible = await memberRelations.listBySourceRecord(sourceRecord.value.id)
+    expect(memberVisible.ok).toBe(true)
+    if (memberVisible.ok) {
+      expect(memberVisible.value).toHaveLength(1)
+      expect(memberVisible.value[0]?.targetRecordId).toBe(targetRecord.value.id)
+    }
+
+    const outsiderSync = await outsiderRelations.syncFieldRelationsForSource({
+      accountId,
+      fieldId: relationField.value.id,
+      sourceRecordId: sourceRecord.value.id,
+      targetRecordIds: [targetRecord.value.id],
+    })
+    expect(outsiderSync.ok).toBe(false)
+  })
+
+  it('enforces storage access by workspace path prefix', async () => {
+    const path = `${accountId}/integration-${crypto.randomUUID().slice(0, 6)}.txt`
+    const payload = new TextEncoder().encode('hello from integration')
+
+    const ownerUpload = await owner.client.storage
+      .from('record_files')
+      .upload(path, payload, { contentType: 'text/plain', upsert: true })
+
+    expect(ownerUpload.error).toBeNull()
+
+    const memberDownload = await member.client.storage.from('record_files').download(path)
+    expect(memberDownload.error).toBeNull()
+
+    const outsiderUpload = await outsider.client.storage
+      .from('record_files')
+      .upload(path, payload, { contentType: 'text/plain', upsert: true })
+    expect(outsiderUpload.error).not.toBeNull()
+
+    await owner.client.storage.from('record_files').remove([path])
   })
 })

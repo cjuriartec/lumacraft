@@ -76,12 +76,18 @@ Este documento proyecta la ejecución de las Historias de Usuario (detalladas en
 
 ---
 
-## ⚡ Iteración 4: Automatizaciones (Post MVP) (Sprint 8)
+## ⚡ Iteración 4: Evolución Post-MVP (Sprints 8-9)
 
-### **Sprint 8: Triggers Asíncronos**
+### **Sprint 8: Automatizaciones Asíncronas**
 *Objetivo: Implementar el backend de automatizaciones y webhooks.*
 * **US-7.01 (8 SP)**: UI y lógica base para crear "Triggers" sobre colecciones.
 * **US-7.02 (5 SP)**: Implementación de Supabase Webhooks y pg_cron (o Inngest).
+* **Total Estimado**: 13 SP.
+
+### **Sprint 9: Relaciones Bidireccionales (Reverse Lookups)**
+*Objetivo: Descubribilidad en el grafo de datos sin impacto en el rendimiento base.*
+* **US-8.01 (8 SP)**: Arquitectura de Campo Virtual (tipo `REVERSE_LOOKUP`) en el esquema (No almacenado en JSONB).
+* **US-8.02 (5 SP)**: Endpoint para resolución perezosa o Vista PostgreSQL inteligente para lectura de dependencias.
 * **Total Estimado**: 13 SP.
 
 ---

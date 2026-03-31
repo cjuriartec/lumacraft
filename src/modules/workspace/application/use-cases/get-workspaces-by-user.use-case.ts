@@ -6,6 +6,6 @@ export class GetWorkspacesByUserUseCase {
   constructor(private workspaceRepository: IWorkspaceRepository) {}
 
   public async execute(userId: string): Promise<Result<Workspace[]>> {
-    return this.workspaceRepository.findByOwnerId(userId)
+    return this.workspaceRepository.findByUserId(userId)
   }
 }

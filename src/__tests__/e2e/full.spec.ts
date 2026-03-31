@@ -80,6 +80,20 @@ test.describe('full collection lifecycle', () => {
     await page.reload()
     await page.getByRole('columnheader', { name: /Title/ }).click()
     await expect(page.getByRole('cell', { name: 'Alpha Updated', exact: true })).toBeVisible()
+
+    await page.getByPlaceholder('Buscar registros...').fill('Alpha Updated')
+    await expect(page.getByRole('cell', { name: 'Alpha Updated', exact: true })).toBeVisible()
+    await page.getByRole('button', { name: /Filtros/ }).click()
+    await page.getByRole('button', { name: 'Añadir' }).first().click()
+    await page.getByPlaceholder('Filtrar Title...').fill('Alpha')
+    await expect(page.getByRole('cell', { name: 'Alpha Updated', exact: true })).toBeVisible()
+
+    await page.getByRole('cell', { name: 'Alpha Updated', exact: true }).dblclick()
+    const inlineEditor = page.locator('input[value="Alpha Updated"]').first()
+    await inlineEditor.fill('Alpha Inline')
+    await inlineEditor.press('Enter')
+    await expect(page.getByRole('cell', { name: 'Alpha Inline', exact: true })).toBeVisible()
+
     await page.getByRole('button', { name: 'Siguiente' }).click()
     await expect(page.getByText('2 / 2')).toBeVisible()
 

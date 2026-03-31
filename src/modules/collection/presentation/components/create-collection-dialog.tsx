@@ -36,11 +36,12 @@ type CollectionFormValues = z.infer<typeof collectionSchema>
 interface CreateCollectionDialogProps {
   children?: React.ReactNode
   onSuccess?: () => void
+  collectionToEdit?: { id: string; name: string; displayName: string; description?: string }
 }
 
-export function CreateCollectionDialog({ children, onSuccess }: CreateCollectionDialogProps) {
+export function CreateCollectionDialog({ children, onSuccess, collectionToEdit }: CreateCollectionDialogProps) {
   const [open, setOpen] = useState(false)
-  const { createCollection, loading } = useCollections()
+  const { createCollection, updateCollection, loading } = useCollections()
 
   const {
     register,
@@ -53,25 +54,48 @@ export function CreateCollectionDialog({ children, onSuccess }: CreateCollection
     resolver: zodResolver(collectionSchema),
     mode: 'onChange',
     defaultValues: {
-      name: '',
-      displayName: '',
-      description: '',
+      name: collectionToEdit?.name || '',
+      displayName: collectionToEdit?.displayName || '',
+      description: collectionToEdit?.description || '',
     },
   })
 
+  // Synchronize initial data if editing
+  useEffect(() => {
+    if (collectionToEdit && open) {
+      reset({
+        name: collectionToEdit.name,
+        displayName: collectionToEdit.displayName,
+        description: collectionToEdit.description || '',
+      })
+    }
+  }, [collectionToEdit, open, reset])
+
   const onSubmit = async (data: CollectionFormValues) => {
-    const res = await createCollection(data)
-    if (res?.ok) {
-      setOpen(false)
-      reset()
-      onSuccess?.()
+    if (collectionToEdit) {
+      const res = await updateCollection({
+        id: collectionToEdit.id,
+        ...data,
+      })
+      if (res?.ok) {
+        setOpen(false)
+        reset()
+        onSuccess?.()
+      }
+    } else {
+      const res = await createCollection(data)
+      if (res?.ok) {
+        setOpen(false)
+        reset()
+        onSuccess?.()
+      }
     }
   }
 
   const handleOpenChange = (newOpen: boolean) => {
     setOpen(newOpen)
-    if (!newOpen) {
-      reset() // Limpiar cuando se cierra manualmente
+    if (!newOpen && !collectionToEdit) {
+      reset() // Limpiar cuando se cierra manualmente (solo en creación)
     }
   }
 
@@ -93,10 +117,10 @@ export function CreateCollectionDialog({ children, onSuccess }: CreateCollection
             <Database size={20} />
           </div>
           <DialogTitle className="text-xl font-bold text-foreground tracking-[-0.01em]">
-            Nueva Colección
+            {collectionToEdit ? 'Editar Colección' : 'Nueva Colección'}
           </DialogTitle>
           <DialogDescription className="font-light text-sm text-foreground/70">
-            Define los metadatos de tu nueva tabla dinámica de datos.
+            {collectionToEdit ? 'Modifica los detalles y metadatos de tu colección.' : 'Define los metadatos de tu nueva tabla dinámica de datos.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -194,10 +218,10 @@ export function CreateCollectionDialog({ children, onSuccess }: CreateCollection
             {loading ? (
               <>
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Creando...
+                {collectionToEdit ? 'Actualizando...' : 'Creando...'}
               </>
             ) : (
-              'Crear Colección'
+              collectionToEdit ? 'Guardar Cambios' : 'Crear Colección'
             )}
           </button>
         </form>

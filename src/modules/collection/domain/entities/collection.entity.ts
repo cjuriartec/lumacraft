@@ -7,6 +7,7 @@ interface CollectionProps {
   displayName?: string
   description?: string
   icon?: string
+  primaryFieldName?: string | null
   createdAt?: Date
   updatedAt?: Date
 }
@@ -39,6 +40,10 @@ export class Collection extends BaseEntity {
     return this.props.icon
   }
 
+  get primaryFieldName(): string | undefined | null {
+    return this.props.primaryFieldName
+  }
+
   public toJSON() {
     return {
       id: this.id,
@@ -47,6 +52,7 @@ export class Collection extends BaseEntity {
       displayName: this.displayName,
       description: this.description,
       icon: this.icon,
+      primaryFieldName: this.primaryFieldName,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
     }

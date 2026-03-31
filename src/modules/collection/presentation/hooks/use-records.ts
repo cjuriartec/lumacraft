@@ -5,11 +5,12 @@ import { useAuth } from '@/modules/auth/presentation/providers/auth-provider'
 import { DataRecord } from '../../domain/entities/record.entity'
 import { SupabaseRecordRepository } from '../../infrastructure/repositories/supabase-record.repository'
 import { SupabaseFieldRepository } from '../../infrastructure/repositories/supabase-field.repository'
+import { SupabaseRelationRepository } from '../../infrastructure/repositories/supabase-relation.repository'
 import { ListRecordsUseCase } from '../../application/use-cases/list-records.use-case'
 import { CreateRecordUseCase } from '../../application/use-cases/create-record.use-case'
 import { UpdateRecordUseCase } from '../../application/use-cases/update-record.use-case'
 import { DeleteRecordUseCase } from '../../application/use-cases/delete-record.use-case'
-import { PaginationOptions, PaginatedResult } from '../../domain/types/pagination.types'
+import { ColumnFilter, PaginationOptions } from '../../domain/types/pagination.types'
 
 export function useRecords(collectionId: string) {
   const { supabase } = useSupabase()
@@ -22,15 +23,25 @@ export function useRecords(collectionId: string) {
     page: 1,
     pageSize: 25,
     sortField: 'created_at',
-    sortDirection: 'desc'
+    sortDirection: 'desc',
+    search: '',
+    searchFields: [],
+    filters: [],
   })
 
   const recordRepository = useMemo(() => new SupabaseRecordRepository(supabase), [supabase])
   const fieldRepository = useMemo(() => new SupabaseFieldRepository(supabase), [supabase])
+  const relationRepository = useMemo(() => new SupabaseRelationRepository(supabase), [supabase])
   
   const listUseCase = useMemo(() => new ListRecordsUseCase(recordRepository), [recordRepository])
-  const createUseCase = useMemo(() => new CreateRecordUseCase(recordRepository, fieldRepository), [recordRepository, fieldRepository])
-  const updateUseCase = useMemo(() => new UpdateRecordUseCase(recordRepository, fieldRepository), [recordRepository, fieldRepository])
+  const createUseCase = useMemo(
+    () => new CreateRecordUseCase(recordRepository, fieldRepository, relationRepository),
+    [recordRepository, fieldRepository, relationRepository]
+  )
+  const updateUseCase = useMemo(
+    () => new UpdateRecordUseCase(recordRepository, fieldRepository, relationRepository),
+    [recordRepository, fieldRepository, relationRepository]
+  )
   const deleteUseCase = useMemo(() => new DeleteRecordUseCase(recordRepository), [recordRepository])
 
   const fetchRecords = useCallback(async () => {
@@ -90,13 +101,25 @@ export function useRecords(collectionId: string) {
     return res
   }
 
-  const setPage = (page: number) => {
+  const setPage = useCallback((page: number) => {
     setPagination(prev => ({ ...prev, page }))
-  }
+  }, [])
 
-  const setSort = (field: string, direction: 'asc' | 'desc') => {
+  const setSort = useCallback((field: string, direction: 'asc' | 'desc') => {
     setPagination(prev => ({ ...prev, sortField: field, sortDirection: direction, page: 1 }))
-  }
+  }, [])
+
+  const setSearch = useCallback((search: string) => {
+    setPagination((prev) => ({ ...prev, search, page: 1 }))
+  }, [])
+
+  const setSearchFields = useCallback((searchFields: string[]) => {
+    setPagination((prev) => ({ ...prev, searchFields, page: 1 }))
+  }, [])
+
+  const setFilters = useCallback((filters: ColumnFilter[]) => {
+    setPagination((prev) => ({ ...prev, filters, page: 1 }))
+  }, [])
 
   return {
     records: data,
@@ -108,6 +131,9 @@ export function useRecords(collectionId: string) {
     deleteRecord,
     setPage,
     setSort,
+    setSearch,
+    setSearchFields,
+    setFilters,
     refresh: fetchRecords,
   }
 }

@@ -40,6 +40,7 @@ export class SupabaseCollectionRepository extends BaseRepository implements ICol
         display_name: collection.displayName,
         description: collection.description,
         icon: collection.icon,
+        primary_field_name: collection.primaryFieldName,
       })
       .select()
       .single()
@@ -58,6 +59,7 @@ export class SupabaseCollectionRepository extends BaseRepository implements ICol
         display_name: collection.displayName,
         description: collection.description,
         icon: collection.icon,
+        primary_field_name: collection.primaryFieldName,
         updated_at: new Date().toISOString(),
       })
       .eq('id', collection.id)
@@ -89,6 +91,7 @@ export class SupabaseCollectionRepository extends BaseRepository implements ICol
       displayName: (data.display_name as string) || undefined,
       description: (data.description as string) || undefined,
       icon: (data.icon as string) || undefined,
+      primaryFieldName: (data.primary_field_name as string) || null,
       createdAt: new Date(data.created_at as string),
       updatedAt: new Date(data.updated_at as string),
     })

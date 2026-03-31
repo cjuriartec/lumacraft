@@ -1,5 +1,5 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 
 import { makeUser, makeWorkspace, resetFactories } from '@/__tests__/factories/domain-factories'
 import { FakeAuthProvider, InMemoryWorkspaceRepository } from '@/__tests__/helpers/fakes'
@@ -23,6 +23,15 @@ function WorkspaceProbe() {
 }
 
 describe('WorkspaceProvider', () => {
+  beforeEach(() => {
+    const storage = window.localStorage as Storage | undefined
+    if (typeof storage?.clear === 'function') {
+      storage.clear()
+    } else if (typeof storage?.removeItem === 'function') {
+      storage.removeItem('lumacraft.currentWorkspaceId')
+    }
+  })
+
   it('selects the first workspace for the authenticated user', async () => {
     resetFactories()
     const user = makeUser({ id: 'user-1' })
@@ -65,7 +74,10 @@ describe('WorkspaceProvider', () => {
     await waitFor(() => {
       expect(screen.getByText('Team')).toBeInTheDocument()
     })
-    expect(workspaceRepository.findByOwnerId).toHaveBeenCalledTimes(1)
+    expect(workspaceRepository.findByUserId).toHaveBeenCalledTimes(1)
+    const storage = window.localStorage as Storage | undefined
+    if (typeof storage?.getItem === 'function') {
+      expect(storage.getItem('lumacraft.currentWorkspaceId')).toBe('workspace-2')
+    }
   })
 })
-

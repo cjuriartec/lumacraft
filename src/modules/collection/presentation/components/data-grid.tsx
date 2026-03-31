@@ -1,7 +1,12 @@
 'use client'
 
+import React, { useMemo, useState, useEffect } from 'react'
+import { useRelationRecords, RelationOption } from '../hooks/use-relation-records'
+
 import { Field } from '../../domain/entities/field.entity'
 import { DataRecord } from '../../domain/entities/record.entity'
+import { ColumnFilter } from '../../domain/types/pagination.types'
+import { useStorage } from '../hooks/use-storage'
 import {
   Table,
   TableBody,
@@ -11,8 +16,18 @@ import {
   TableRow,
 } from '@/shared/presentation/components/ui/table'
 import { Button } from '@/shared/presentation/components/ui/button'
-import { ChevronUp, ChevronDown, Edit2, Trash2 } from 'lucide-react'
+import { Input } from '@/shared/presentation/components/ui/input'
+import { ChevronUp, ChevronDown, Edit2, Trash2, Search, ListFilter, Plus, Download, Loader2 } from 'lucide-react'
 import { Badge } from '@/shared/presentation/components/ui/badge'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/shared/presentation/components/ui/select'
+import { Popover, PopoverContent, PopoverTrigger } from '@/shared/presentation/components/ui/popover'
+import { cn } from '@/shared/lib/utils'
 
 interface DataGridProps {
   fields: Field[]
@@ -22,11 +37,97 @@ interface DataGridProps {
   pageSize: number
   sortField?: string
   sortDirection?: 'asc' | 'desc'
+  search?: string
+  onSearchChange: (value: string) => void
+  onFiltersChange: (filters: ColumnFilter[]) => void
   onPageChange: (page: number) => void
   onSort: (field: string, direction: 'asc' | 'desc') => void
+  onInlineEdit: (record: DataRecord, field: Field, value: unknown) => Promise<void> | void
   onEdit: (record: DataRecord) => void
   onDelete: (id: string) => void
+  onAddRecord?: () => void
 }
+
+type FileMetadata = {
+  bucket: string
+  path: string
+  name: string
+  mimeType: string
+  size: number
+}
+
+type EditingCell = {
+  recordId: string
+  fieldName: string
+}
+
+const BASIC_INLINE_TYPES = new Set(['TEXT', 'NUMBER', 'BOOLEAN', 'DATE', 'ENUM'])
+
+const RelationCell = React.memo(({
+  field,
+  value,
+  relationLoading,
+  relationOptions,
+  fetchOptionsByIds
+}: {
+  field: Field,
+  value: any,
+  relationLoading: Record<string, boolean>,
+  relationOptions: Record<string, RelationOption[]>,
+  fetchOptionsByIds: (field: Field, ids: string[]) => Promise<void>
+}) => {
+  const ids = Array.isArray(value) ? value : [value]
+  if (ids.length === 0) return <span className="text-muted opacity-40">—</span>
+
+  const options = relationOptions[field.name] || []
+  const isLoading = relationLoading[field.name]
+
+  const handleOpenChange = (open: boolean) => {
+    if (open && ids.length > 0) {
+      void fetchOptionsByIds(field, ids)
+    }
+  }
+
+  const noun = ids.length === 1 ? 'Relación' : 'Relaciones'
+
+  return (
+    <Popover onOpenChange={handleOpenChange}>
+      <PopoverTrigger asChild>
+        <Badge
+          variant="outline"
+          className="text-[11px] py-0.5 h-6 border-border/40 font-normal bg-surface/50 text-muted cursor-pointer hover:bg-surface-hover hover:text-foreground transition-all group"
+        >
+          <span className="mr-1.5 opacity-40 group-hover:opacity-100 transition-opacity">🔗</span>
+          {ids.length} {noun}
+        </Badge>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-[280px] p-2 bg-surface/95 backdrop-blur-md border border-border/50 shadow-2xl rounded-xl z-50">
+        <div className="flex justify-between items-center mb-2 px-2">
+          <div className="text-[11px] font-semibold text-foreground/70 uppercase tracking-wider">
+            {ids.length} {noun}
+          </div>
+          {isLoading && <Loader2 size={12} className="animate-spin text-primary" />}
+        </div>
+
+        <div className="flex flex-col gap-0.5 max-h-[200px] overflow-y-auto px-1 -mx-1 custom-scrollbar">
+          {!isLoading ? (
+            ids.map(id => {
+              const label = options.find(o => o.id === id)?.label || id
+              return (
+                <div key={String(id)} className="text-xs text-foreground/80 truncate py-1.5 px-2 rounded-lg hover:bg-background/80 transition-colors border border-transparent hover:border-border/30">
+                  {String(label)}
+                </div>
+              )
+            })
+          ) : (
+             <div className="text-xs text-muted italic px-2 py-1">Cargando relaciones...</div>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  )
+})
+RelationCell.displayName = 'RelationCell'
 
 export function DataGrid({
   fields,
@@ -36,12 +137,59 @@ export function DataGrid({
   pageSize,
   sortField,
   sortDirection,
+  search,
+  onSearchChange,
+  onFiltersChange,
   onPageChange,
   onSort,
+  onInlineEdit,
   onEdit,
   onDelete,
+  onAddRecord,
 }: DataGridProps) {
+  const [editingCell, setEditingCell] = useState<EditingCell | null>(null)
+  const [downloadingFiles, setDownloadingFiles] = useState<Record<string, boolean>>({})
+  const [draftValue, setDraftValue] = useState<string>('')
+  const [updatingCell, setUpdatingCell] = useState(false)
+  const [filterValues, setFilterValues] = useState<Record<string, string>>({})
+
+  // Relation resolution
+  const { options: relationOptions, loading: relationLoading, fetchOptionsByIds, fetchBatchOptionsByIds } = useRelationRecords()
+  const { downloadFile } = useStorage()
+
+
   const totalPages = Math.ceil(total / pageSize)
+
+  const activeFilters = useMemo(() => {
+    const nextFilters: ColumnFilter[] = []
+
+    for (const field of fields) {
+      const rawValue = filterValues[field.name]
+      if (!rawValue || rawValue.trim() === '') continue
+
+      if (field.fieldType.value === 'NUMBER') {
+        nextFilters.push({
+          field: field.name,
+          operator: 'eq',
+          value: Number(rawValue),
+        })
+      } else if (field.fieldType.value === 'BOOLEAN' || field.fieldType.value === 'ENUM') {
+        nextFilters.push({
+          field: field.name,
+          operator: 'eq',
+          value: rawValue,
+        })
+      } else {
+        nextFilters.push({
+          field: field.name,
+          operator: 'contains',
+          value: rawValue,
+        })
+      }
+    }
+
+    return nextFilters
+  }, [fields, filterValues])
 
   const handleSort = (fieldName: string) => {
     if (sortField === fieldName) {
@@ -56,8 +204,163 @@ export function DataGrid({
     return sortDirection === 'asc' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />
   }
 
+  const startInlineEdit = (record: DataRecord, field: Field) => {
+    if (!BASIC_INLINE_TYPES.has(field.fieldType.value)) return
+
+    const value = record.data[field.name]
+    setEditingCell({ recordId: record.id, fieldName: field.name })
+    setDraftValue(value === undefined || value === null ? '' : String(value))
+  }
+
+  const parseInlineValue = (field: Field, value: string) => {
+    switch (field.fieldType.value) {
+      case 'NUMBER':
+        return value === '' ? null : Number(value)
+      case 'BOOLEAN':
+        return value === 'true'
+      default:
+        return value
+    }
+  }
+
+  const commitInlineEdit = async (record: DataRecord, field: Field) => {
+    if (!editingCell) return
+    setUpdatingCell(true)
+    try {
+      await onInlineEdit(record, field, parseInlineValue(field, draftValue))
+      setEditingCell(null)
+      setDraftValue('')
+    } finally {
+      setUpdatingCell(false)
+    }
+  }
+
+  const handleExport = () => {
+    if (records.length === 0) return
+
+    const headers = fields.map(f => f.displayName || f.name).join(',')
+    const rows = records.map(record => {
+      return fields.map(field => {
+        const rawValue = record.data[field.name]
+        let cellValue = ''
+
+        if (rawValue !== undefined && rawValue !== null) {
+          if (typeof rawValue === 'object') {
+            cellValue = JSON.stringify(rawValue)
+          } else {
+            cellValue = String(rawValue)
+          }
+        }
+
+        return `"${cellValue.replace(/"/g, '""')}"`
+      }).join(',')
+    }).join('\n')
+
+    const csvContent = "\uFEFF" + headers + '\n' + rows
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', `export_${new Date().getTime()}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  const handleDownloadFile = async (file: FileMetadata) => {
+    if (!file?.path || !file?.bucket) return
+    setDownloadingFiles(prev => ({ ...prev, [file.path]: true }))
+
+    try {
+      const res = await downloadFile(file.bucket, file.path)
+
+      if (res.ok && res.value) {
+        const url = URL.createObjectURL(res.value)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = file.name || 'archivo'
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+      }
+    } finally {
+      setDownloadingFiles(prev => ({ ...prev, [file.path]: false }))
+    }
+  }
+
   const renderCellValue = (record: DataRecord, field: Field) => {
     const value = record.data[field.name]
+    const isEditing =
+      editingCell?.recordId === record.id && editingCell?.fieldName === field.name
+
+    if (isEditing) {
+      if (field.fieldType.value === 'ENUM') {
+        const options = ((field.config?.value as { options?: string[] } | undefined)?.options ?? [])
+        return (
+          <Select
+            value={draftValue}
+            onValueChange={(val) => {
+              setDraftValue(val)
+              void commitInlineEdit(record, field)
+            }}
+          >
+            <SelectTrigger className="h-8 bg-background border-border text-foreground">
+              <SelectValue placeholder="Selecciona" />
+            </SelectTrigger>
+            <SelectContent className="bg-surface border-border text-foreground">
+              {options.map((option) => (
+                <SelectItem key={option} value={option}>
+                  {option}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )
+      }
+
+      if (field.fieldType.value === 'BOOLEAN') {
+        return (
+          <Select
+            value={draftValue === '' ? 'false' : draftValue}
+            onValueChange={(val) => {
+              setDraftValue(val)
+              void commitInlineEdit(record, field)
+            }}
+          >
+            <SelectTrigger className="h-8 bg-background border-border text-foreground">
+              <SelectValue placeholder="Selecciona" />
+            </SelectTrigger>
+            <SelectContent className="bg-surface border-border text-foreground">
+              <SelectItem value="true">Sí</SelectItem>
+              <SelectItem value="false">No</SelectItem>
+            </SelectContent>
+          </Select>
+        )
+      }
+
+      return (
+        <Input
+          autoFocus
+          className="h-8 bg-background border-border text-foreground"
+          type={field.fieldType.value === 'NUMBER' ? 'number' : field.fieldType.value === 'DATE' ? 'date' : 'text'}
+          value={draftValue}
+          onChange={(event) => setDraftValue(event.target.value)}
+          onBlur={() => void commitInlineEdit(record, field)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault()
+              void commitInlineEdit(record, field)
+            }
+            if (event.key === 'Escape') {
+              setEditingCell(null)
+              setDraftValue('')
+            }
+          }}
+          disabled={updatingCell}
+        />
+      )
+    }
 
     if (value === undefined || value === null || value === '') {
       return <span className="text-zinc-700">—</span>
@@ -66,7 +369,7 @@ export function DataGrid({
     switch (field.fieldType.value) {
       case 'BOOLEAN':
         return (
-          <Badge variant="outline" className={value ? "text-primary border-primary/20 bg-primary/5" : "text-muted border-border"}>
+          <Badge variant="outline" className={value ? 'text-primary border-primary/20 bg-primary/5' : 'text-muted border-border'}>
             {value ? 'Sí' : 'No'}
           </Badge>
         )
@@ -76,6 +379,43 @@ export function DataGrid({
         return <Badge variant="secondary" className="font-normal">{String(value)}</Badge>
       case 'NUMBER':
         return <span className="font-mono text-foreground/80">{String(value)}</span>
+      case 'FILE':
+        const file = value as FileMetadata
+        const isDownloading = downloadingFiles[file.path]
+        return (
+          <button
+            onClick={() => !isDownloading && handleDownloadFile(file)}
+            disabled={isDownloading}
+            className={cn(
+              "flex items-center gap-1.5 group text-left transition-opacity",
+              isDownloading ? "opacity-50 cursor-wait" : "hover:opacity-80"
+            )}
+          >
+            <span className={cn(
+               "text-xs font-medium truncate max-w-[140px] underline decoration-border/40 hover:decoration-primary transition-all",
+               isDownloading ? "text-primary decoration-primary" : "text-foreground/80"
+            )}>
+              {file.name || 'Archivo'}
+            </span>
+            {isDownloading ? (
+               <Loader2 size={10} className="animate-spin text-primary shrink-0" />
+            ) : (
+               <Download size={10} className="text-muted opacity-40 group-hover:opacity-100 group-hover:text-primary transition-all shrink-0" />
+            )}
+          </button>
+        )
+      case 'LOCATION':
+        return <span className="text-foreground/80 text-xs">{`${String((value as any).lat)}, ${String((value as any).lng)}`}</span>
+      case 'RELATION':
+        return (
+          <RelationCell
+            field={field}
+            value={value}
+            relationLoading={relationLoading}
+            relationOptions={relationOptions}
+            fetchOptionsByIds={fetchOptionsByIds}
+          />
+        )
       default:
         return <span className="text-foreground/80">{String(value)}</span>
     }
@@ -83,6 +423,154 @@ export function DataGrid({
 
   return (
     <div className="animate-in fade-in duration-500">
+      <div className="px-6 py-4 border-b border-border/10 bg-surface/30">
+        <div className="flex items-center justify-between gap-4">
+          <div className="relative flex-1 max-w-md">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+            <Input
+              value={search || ''}
+              onChange={(event) => onSearchChange(event.target.value)}
+              className="h-10 pl-10 bg-background/50 border-border/20 text-sm focus:ring-1 focus:ring-primary/20 focus:border-primary/30 transition-all rounded-lg"
+              placeholder="Buscar registros..."
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    "h-10 px-4 border-border/20 bg-background/50 text-xs font-medium transition-all hover:bg-surface-hover/30",
+                    activeFilters.length > 0 && "border-primary/20 bg-primary/5 text-primary"
+                  )}
+                >
+                  <ListFilter size={14} className="mr-2" />
+                  Filtros
+                  {activeFilters.length > 0 && (
+                    <span className="ml-2 bg-primary text-background px-1.5 py-0.5 rounded-full text-[10px] leading-none font-bold">
+                      {activeFilters.length}
+                    </span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-96 p-0 overflow-hidden bg-surface border-border/50 shadow-2xl" align="end">
+                <div className="px-4 py-3 border-b border-border/20 bg-surface-hover/10 flex items-center justify-between">
+                  <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted">Configurar Filtros</h3>
+                  {activeFilters.length > 0 && (
+                    <button
+                      onClick={() => {
+                        setFilterValues({})
+                        onFiltersChange([])
+                      }}
+                      className="text-[10px] uppercase font-bold text-primary hover:underline"
+                    >
+                      Limpiar todo
+                    </button>
+                  )}
+                </div>
+                <div className="max-h-[400px] overflow-y-auto p-2 space-y-1">
+                  {fields.map((field) => {
+                    const isActive = filterValues[field.name] !== undefined
+                    return (
+                      <div
+                        key={field.id}
+                        className={cn(
+                          "flex flex-col gap-2 p-3 rounded-lg transition-colors border border-transparent",
+                          isActive ? "bg-surface-hover/20 border-border/10" : "hover:bg-surface-hover/10"
+                        )}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-semibold text-foreground/70 uppercase tracking-tight">
+                            {field.displayName || field.name}
+                          </span>
+                          {!isActive ? (
+                            <button
+                              onClick={() => setFilterValues({ ...filterValues, [field.name]: '' })}
+                              className="text-[10px] text-muted hover:text-primary transition-colors flex items-center gap-1"
+                            >
+                              <Plus size={10} /> Añadir
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                const next = { ...filterValues }
+                                delete next[field.name]
+                                setFilterValues(next)
+                                // Update logic
+                                const updated = Object.entries(next).map(([name, val]) => {
+                                  const f = fields.find(i => i.name === name)
+                                  const operator = (f?.fieldType.value === 'NUMBER' || f?.fieldType.value === 'BOOLEAN' || f?.fieldType.value === 'ENUM') ? 'eq' : 'contains'
+                                  const value = f?.fieldType.value === 'NUMBER' ? Number(val) : val
+                                  return { field: name, operator, value }
+                                })
+                                onFiltersChange(updated as ColumnFilter[])
+                              }}
+                              className="text-[10px] text-red-400/70 hover:text-red-400 transition-colors"
+                            >
+                              Remover
+                            </button>
+                          )}
+                        </div>
+
+                        {isActive && (
+                          <div className="animate-in fade-in slide-in-from-top-1 duration-200">
+                            <Input
+                              autoFocus
+                              value={filterValues[field.name]}
+                              placeholder={`Filtrar ${field.displayName || field.name}...`}
+                              className="h-8 text-xs bg-background border-border/20 focus:ring-1 focus:ring-primary/30"
+                              onChange={(event) => {
+                                const next = { ...filterValues, [field.name]: event.target.value }
+                                setFilterValues(next)
+                                const updated = Object.entries(next)
+                                  .filter(([, v]) => v.trim() !== '')
+                                  .map(([name, val]) => {
+                                    const f = fields.find(i => i.name === name)
+                                    const operator = (f?.fieldType.value === 'NUMBER' || f?.fieldType.value === 'BOOLEAN' || f?.fieldType.value === 'ENUM') ? 'eq' : 'contains'
+                                    const value = f?.fieldType.value === 'NUMBER' ? Number(val) : val
+                                    return { field: name, operator, value }
+                                  })
+                                onFiltersChange(updated as ColumnFilter[])
+                              }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExport}
+              disabled={records.length === 0}
+              className="h-10 px-4 border-border/20 bg-background/50 text-xs font-medium transition-all hover:bg-surface-hover/30 text-muted hover:text-foreground"
+            >
+              <Download size={14} className="mr-2" />
+              <span className="hidden sm:inline">Exportar</span>
+              <span className="sm:hidden">Exp</span>
+            </Button>
+
+            {onAddRecord && (
+              <Button
+                size="sm"
+                className="h-10 bg-primary text-background hover:bg-primary/90 shadow-sm transition-all hover:-translate-y-0.5 active:translate-y-0 px-4"
+                onClick={onAddRecord}
+              >
+                <Plus size={16} className="mr-2" />
+                <span className="hidden sm:inline">Nuevo Registro</span>
+                <span className="sm:hidden">Nuevo</span>
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+
       <div className="overflow-hidden bg-surface">
         <Table>
           <TableHeader>
@@ -113,7 +601,13 @@ export function DataGrid({
               records.map((record) => (
                 <TableRow key={record.id} className="group border-b border-border/5 hover:bg-surface-hover/30 transition-colors">
                   {fields.map((field) => (
-                    <TableCell key={field.id} className="py-4 px-4 font-normal text-sm">
+                    <TableCell
+                      key={field.id}
+                      className={`py-4 px-4 font-normal text-sm ${
+                        BASIC_INLINE_TYPES.has(field.fieldType.value) ? 'cursor-pointer' : ''
+                      }`}
+                      onDoubleClick={() => startInlineEdit(record, field)}
+                    >
                       {renderCellValue(record, field)}
                     </TableCell>
                   ))}

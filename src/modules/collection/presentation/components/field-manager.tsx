@@ -1,6 +1,6 @@
 'use client'
 
-import { useFields } from '../hooks/use-fields'
+import { useCollections } from '../hooks/use-collections'
 import { FieldFormDialog } from './field-form-dialog'
 import { Badge } from '@/shared/presentation/components/ui/badge'
 import { Button } from '@/shared/presentation/components/ui/button'
@@ -32,6 +32,9 @@ export function FieldManager({
   updateField, 
   deleteField 
 }: FieldManagerProps) {
+  const { collections } = useCollections()
+  const relationCollections = collections.filter((collection) => collection.id !== collectionId)
+
   if (loading) {
     return (
       <div className="p-8 flex items-center justify-center">
@@ -51,7 +54,7 @@ export function FieldManager({
             Define los campos y tipos de datos que estructuran esta colección.
           </p>
         </div>
-        <FieldFormDialog onSubmit={createField}>
+        <FieldFormDialog onSubmit={createField} availableCollections={relationCollections}>
           <Button size="sm" className="bg-primary text-background hover:bg-primary-hover shadow-sm transition-all hover:-translate-y-0.5 active:translate-y-0">
             <Plus size={16} className="mr-2" />
             Añadir Campo
@@ -107,7 +110,11 @@ export function FieldManager({
                   </TableCell>
                   <TableCell className="py-4 px-4 text-right">
                     <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <FieldFormDialog field={field} onSubmit={(values) => updateField({ ...values, id: field.id })}>
+                      <FieldFormDialog
+                        field={field}
+                        availableCollections={relationCollections}
+                        onSubmit={(values) => updateField({ ...values, id: field.id })}
+                      >
                         <Button
                           variant="ghost"
                           size="icon"

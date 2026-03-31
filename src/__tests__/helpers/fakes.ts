@@ -5,11 +5,17 @@ import { DataRecord } from '@/modules/collection/domain/entities/record.entity'
 import { ICollectionRepository } from '@/modules/collection/domain/ports/collection-repository.port'
 import { IFieldRepository } from '@/modules/collection/domain/ports/field-repository.port'
 import { IRecordRepository } from '@/modules/collection/domain/ports/record-repository.port'
+import { IRelationRepository } from '@/modules/collection/domain/ports/relation-repository.port'
 import { PaginationOptions } from '@/modules/collection/domain/types/pagination.types'
+import {
+  RecordRelation,
+  SyncFieldRelationsRequest,
+  ValidateCardinalityRequest,
+} from '@/modules/collection/domain/types/relation.types'
 import { User } from '@/modules/auth/domain/entities/user.entity'
 import { Workspace } from '@/modules/workspace/domain/entities/workspace.entity'
 import { IWorkspaceRepository } from '@/modules/workspace/domain/ports/workspace-repository.port'
-import { Result, ok } from '@/shared/domain/result'
+import { DomainError, Result, ok } from '@/shared/domain/result'
 import { vi } from 'vitest'
 
 function compareValues(left: unknown, right: unknown) {
@@ -47,15 +53,15 @@ export class InMemoryWorkspaceRepository implements IWorkspaceRepository {
   constructor(public items: Workspace[] = []) {}
 
   public findByIdResult?: Result<Workspace | null>
-  public findByOwnerIdResult?: Result<Workspace[]>
+  public findByUserIdResult?: Result<Workspace[]>
   public createResult?: Result<Workspace>
 
   public findById = vi.fn(async (id: string) => {
     return this.findByIdResult ?? ok(this.items.find((workspace) => workspace.id === id) ?? null)
   })
 
-  public findByOwnerId = vi.fn(async (ownerId: string) => {
-    return this.findByOwnerIdResult ?? ok(this.items.filter((workspace) => workspace.ownerId === ownerId))
+  public findByUserId = vi.fn(async (userId: string) => {
+    return this.findByUserIdResult ?? ok(this.items.filter((workspace) => workspace.ownerId === userId))
   })
 
   public create = vi.fn(async (workspace: Workspace) => {
@@ -183,7 +189,49 @@ export class InMemoryRecordRepository implements IRecordRepository {
   public findByCollectionId = vi.fn(async (collectionId: string, options: PaginationOptions) => {
     if (this.findByCollectionIdResult) return this.findByCollectionIdResult
 
-    const filtered = this.items.filter((record) => record.collectionId === collectionId)
+    let filtered = this.items.filter((record) => record.collectionId === collectionId)
+
+    if (options.search && options.searchFields && options.searchFields.length > 0) {
+      const normalized = options.search.toLowerCase()
+      filtered = filtered.filter((record) =>
+        options.searchFields!.some((field) =>
+          String(record.data[field] ?? '')
+            .toLowerCase()
+            .includes(normalized)
+        )
+      )
+    }
+
+    if (options.filters && options.filters.length > 0) {
+      filtered = filtered.filter((record) => {
+        return options.filters!.every((filter) => {
+          const value = record.data[filter.field]
+          switch (filter.operator) {
+            case 'eq':
+              return String(value) === String(filter.value)
+            case 'neq':
+              return String(value) !== String(filter.value)
+            case 'contains':
+              return String(value ?? '')
+                .toLowerCase()
+                .includes(String(filter.value).toLowerCase())
+            case 'gt':
+              return Number(value) > Number(filter.value)
+            case 'gte':
+              return Number(value) >= Number(filter.value)
+            case 'lt':
+              return Number(value) < Number(filter.value)
+            case 'lte':
+              return Number(value) <= Number(filter.value)
+            case 'in':
+              return Array.isArray(filter.value) && filter.value.map(String).includes(String(value))
+            default:
+              return true
+          }
+        })
+      })
+    }
+
     const sorted = [...filtered].sort((left, right) => {
       if (!options.sortField || options.sortField === 'created_at') {
         const leftValue = left.createdAt.getTime()
@@ -246,3 +294,65 @@ export class InMemoryRecordRepository implements IRecordRepository {
   })
 }
 
+export class InMemoryRelationRepository implements IRelationRepository {
+  constructor(public items: RecordRelation[] = []) {}
+
+  public listBySourceRecordResult?: Result<RecordRelation[]>
+  public validateCardinalityResult?: Result<void>
+  public syncFieldRelationsForSourceResult?: Result<void>
+
+  public listBySourceRecord = vi.fn(async (sourceRecordId: string) => {
+    return this.listBySourceRecordResult ??
+      ok(this.items.filter((relation) => relation.sourceRecordId === sourceRecordId))
+  })
+
+  public validateCardinality = vi.fn(async (request: ValidateCardinalityRequest) => {
+    if (this.validateCardinalityResult) return this.validateCardinalityResult
+
+    if (request.relationType === 'ONE_TO_ONE' && request.targetRecordIds.length > 1) {
+      return { ok: false, error: new DomainError('ONE_TO_ONE relation cannot contain multiple targets') } as const
+    }
+
+    if (request.relationType === 'ONE_TO_ONE' || request.relationType === 'ONE_TO_MANY') {
+      const hasConflict = this.items.some(
+        (relation) =>
+          relation.fieldId === request.fieldId &&
+          request.targetRecordIds.includes(relation.targetRecordId) &&
+          relation.sourceRecordId !== request.sourceRecordId
+      )
+
+      if (hasConflict) {
+        return {
+          ok: false,
+          error: new DomainError('Target record already linked for this relation cardinality'),
+        } as const
+      }
+    }
+
+    return ok(undefined)
+  })
+
+  public syncFieldRelationsForSource = vi.fn(async (request: SyncFieldRelationsRequest) => {
+    if (this.syncFieldRelationsForSourceResult) return this.syncFieldRelationsForSourceResult
+
+    const targetIds = [...new Set(request.targetRecordIds)]
+    const base = this.items.filter(
+      (relation) =>
+        !(
+          relation.fieldId === request.fieldId &&
+          relation.sourceRecordId === request.sourceRecordId
+        )
+    )
+    const next = targetIds.map((targetId, index) => ({
+      id: `relation-${request.fieldId}-${request.sourceRecordId}-${index}`,
+      accountId: request.accountId,
+      fieldId: request.fieldId,
+      sourceRecordId: request.sourceRecordId,
+      targetRecordId: targetId,
+      createdAt: new Date(),
+    }))
+
+    this.items = [...base, ...next]
+    return ok(undefined)
+  })
+}

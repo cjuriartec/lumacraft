@@ -1,6 +1,6 @@
 import { Result, ok, fail, DomainError } from '@/shared/domain/result'
 
-const VALID_FIELD_TYPES = ['TEXT', 'NUMBER', 'BOOLEAN', 'DATE', 'ENUM'] as const
+const VALID_FIELD_TYPES = ['TEXT', 'NUMBER', 'BOOLEAN', 'DATE', 'ENUM', 'RELATION', 'FILE', 'LOCATION'] as const
 
 export type FieldTypeValue = (typeof VALID_FIELD_TYPES)[number]
 

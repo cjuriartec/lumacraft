@@ -20,8 +20,18 @@ describe('FieldType value object', () => {
     expect(left.ok && right.ok && left.value.equals(right.value)).toBe(true)
   })
 
+  it('accepts advanced sprint 3 types', () => {
+    const relation = FieldType.create('RELATION')
+    const file = FieldType.create('FILE')
+    const location = FieldType.create('LOCATION')
+
+    expect(relation.ok).toBe(true)
+    expect(file.ok).toBe(true)
+    expect(location.ok).toBe(true)
+  })
+
   it('fails for unsupported types', () => {
-    const result = FieldType.create('RELATION')
+    const result = FieldType.create('CURRENCY')
 
     expect(result.ok).toBe(false)
     if (!result.ok) {

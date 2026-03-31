@@ -21,12 +21,27 @@ const recordsState = vi.hoisted(() => ({
     pageSize: 25,
     sortField: 'created_at',
     sortDirection: 'desc' as const,
+    search: '',
+    searchFields: [],
+    filters: [],
   },
   createRecord: vi.fn(),
   updateRecord: vi.fn(),
   deleteRecord: vi.fn(),
   setPage: vi.fn(),
   setSort: vi.fn(),
+  setSearch: vi.fn(),
+  setSearchFields: vi.fn(),
+  setFilters: vi.fn(),
+}))
+
+const collectionsState = vi.hoisted(() => ({
+  collections: [] as any[],
+  loading: false,
+  createCollection: vi.fn(),
+  updateCollection: vi.fn(),
+  deleteCollection: vi.fn(),
+  refresh: vi.fn(),
 }))
 
 vi.mock('@/modules/collection/presentation/hooks/use-fields', () => ({
@@ -37,6 +52,10 @@ vi.mock('@/modules/collection/presentation/hooks/use-records', () => ({
   useRecords: () => recordsState,
 }))
 
+vi.mock('@/modules/collection/presentation/hooks/use-collections', () => ({
+  useCollections: () => collectionsState,
+}))
+
 vi.mock('@/modules/collection/presentation/components/field-manager', () => ({
   FieldManager: () => <div>field-manager</div>,
 }))
@@ -44,15 +63,22 @@ vi.mock('@/modules/collection/presentation/components/field-manager', () => ({
 vi.mock('@/modules/collection/presentation/components/data-grid', () => ({
   DataGrid: ({
     records,
+    onAddRecord,
     onEdit,
     onDelete,
   }: {
     records: ReturnType<typeof makeRecord>[]
+    onAddRecord?: () => void
     onEdit: (record: ReturnType<typeof makeRecord>) => void
     onDelete: (id: string) => void
   }) => (
     <div>
       <span>data-grid</span>
+      {onAddRecord ? (
+        <button type="button" onClick={onAddRecord}>
+          add-record
+        </button>
+      ) : null}
       {records[0] ? (
         <>
           <button type="button" onClick={() => onEdit(records[0])}>
@@ -98,6 +124,8 @@ describe('CollectionDetailPage', () => {
     recordsState.createRecord.mockReset()
     recordsState.updateRecord.mockReset()
     recordsState.deleteRecord.mockReset()
+    collectionsState.collections = []
+    collectionsState.updateCollection.mockReset()
   })
 
   it('renders the loading state while fields and records are syncing', () => {
@@ -113,7 +141,7 @@ describe('CollectionDetailPage', () => {
   it('creates a record from the dialog opened by the new record button', () => {
     render(<CollectionDetailPage collectionId="collection-1" collectionName="Projects" />)
 
-    fireEvent.click(screen.getByText('Nuevo Registro'))
+    fireEvent.click(screen.getByText('add-record'))
     fireEvent.click(screen.getByText('submit-dialog'))
 
     expect(screen.getByText('editing:new')).toBeInTheDocument()

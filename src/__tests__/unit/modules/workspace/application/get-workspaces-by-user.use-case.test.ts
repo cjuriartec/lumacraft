@@ -5,7 +5,7 @@ import { InMemoryWorkspaceRepository } from '@/__tests__/helpers/fakes'
 import { GetWorkspacesByUserUseCase } from '@/modules/workspace/application/use-cases/get-workspaces-by-user.use-case'
 
 describe('GetWorkspacesByUserUseCase', () => {
-  it('returns only workspaces for the requested owner', async () => {
+  it('returns only workspaces for the requested user', async () => {
     resetFactories()
     const target = makeWorkspace({ ownerId: 'user-1' })
     const ignored = makeWorkspace({ ownerId: 'user-2' })
@@ -18,7 +18,6 @@ describe('GetWorkspacesByUserUseCase', () => {
     if (result.ok) {
       expect(result.value).toEqual([target])
     }
-    expect(repository.findByOwnerId).toHaveBeenCalledWith('user-1')
+    expect(repository.findByUserId).toHaveBeenCalledWith('user-1')
   })
 })
-

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useFields } from '../hooks/use-fields'
 import { useRecords } from '../hooks/use-records'
 import { FieldManager } from '../components/field-manager'
@@ -8,8 +8,18 @@ import { DataGrid } from '../components/data-grid'
 import { RecordFormDialog } from '../components/record-form-dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/presentation/components/ui/tabs'
 import { Button } from '@/shared/presentation/components/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/shared/presentation/components/ui/select'
+import { Label } from '@/shared/presentation/components/ui/label'
+import { useCollections } from '../hooks/use-collections'
 import { LayoutGrid, ListFilter, Plus } from 'lucide-react'
 import { DataRecord } from '../../domain/entities/record.entity'
+import { Field } from '../../domain/entities/field.entity'
 
 interface CollectionDetailPageProps {
   collectionId: string
@@ -18,17 +28,22 @@ interface CollectionDetailPageProps {
 
 export function CollectionDetailPage({ collectionId, collectionName }: CollectionDetailPageProps) {
   const { fields, loading: loadingFields, createField, updateField, deleteField } = useFields(collectionId)
-  const { 
-    records, 
-    total, 
-    loading: loadingRecords, 
-    pagination, 
-    createRecord, 
-    updateRecord, 
+  const {
+    records,
+    total,
+    loading: loadingRecords,
+    pagination,
+    createRecord,
+    updateRecord,
     deleteRecord,
     setPage,
-    setSort 
+    setSort,
+    setSearch,
+    setSearchFields,
+    setFilters,
   } = useRecords(collectionId)
+  const { collections, updateCollection } = useCollections()
+  const currentCollection = collections.find(c => c.id === collectionId)
 
   const [recordEditorOpen, setRecordEditorOpen] = useState(false)
   const [editingRecord, setEditingRecord] = useState<DataRecord | undefined>(undefined)
@@ -49,6 +64,17 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
     } else {
       return await createRecord(data)
     }
+  }
+
+  useEffect(() => {
+    setSearchFields(fields.map((field) => field.name))
+  }, [fields, setSearchFields])
+
+  const handleInlineEdit = async (record: DataRecord, field: Field, value: unknown) => {
+    await updateRecord(record.id, {
+      ...record.data,
+      [field.name]: value,
+    })
   }
 
   return (
@@ -86,18 +112,8 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="flex justify-end px-2">
-                <Button 
-                  size="sm"
-                  className="bg-primary text-background hover:bg-primary-hover shadow-sm transition-all hover:-translate-y-0.5 active:translate-y-0"
-                  onClick={handleCreateRecord}
-                >
-                  <Plus size={16} className="mr-2" />
-                  Nuevo Registro
-                </Button>
-              </div>
               <div className="rounded-2xl bg-surface border border-border/5 overflow-hidden shadow-sm">
-                <DataGrid 
+                <DataGrid
                   fields={fields}
                   records={records}
                   total={total}
@@ -105,10 +121,15 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
                   pageSize={pagination.pageSize}
                   sortField={pagination.sortField}
                   sortDirection={pagination.sortDirection}
+                  search={pagination.search}
+                  onSearchChange={setSearch}
+                  onFiltersChange={setFilters}
                   onPageChange={setPage}
                   onSort={setSort}
+                  onInlineEdit={handleInlineEdit}
                   onEdit={handleEditRecord}
                   onDelete={deleteRecord}
+                  onAddRecord={handleCreateRecord}
                 />
               </div>
             </div>
@@ -116,20 +137,57 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
         </TabsContent>
 
         <TabsContent value="fields" className="mt-0 focus-visible:outline-none pb-12">
-          <div className="rounded-2xl bg-surface border border-border/5 p-8">
-            <FieldManager 
-              collectionId={collectionId} 
-              fields={fields}
-              loading={loadingFields}
-              createField={createField}
-              updateField={updateField}
-              deleteField={deleteField}
-            />
+          <div className="space-y-6">
+            {/* Collection Settings (Primary Field) */}
+            <div className="rounded-2xl bg-surface border border-border/5 p-8">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="max-w-md">
+                  <h3 className="text-sm font-bold text-foreground mb-1">Campo Principal</h3>
+                  <p className="text-[12px] text-muted-foreground leading-relaxed">
+                    Define qué campo se usará para representar estos registros cuando se creen relaciones desde otras colecciones.
+                  </p>
+                </div>
+                <div className="w-full md:w-64">
+                   <Select
+                    value={currentCollection?.primaryFieldName || 'id'}
+                    onValueChange={async (val: string) => {
+                      if (currentCollection) {
+                        await updateCollection({
+                          ...currentCollection.toJSON(),
+                          primaryFieldName: val === 'id' ? null : val
+                        })
+                      }
+                    }}
+                   >
+                     <SelectTrigger className="bg-background border-border text-foreground">
+                       <SelectValue placeholder="Seleccionar campo principal" />
+                     </SelectTrigger>
+                     <SelectContent className="bg-surface border-border text-foreground">
+                        <SelectItem value="id">ID (Sistema)</SelectItem>
+                        {fields.map(f => (
+                          <SelectItem key={f.id} value={f.name}>{f.displayName || f.name}</SelectItem>
+                        ))}
+                     </SelectContent>
+                   </Select>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl bg-surface border border-border/5 p-8">
+              <FieldManager
+                collectionId={collectionId}
+                fields={fields}
+                loading={loadingFields}
+                createField={createField}
+                updateField={updateField}
+                deleteField={deleteField}
+              />
+            </div>
           </div>
         </TabsContent>
       </Tabs>
 
-      <RecordFormDialog 
+      <RecordFormDialog
         open={recordEditorOpen}
         onOpenChange={setRecordEditorOpen}
         fields={fields}
