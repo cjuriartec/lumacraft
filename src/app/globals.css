@@ -2,27 +2,27 @@
 
 @layer base {
   :root {
-    --background: #f8fafc;
-    --foreground: #0f172a;
+    --background: #fafafb;
+    --foreground: #1a1e26;
     --primary: #10b981;
     --primary-hover: #059669;
     --surface: #ffffff;
     --surface-hover: #f1f5f9;
-    --muted: rgba(15, 23, 42, 0.6);
-    --border: rgba(15, 23, 42, 0.1);
+    --muted: rgba(26, 30, 38, 0.45);
+    --border: rgba(26, 30, 38, 0.05);
     --sidebar-bg: #ffffff;
   }
 
   .dark {
-    --background: #000000;
+    --background: #020403;
     --foreground: #e8f0ec;
     --primary: #10b981;
     --primary-hover: #059669;
-    --surface: #080c0a;
-    --surface-hover: #111f19;
-    --muted: rgba(232, 240, 236, 0.6);
-    --border: rgba(232, 240, 236, 0.08);
-    --sidebar-bg: #080c0a;
+    --surface: #060908;
+    --surface-hover: #0d1411;
+    --muted: rgba(232, 240, 236, 0.45);
+    --border: rgba(232, 240, 236, 0.04);
+    --sidebar-bg: #060908;
   }
 }
 

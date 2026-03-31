@@ -4,28 +4,41 @@ Este documento proyecta la ejecución de las Historias de Usuario (detalladas en
 
 ## 🚀 Iteración 1: MVP Base y Data Engine (Sprints 1-3)
 
-### **Sprint 1: Setup y Autenticación**
+### **Sprint 1: Setup y Autenticación** ✅ *Completado*
 *Objetivo: Tener la arquitectura base corriendo e inicio de sesión funcional con Multi-Tenancy.*
-* **Setup Inicial**: Configuración de Next.js, Supabase CLI local y base de datos (PostgreSQL). (No estimado en US, esfuerzo base).
-* **US-1.01 (5 SP)**: Autenticación con Google OAuth vía Supabase Auth.
-* **US-1.02 (3 SP)**: Creación automática de Workspace (Trigger PostgreSQL).
-* **US-2.01 (3 SP)**: CRUD básico de Colecciones (Backend y UI base).
-* **Total Estimado**: 11 SP + Overhead de Setup inicial.
+* **Setup Inicial**: Configuración de Next.js, Supabase Cloud y base de datos (PostgreSQL). ✅
+* **US-1.01 (5 SP)**: Autenticación con Google OAuth vía Supabase Auth. ✅
+* **US-1.02 (3 SP)**: Creación automática de Workspace (Trigger PostgreSQL). ✅
+* **US-2.01 (3 SP)**: CRUD básico de Colecciones (Backend y UI base). ✅
+* **Total**: 11 SP + Overhead de Setup y migración a Supabase Cloud.
 
-### **Sprint 2: El Motor de Datos (Data Engine)**
+### **Sprint 2: El Motor de Datos (Data Engine)** 🔄 *En Progreso*
 *Objetivo: Los administradores pueden crear tablas completas y los editores ver los grids.*
 * **US-2.02 (8 SP)**: Añadir campos y validaciones JSONB a las colecciones.
-* **US-2.03 (8 SP)**: Generación dinámica e inteligente de formularios con React Hook Form.
-* **US-2.04 (5 SP)**: Vista de Data Grid (tabla dinámica) con paginación usando los índices GIN.
+  - Tipos soportados: `TEXT`, `NUMBER`, `BOOLEAN`, `DATE`, `ENUM`.
+  - Configuración JSONB por tipo (opciones de enum, min/max, placeholder, etc).
+* **US-2.03 (8 SP)**: Generación dinámica e inteligente de formularios con React Hook Form + Zod.
+  - Formulario modal para crear/editar registros.
+  - Validación en runtime según el schema dinámico de campos.
+* **US-2.04 (5 SP)**: Vista de Data Grid (tabla dinámica) con paginación **server-side** y **sort por columna**.
+  - Paginación con `range()` de Supabase (default: 25 filas por página).
+  - Click en header de columna ordena por ese campo via `data->>'fieldName'`.
 * **Total Estimado**: 21 SP.
 
-### **Sprint 3: Relaciones y Framework de Permisos**
-*Objetivo: Conectar entidades y proteger rutas según roles de cuenta.*
+> **Diferido a sprints posteriores:**
+> - Inline editing en el grid → Sprint 3.
+> - Búsqueda y filtrado avanzado en el grid → Sprint 3.
+> - Tipos de campo `RELATION`, `FILE`, `LOCATION` → Sprint 3.
+
+### **Sprint 3: Relaciones, Tipos Avanzados y UX del Grid**
+*Objetivo: Conectar entidades, completar los tipos de campo y mejorar la experiencia del Data Grid.*
 * **US-3.01 (5 SP)**: Configuración de tipos de relación (1:1, 1:N) en la base de datos.
+  - Implementar campo tipo `RELATION` en el Field Manager.
 * **US-3.02 (5 SP)**: Selector asíncrono para formularios (Lookup de relaciones).
 * **US-1.03 (3 SP)**: Selector global de Workspaces en el header.
-* **US-4.01 (5 SP)**: CRUD de roles personalizados en base de datos.
-* **Total Estimado**: 18 SP.
+* **Tipos avanzados (5 SP)**: Implementar campos `FILE` (Supabase Storage) y `LOCATION` (coordenadas).
+* **UX Grid (5 SP)**: Inline editing en celdas del Data Grid + barra de búsqueda/filtrado por columna.
+* **Total Estimado**: 23 SP.
 
 ---
 

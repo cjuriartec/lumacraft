@@ -3,6 +3,7 @@
 import { useCollections } from '../hooks/use-collections'
 import { CreateCollectionDialog } from '../components/create-collection-dialog'
 import { Database, Trash2, ExternalLink, Settings2, Clock, Plus } from 'lucide-react'
+import Link from 'next/link'
 
 export default function CollectionsPage() {
   const { collections, loading, deleteCollection, refresh } = useCollections()
@@ -98,10 +99,13 @@ export default function CollectionsPage() {
                     })}
                   </span>
                 </div>
-                <button className="flex items-center gap-1 text-[12px] font-semibold transition-colors duration-150 group/btn text-primary/60 hover:text-primary">
+                <Link 
+                  href={`/collections/${collection.id}`}
+                  className="flex items-center gap-1 text-[12px] font-bold transition-all duration-150 group/btn text-primary hover:gap-1.5"
+                >
                   Ver Datos
-                  <ExternalLink size={11} className="group-hover/btn:translate-x-0.5 transition-transform" />
-                </button>
+                  <ExternalLink size={12} className="opacity-70 group-hover/btn:opacity-100 transition-opacity" />
+                </Link>
               </div>
             </div>
           ))}

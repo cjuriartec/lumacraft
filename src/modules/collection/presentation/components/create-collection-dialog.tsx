@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -23,8 +23,11 @@ const collectionSchema = z.object({
     .string()
     .min(3, { message: 'Mínimo 3 caracteres' })
     .max(50, { message: 'Máximo 50 caracteres' })
-    .regex(/^[a-z0-9_]+$/, { message: 'Solo letras, números y guiones bajos' }),
-  displayName: z.string().max(100, { message: 'Máximo 100 caracteres' }).optional(),
+    .regex(/^[a-z0-9_]*$/, { message: 'Solo letras, números y guiones bajos' }),
+  displayName: z
+    .string()
+    .min(3, { message: 'El nombre público es obligatorio (min 3)' })
+    .max(100, { message: 'Máximo 100 caracteres' }),
   description: z.string().max(500, { message: 'Máximo 500 caracteres' }).optional(),
 })
 
@@ -43,6 +46,8 @@ export function CreateCollectionDialog({ children, onSuccess }: CreateCollection
     register,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors, isValid },
   } = useForm<CollectionFormValues>({
     resolver: zodResolver(collectionSchema),
@@ -96,38 +101,13 @@ export function CreateCollectionDialog({ children, onSuccess }: CreateCollection
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 mt-6">
-          <div className="space-y-2">
-            <Label
-              htmlFor="name"
-              className="text-[11px] font-semibold uppercase flex justify-between text-foreground/70"
-            >
-              <span>Nombre Técnico *</span>
-              {errors.name && (
-                <span className="text-red-400 flex items-center gap-1 normal-case tracking-normal">
-                  <AlertCircle size={10} />
-                  {errors.name.message}
-                </span>
-              )}
-            </Label>
-            <Input
-              id="name"
-              placeholder="ej: proyectos_v2"
-              {...register('name')}
-              className={`rounded-lg text-sm h-10 placeholder:font-light transition-colors bg-foreground/5 text-foreground ${errors.name ? 'border-red-400/50 focus-visible:ring-red-500/50' : 'border-border'}`}
-            />
-            {!errors.name && (
-              <p className="text-[11px] font-light italic text-foreground/60">
-                Identificador interno único para el motor de datos.
-              </p>
-            )}
-          </div>
-
+          {/* Public Name - First and Mandatory */}
           <div className="space-y-2">
             <Label
               htmlFor="displayName"
               className="text-[11px] font-semibold uppercase flex justify-between text-foreground/70"
             >
-              <span>Nombre Público</span>
+              <span>Nombre Público *</span>
               {errors.displayName && (
                 <span className="text-red-400 flex items-center gap-1 normal-case tracking-normal">
                   <AlertCircle size={10} />
@@ -137,10 +117,52 @@ export function CreateCollectionDialog({ children, onSuccess }: CreateCollection
             </Label>
             <Input
               id="displayName"
+              autoFocus
               placeholder="ej: Portafolio de Proyectos"
               {...register('displayName')}
-              className="rounded-lg text-sm h-10 placeholder:font-light transition-colors bg-foreground/5 text-foreground border-border"
+              onChange={(e) => {
+                const value = e.target.value
+                setValue('displayName', value, { shouldValidate: true })
+
+                // Auto-sync technical name (slugify)
+                const slug = value
+                  .toLowerCase()
+                  .trim()
+                  .replace(/[^\w\s-]/g, '')
+                  .replace(/[\s-]+/g, '_')
+                setValue('name', slug, { shouldValidate: true })
+              }}
+              className={`rounded-lg text-sm h-10 placeholder:font-light transition-colors bg-foreground/5 text-foreground ${errors.displayName ? 'border-red-400/50 focus-visible:ring-red-500/50' : 'border-border'}`}
             />
+          </div>
+
+          {/* Technical Name - Auto-generated but editable */}
+          <div className="space-y-2">
+            <Label
+              htmlFor="name"
+              className="text-[11px] font-semibold uppercase flex justify-between text-foreground/70 group"
+            >
+              <span className="flex items-center gap-2">
+                Nombre Técnico
+              </span>
+              {errors.name && (
+                <span className="text-red-400 flex items-center gap-1 normal-case tracking-normal">
+                  <AlertCircle size={10} />
+                  {errors.name.message}
+                </span>
+              )}
+            </Label>
+            <Input
+              id="name"
+              placeholder="proyectos_v2"
+              {...register('name')}
+              className={`rounded-lg text-xs h-9 font-mono placeholder:font-light transition-colors bg-foreground/5 text-foreground ${errors.name ? 'border-red-400/50 focus-visible:ring-red-500/50' : 'border-border'}`}
+            />
+            {!errors.name && (
+              <p className="text-[10px] font-medium text-foreground/30 uppercase tracking-tighter italic">
+                Identificador interno para el motor de datos. Puedes editarlo manualmente si es necesario.
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
