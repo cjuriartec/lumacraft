@@ -558,7 +558,7 @@ export function DataGrid({
   }
 
   return (
-    <div className="animate-in fade-in duration-500 px-8">
+    <div className="animate-in fade-in duration-500 px-8 pb-4">
       <div className="py-4 border-b border-border/10 bg-surface/30">
         <div className="flex items-center justify-between gap-4">
           <div className="relative flex-1 max-w-md">
@@ -566,7 +566,7 @@ export function DataGrid({
             <Input
               value={search || ''}
               onChange={(event) => onSearchChange(event.target.value)}
-              className="h-10 pl-10 bg-surface-hover border-border/20 text-sm focus:ring-1 focus:ring-primary/20 focus:border-primary/30 transition-all rounded-lg"
+              className="h-10 pl-10 bg-surface-hover/30 border-border/20 text-sm focus:ring-1 focus:ring-primary/20 focus:border-primary/30 transition-all rounded-lg"
               placeholder="Buscar registros..."
             />
           </div>
