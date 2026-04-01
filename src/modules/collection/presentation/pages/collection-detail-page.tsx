@@ -3,11 +3,12 @@
 import { useEffect, useState } from 'react'
 import { useFields } from '../hooks/use-fields'
 import { useRecords } from '../hooks/use-records'
+import { useCollections } from '../hooks/use-collections'
+import { useGridPersistence } from '../hooks/use-grid-persistence'
 import { FieldManager } from '../components/field-manager'
 import { DataGrid } from '../components/data-grid'
 import { RecordFormDialog } from '../components/record-form-dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/presentation/components/ui/tabs'
-import { Button } from '@/shared/presentation/components/ui/button'
 import {
   Select,
   SelectContent,
@@ -15,11 +16,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/shared/presentation/components/ui/select'
-import { Label } from '@/shared/presentation/components/ui/label'
-import { useCollections } from '../hooks/use-collections'
-import { LayoutGrid, ListFilter, Plus } from 'lucide-react'
+import { LayoutGrid, ListFilter } from 'lucide-react'
 import { DataRecord } from '../../domain/entities/record.entity'
 import { Field } from '../../domain/entities/field.entity'
+import { ColumnFilter } from '../../domain/types/pagination.types'
 
 interface CollectionDetailPageProps {
   collectionId: string
@@ -41,12 +41,53 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
     setSearch,
     setSearchFields,
     setFilters,
+    setPagination,
   } = useRecords(collectionId)
   const { collections, updateCollection } = useCollections()
+  const { loadStoredFilters, persistFilters } = useGridPersistence(collectionId)
+  
   const currentCollection = collections.find(c => c.id === collectionId)
 
   const [recordEditorOpen, setRecordEditorOpen] = useState(false)
   const [editingRecord, setEditingRecord] = useState<DataRecord | undefined>(undefined)
+  const [initialFilterValues, setInitialFilterValues] = useState<Record<string, string>>({})
+  const [isHydrated, setIsHydrated] = useState(false)
+
+  useEffect(() => {
+    async function hydrate() {
+      const stored = await loadStoredFilters()
+      if (stored) {
+        setPagination(prev => ({
+          ...prev,
+          filters: stored.filters || [],
+          search: stored.search || ''
+        }))
+        setInitialFilterValues(stored.rawValues || {})
+      }
+      setIsHydrated(true)
+    }
+    void hydrate()
+  }, [loadStoredFilters, setPagination])
+
+  // Automatically sync searchFields with searchable field names
+  useEffect(() => {
+    if (fields.length > 0) {
+      const searchableFields = fields
+        .filter(f => ['TEXT', 'NUMBER', 'ENUM', 'URL', 'EMAIL', 'PHONE'].includes(f.fieldType.value))
+        .map(f => f.name)
+      setSearchFields(searchableFields)
+    }
+  }, [fields, setSearchFields])
+
+  const handleFiltersChange = (filters: ColumnFilter[], rawValues: Record<string, string>) => {
+    setFilters(filters)
+    persistFilters(filters, rawValues, pagination.search || '')
+  }
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value)
+    persistFilters(pagination.filters || [], initialFilterValues, value)
+  }
 
   const handleEditRecord = (record: DataRecord) => {
     setEditingRecord(record)
@@ -77,9 +118,10 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
     })
   }
 
+  if (!isHydrated) return null
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-20">
-      {/* Simplified, responsive header */}
       <div className="flex flex-col gap-1 mb-8 px-2">
         <p className="text-[11px] font-semibold uppercase tracking-[0.12em] mb-2 text-primary">
           Colección
@@ -122,8 +164,9 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
                   sortField={pagination.sortField}
                   sortDirection={pagination.sortDirection}
                   search={pagination.search}
-                  onSearchChange={setSearch}
-                  onFiltersChange={setFilters}
+                  initialFilterValues={initialFilterValues}
+                  onSearchChange={handleSearchChange}
+                  onFiltersChange={handleFiltersChange}
                   onPageChange={setPage}
                   onSort={setSort}
                   onInlineEdit={handleInlineEdit}

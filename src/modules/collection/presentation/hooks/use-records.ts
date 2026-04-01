@@ -134,6 +134,7 @@ export function useRecords(collectionId: string) {
     setSearch,
     setSearchFields,
     setFilters,
+    setPagination,
     refresh: fetchRecords,
   }
 }

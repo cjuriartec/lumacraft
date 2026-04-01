@@ -39,13 +39,14 @@ interface DataGridProps {
   sortDirection?: 'asc' | 'desc'
   search?: string
   onSearchChange: (value: string) => void
-  onFiltersChange: (filters: ColumnFilter[]) => void
+  onFiltersChange: (filters: ColumnFilter[], rawValues: Record<string, string>) => void;
   onPageChange: (page: number) => void
   onSort: (field: string, direction: 'asc' | 'desc') => void
   onInlineEdit: (record: DataRecord, field: Field, value: unknown) => Promise<void> | void
   onEdit: (record: DataRecord) => void
   onDelete: (id: string) => void
   onAddRecord?: () => void
+  initialFilterValues?: Record<string, string>
 }
 
 type FileMetadata = {
@@ -239,12 +240,20 @@ export function DataGrid({
   onEdit,
   onDelete,
   onAddRecord,
+  initialFilterValues,
 }: DataGridProps) {
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null)
   const [downloadingFiles, setDownloadingFiles] = useState<Record<string, boolean>>({})
   const [draftValue, setDraftValue] = useState<string>('')
   const [updatingCell, setUpdatingCell] = useState(false)
-  const [filterValues, setFilterValues] = useState<Record<string, string>>({})
+  const [filterValues, setFilterValues] = useState<Record<string, string>>(initialFilterValues || {})
+
+  // Sync initial filter values if they change or the grid mounts
+  useEffect(() => {
+    if (initialFilterValues && Object.keys(initialFilterValues).length > 0) {
+      setFilterValues(initialFilterValues)
+    }
+  }, [initialFilterValues])
 
   // Relation resolution
   const { options: relationOptions, loading: relationLoading, fetchOptionsByIds, fetchBatchOptionsByIds } = useRelationRecords()
@@ -281,7 +290,7 @@ export function DataGrid({
         })
 
       // Only notify parent if values actually differ or it's the first run
-      onFiltersChange(updated as ColumnFilter[])
+      onFiltersChange(updated as ColumnFilter[], filterValues)
     }, 600) // 600ms debounce
 
     return () => clearTimeout(timer)
@@ -589,7 +598,7 @@ export function DataGrid({
                     <button
                       onClick={() => {
                         setFilterValues({})
-                        onFiltersChange([])
+                        onFiltersChange([], {})
                       }}
                       className="text-[10px] uppercase font-bold text-primary hover:underline"
                     >
@@ -632,7 +641,7 @@ export function DataGrid({
                                   const value = f?.fieldType.value === 'NUMBER' ? Number(val) : val
                                   return { field: name, operator, value }
                                 })
-                                onFiltersChange(updated as ColumnFilter[])
+                                onFiltersChange(updated as ColumnFilter[], next)
                               }}
                               className="text-[10px] text-red-400/70 hover:text-red-400 transition-colors"
                             >
