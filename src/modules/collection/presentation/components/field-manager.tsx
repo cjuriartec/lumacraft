@@ -68,6 +68,7 @@ export function FieldManager({
             <TableRow className="hover:bg-transparent border-b border-border/50">
               <TableHead className="w-[50px]"></TableHead>
               <TableHead className="py-4 px-4 text-[11px] font-semibold uppercase tracking-wider text-muted">Nombre Visible</TableHead>
+              <TableHead className="py-4 px-4 text-[11px] font-semibold uppercase tracking-wider text-muted">Descripción</TableHead>
               <TableHead className="py-4 px-4 text-[11px] font-semibold uppercase tracking-wider text-muted">ID (API)</TableHead>
               <TableHead className="py-4 px-4 text-[11px] font-semibold uppercase tracking-wider text-muted">Tipo</TableHead>
               <TableHead className="py-4 px-4 text-[11px] font-semibold uppercase tracking-wider text-muted">Validación</TableHead>
@@ -77,7 +78,7 @@ export function FieldManager({
           <TableBody>
             {fields.length === 0 ? (
               <TableRow className="hover:bg-transparent border-0">
-                <TableCell colSpan={6} className="h-32 text-center text-muted font-light italic">
+                <TableCell colSpan={7} className="h-32 text-center text-muted font-light italic">
                   Aún no has definido campos para esta colección.
                 </TableCell>
               </TableRow>
@@ -89,6 +90,9 @@ export function FieldManager({
                   </TableCell>
                   <TableCell className="py-4 px-4 font-medium text-sm text-foreground">
                     {field.displayName || field.name}
+                  </TableCell>
+                  <TableCell className="py-4 px-4 text-xs text-foreground/60 max-w-[200px]">
+                    <span className="line-clamp-2">{field.description || <span className="italic text-muted/40">—</span>}</span>
                   </TableCell>
                   <TableCell className="py-4 px-4 text-xs font-mono text-foreground/80">
                     {field.name}

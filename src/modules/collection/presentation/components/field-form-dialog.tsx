@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useState, useEffect } from 'react'
 import { AlertCircle, Search, Plus, X } from 'lucide-react'
+import { Textarea } from '@/shared/presentation/components/ui/textarea'
 import {
   Dialog,
   DialogContent,
@@ -82,6 +83,7 @@ function SwitchRow({
 const fieldSchema = z.object({
   name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres').regex(/^[a-z0-9_]+$/, 'Solo minúsculas, números y guiones bajos'),
   displayName: z.string().min(2, 'El nombre visible debe tener al menos 2 caracteres'),
+  description: z.string().optional(),
   fieldType: z.enum(['TEXT', 'NUMBER', 'BOOLEAN', 'DATE', 'ENUM', 'RELATION', 'FILE', 'LOCATION']),
   isRequired: z.boolean().default(false).optional(),
   isUnique: z.boolean().default(false).optional(),
@@ -116,6 +118,7 @@ export function FieldFormDialog({
       ? {
         name: field.name,
         displayName: field.displayName || '',
+        description: field.description || '',
         fieldType: field.fieldType.value as any,
         isRequired: field.isRequired,
         isUnique: field.isUnique,
@@ -125,6 +128,7 @@ export function FieldFormDialog({
       : {
         name: '',
         displayName: '',
+        description: '',
         fieldType: 'TEXT',
         isRequired: false,
         isUnique: false,
@@ -224,6 +228,18 @@ export function FieldFormDialog({
                         form.setValue('name', slug)
                       }
                     }}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="description" className="text-[11px] font-semibold uppercase text-foreground/70">
+                    Descripción
+                  </Label>
+                  <Textarea
+                    id="description"
+                    placeholder="Describe el propósito de este campo, qué datos almacena y cómo debe utilizarse..."
+                    className={cn(inputFieldClass, 'min-h-[80px] resize-y')}
+                    {...form.register('description')}
                   />
                 </div>
 

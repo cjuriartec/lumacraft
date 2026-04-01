@@ -8,6 +8,7 @@ export interface CreateFieldRequest {
   collectionId: string
   name: string
   displayName?: string
+  description?: string
   fieldType: string
   isRequired?: boolean
   isUnique?: boolean
@@ -34,6 +35,7 @@ export class CreateFieldUseCase {
       collectionId: request.collectionId,
       name: request.name,
       displayName: request.displayName,
+      description: request.description,
       fieldType: fieldTypeRes.value,
       isRequired: request.isRequired,
       isUnique: request.isUnique,

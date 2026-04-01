@@ -7,6 +7,7 @@ interface FieldProps {
   collectionId: string
   name: string
   displayName?: string
+  description?: string
   fieldType: FieldType
   isRequired?: boolean
   isUnique?: boolean
@@ -35,6 +36,10 @@ export class Field extends BaseEntity {
 
   get displayName(): string | undefined {
     return this.props.displayName
+  }
+
+  get description(): string | undefined {
+    return this.props.description
   }
 
   get fieldType(): FieldType {
@@ -67,6 +72,7 @@ export class Field extends BaseEntity {
       collectionId: this.collectionId,
       name: this.name,
       displayName: this.displayName,
+      description: this.description,
       fieldType: this.fieldType.value,
       isRequired: this.isRequired,
       isUnique: this.isUnique,

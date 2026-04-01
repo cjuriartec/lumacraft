@@ -558,8 +558,8 @@ export function DataGrid({
   }
 
   return (
-    <div className="animate-in fade-in duration-500">
-      <div className="px-6 py-4 border-b border-border/10 bg-surface/30">
+    <div className="animate-in fade-in duration-500 px-8">
+      <div className="py-4 border-b border-border/10 bg-surface/30">
         <div className="flex items-center justify-between gap-4">
           <div className="relative flex-1 max-w-md">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
@@ -721,7 +721,7 @@ export function DataGrid({
         </div>
       </div>
 
-      <div className="overflow-hidden bg-surface">
+      <div className="bg-surface rounded-xl border border-border/5 overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">

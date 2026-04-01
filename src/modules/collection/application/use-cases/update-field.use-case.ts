@@ -8,6 +8,7 @@ export interface UpdateFieldRequest {
   id: string
   name: string
   displayName?: string
+  description?: string
   fieldType: string
   isRequired?: boolean
   isUnique?: boolean
@@ -32,6 +33,7 @@ export class UpdateFieldUseCase {
       collectionId: request.collectionId,
       name: request.name,
       displayName: request.displayName,
+      description: request.description,
       fieldType: fieldTypeRes.value,
       isRequired: request.isRequired,
       isUnique: request.isUnique,
