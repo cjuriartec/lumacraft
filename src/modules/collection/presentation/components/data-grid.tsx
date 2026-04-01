@@ -121,7 +121,7 @@ const RelationCell = React.memo(({
               )
             })
           ) : (
-             <div className="text-xs text-muted italic px-2 py-1">Cargando relaciones...</div>
+            <div className="text-xs text-muted italic px-2 py-1">Cargando relaciones...</div>
           )}
         </div>
       </PopoverContent>
@@ -130,14 +130,14 @@ const RelationCell = React.memo(({
 })
 RelationCell.displayName = 'RelationCell'
 
-const RelationFilterInput = ({ 
-  field, 
-  value, 
-  onChange 
-}: { 
-  field: Field, 
-  value: string, 
-  onChange: (val: string) => void 
+const RelationFilterInput = ({
+  field,
+  value,
+  onChange
+}: {
+  field: Field,
+  value: string,
+  onChange: (val: string) => void
 }) => {
   const { options, loading, searchRelations, fetchOptionsByIds } = useRelationRecords()
   const [query, setQuery] = useState('')
@@ -175,7 +175,7 @@ const RelationFilterInput = ({
           className="h-8 pl-8 text-xs bg-background border-border/20 focus:ring-1 focus:ring-primary/30"
         />
         {value && !isOpen && (
-          <button 
+          <button
             onClick={() => {
               onChange('')
               setQuery('')
@@ -208,8 +208,8 @@ const RelationFilterInput = ({
               }}
               className={cn(
                 "w-full text-left px-3 py-1.5 text-[11px] transition-colors flex items-center justify-between",
-                value === opt.id 
-                  ? "bg-primary/10 text-primary font-medium" 
+                value === opt.id
+                  ? "bg-primary/10 text-primary font-medium"
                   : "text-foreground/70 hover:bg-surface-hover/30 hover:text-foreground"
               )}
             >
@@ -270,7 +270,7 @@ export function DataGrid({
         .map(([name, val]) => {
           const f = fields.find(i => i.name === name)
           const type = f?.fieldType.value
-          
+
           let operator: ColumnFilter['operator'] = 'contains'
           let value: any = val
 
@@ -528,15 +528,15 @@ export function DataGrid({
             )}
           >
             <span className={cn(
-               "text-xs font-medium truncate max-w-[140px] underline decoration-border/40 hover:decoration-primary transition-all",
-               isDownloading ? "text-primary decoration-primary" : "text-foreground/80"
+              "text-xs font-medium truncate max-w-[140px] underline decoration-border/40 hover:decoration-primary transition-all",
+              isDownloading ? "text-primary decoration-primary" : "text-foreground/80"
             )}>
               {file.name || 'Archivo'}
             </span>
             {isDownloading ? (
-               <Loader2 size={10} className="animate-spin text-primary shrink-0" />
+              <Loader2 size={10} className="animate-spin text-primary shrink-0" />
             ) : (
-               <Download size={10} className="text-muted opacity-40 group-hover:opacity-100 group-hover:text-primary transition-all shrink-0" />
+              <Download size={10} className="text-muted opacity-40 group-hover:opacity-100 group-hover:text-primary transition-all shrink-0" />
             )}
           </button>
         )
@@ -566,7 +566,7 @@ export function DataGrid({
             <Input
               value={search || ''}
               onChange={(event) => onSearchChange(event.target.value)}
-              className="h-10 pl-10 bg-background/50 border-border/20 text-sm focus:ring-1 focus:ring-primary/20 focus:border-primary/30 transition-all rounded-lg"
+              className="h-10 pl-10 bg-surface-hover border-border/20 text-sm focus:ring-1 focus:ring-primary/20 focus:border-primary/30 transition-all rounded-lg"
               placeholder="Buscar registros..."
             />
           </div>
@@ -653,9 +653,9 @@ export function DataGrid({
                         {isActive && (
                           <div className="animate-in fade-in slide-in-from-top-1 duration-200">
                             {field.fieldType.value === 'RELATION' ? (
-                              <RelationFilterInput 
-                                field={field} 
-                                value={filterValues[field.name]} 
+                              <RelationFilterInput
+                                field={field}
+                                value={filterValues[field.name]}
                                 onChange={(val) => setFilterValues({ ...filterValues, [field.name]: val })}
                               />
                             ) : (
@@ -676,20 +676,20 @@ export function DataGrid({
                   })}
                 </div>
                 {activeFilters.length > 0 && (
-                   <div className="p-3 border-t border-border/10 bg-background/30 flex items-center justify-between">
-                      <span className="text-[10px] text-muted uppercase font-medium tracking-tight">Activo: {activeFilters.length} filtros</span>
-                      <Button 
-                        size="sm" 
-                        variant="ghost" 
-                        className="h-7 text-[10px] text-primary font-bold uppercase transition-transform active:scale-95"
-                        onClick={() => {
-                           // Trigger immediate sync if needed
-                           setFilterValues({ ...filterValues })
-                        }}
-                      >
-                        Actualizado
-                      </Button>
-                   </div>
+                  <div className="p-3 border-t border-border/10 bg-background/30 flex items-center justify-between">
+                    <span className="text-[10px] text-muted uppercase font-medium tracking-tight">Activo: {activeFilters.length} filtros</span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 text-[10px] text-primary font-bold uppercase transition-transform active:scale-95"
+                      onClick={() => {
+                        // Trigger immediate sync if needed
+                        setFilterValues({ ...filterValues })
+                      }}
+                    >
+                      Actualizado
+                    </Button>
+                  </div>
                 )}
               </PopoverContent>
             </Popover>
@@ -724,7 +724,7 @@ export function DataGrid({
       <div className="overflow-hidden bg-surface">
         <Table>
           <TableHeader>
-            <TableRow className="hover:bg-transparent border-b border-border/50">
+            <TableRow className="hover:bg-transparent">
               {fields.map((field) => (
                 <TableHead
                   key={field.id}
@@ -753,9 +753,8 @@ export function DataGrid({
                   {fields.map((field) => (
                     <TableCell
                       key={field.id}
-                      className={`py-4 px-4 font-normal text-sm ${
-                        BASIC_INLINE_TYPES.has(field.fieldType.value) ? 'cursor-pointer' : ''
-                      }`}
+                      className={`py-4 px-4 font-normal text-sm ${BASIC_INLINE_TYPES.has(field.fieldType.value) ? 'cursor-pointer' : ''
+                        }`}
                       onDoubleClick={() => startInlineEdit(record, field)}
                     >
                       {renderCellValue(record, field)}

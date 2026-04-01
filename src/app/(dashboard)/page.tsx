@@ -70,7 +70,7 @@ export default function DashboardPage() {
       </div>
 
       {/* AI Banner */}
-      <div className="rounded-2xl p-8 relative overflow-hidden mt-8 bg-surface">
+      <div className="rounded-2xl p-8 relative overflow-hidden mt-8 bg-surface dark:bg-surface-hover dark:ring-1 dark:ring-white/5">
         {/* Accent line top */}
         <div className="absolute top-0 left-8 right-8 h-px from-transparent via-primary/40 to-transparent" />
 
@@ -108,7 +108,7 @@ function StatCard({
   title: string; value: string; icon: React.ReactNode; trend: string
 }) {
   return (
-    <div className="rounded-xl p-5 group transition-all duration-200 hover:-translate-y-0.5 bg-surface">
+    <div className="rounded-xl p-5 group transition-all duration-200 hover:-translate-y-0.5 bg-surface dark:bg-surface-hover dark:ring-1 dark:ring-white/5">
       <div className="flex items-center justify-between mb-5">
         <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-primary/10 text-primary">
           {icon}
@@ -135,7 +135,7 @@ function QuickAction({
   return (
     <Link
       href={href}
-      className="group block rounded-xl p-5 transition-all duration-200 hover:-translate-y-0.5 bg-surface"
+      className="group block rounded-xl p-5 transition-all duration-200 hover:-translate-y-0.5 bg-surface dark:bg-surface-hover dark:ring-1 dark:ring-white/5"
     >
       <div className="flex items-start gap-4">
         <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-105 bg-primary/10 text-primary">

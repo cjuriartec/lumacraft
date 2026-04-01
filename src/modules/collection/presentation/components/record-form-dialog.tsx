@@ -14,6 +14,7 @@ import {
 } from '@/shared/presentation/components/ui/dialog'
 import { Button } from '@/shared/presentation/components/ui/button'
 import { Input } from '@/shared/presentation/components/ui/input'
+import { Textarea } from '@/shared/presentation/components/ui/textarea'
 import { Label } from '@/shared/presentation/components/ui/label'
 import { Switch } from '@/shared/presentation/components/ui/switch'
 import {
@@ -413,6 +414,36 @@ export function RecordFormDialog({
             />
           </div>
         )
+
+      case 'TEXT': {
+        const textCfg = (config?.value ?? {}) as { placeholder?: string; multiline?: boolean }
+        const placeholder = textCfg.placeholder || ''
+        if (textCfg.multiline) {
+          return (
+            <div className="space-y-2">
+              <Label htmlFor={name} className="text-muted">{displayName || name}</Label>
+              <Textarea
+                id={name}
+                rows={4}
+                className="bg-background border-border text-foreground placeholder:text-muted/40 resize-y min-h-[100px]"
+                placeholder={placeholder}
+                {...form.register(name)}
+              />
+            </div>
+          )
+        }
+        return (
+          <div className="space-y-2">
+            <Label htmlFor={name} className="text-muted">{displayName || name}</Label>
+            <Input
+              id={name}
+              className="bg-background border-border text-foreground placeholder:text-muted/40"
+              placeholder={placeholder}
+              {...form.register(name)}
+            />
+          </div>
+        )
+      }
 
       case 'DATE':
         return (

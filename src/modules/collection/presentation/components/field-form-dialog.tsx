@@ -8,6 +8,7 @@ import { AlertCircle, Search, Plus, X } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogDescription,
@@ -29,6 +30,54 @@ import { TagInput } from '@/shared/presentation/components/ui/tag-input'
 import { Field } from '../../domain/entities/field.entity'
 import { useMimeTypes } from '../hooks/use-mime-types'
 import { cn } from '@/shared/lib/utils'
+
+const inputFieldClass = cn(
+  'h-10 rounded-lg border-border bg-foreground/5 text-foreground text-sm shadow-none transition-colors',
+  'placeholder:font-light focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/20',
+)
+
+const selectTriggerClass = cn(
+  'h-10 rounded-lg border-border bg-foreground/5 text-foreground text-sm shadow-none transition-colors',
+  'focus:ring-2 focus:ring-primary/20',
+)
+
+function FormSection({
+  title,
+  children,
+  className,
+}: {
+  title: string
+  children: React.ReactNode
+  className?: string
+}) {
+  return (
+    <section className={cn('pt-2', className)}>
+      <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground/70 mb-4">{title}</h3>
+      <div className="space-y-4">{children}</div>
+    </section>
+  )
+}
+
+function SwitchRow({
+  id,
+  label,
+  checked,
+  onCheckedChange,
+}: {
+  id: string
+  label: string
+  checked: boolean
+  onCheckedChange: (v: boolean) => void
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-xl border border-border/30 bg-foreground/[0.02] px-4 py-3 transition-colors hover:bg-foreground/5">
+      <Label htmlFor={id} className="cursor-pointer text-[12px] font-medium text-foreground/80">
+        {label}
+      </Label>
+      <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} className="shrink-0" />
+    </div>
+  )
+}
 
 const fieldSchema = z.object({
   name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres').regex(/^[a-z0-9_]+$/, 'Solo minúsculas, números y guiones bajos'),
@@ -93,6 +142,14 @@ export function FieldFormDialog({
   }, [open, field, form])
 
   const selectedType = form.watch('fieldType')
+  const config = (form.watch('config') as Record<string, any>) || {}
+
+  const updateConfig = (updates: Record<string, any>) => {
+    form.setValue('config', {
+      ...((form.getValues('config') as Record<string, any>) || {}),
+      ...updates,
+    })
+  }
 
   const handleSubmit = async (values: FieldFormValues) => {
     setLoading(true)
@@ -111,527 +168,514 @@ export function FieldFormDialog({
     }
   }
 
-  const addMimeType = (mime: string) => {
-    const current = (form.getValues('config') as any)?.allowedMimeTypes || []
-    if (!current.includes(mime)) {
-      form.setValue('config', { ...form.getValues('config'), allowedMimeTypes: [...current, mime] })
-    }
-  }
-
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {children || <Button variant="outline">Añadir Campo</Button>}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px] bg-surface border-border overflow-y-auto max-h-[90vh]">
-        <DialogHeader>
-          <DialogTitle className="text-foreground">
-            {field ? 'Editar Campo' : 'Nuevo Campo'}
+      <DialogContent
+        className={cn(
+          'flex max-h-[min(90vh,720px)] w-[calc(100vw-1.25rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[480px]',
+          'rounded-2xl border-none bg-surface shadow-[0_32px_64px_rgba(0,0,0,0.6)]'
+        )}
+      >
+        <DialogHeader className="shrink-0 px-6 pt-6 pb-2 text-left">
+          <DialogTitle className="text-xl font-bold tracking-[-0.01em] text-foreground">
+            {field ? 'Editar campo' : 'Nuevo campo'}
           </DialogTitle>
-          <DialogDescription className="text-muted text-xs">
-            {field ? 'Modifica la estructura de este campo.' : 'Define un nuevo campo para tu esquema de datos.'}
+          <DialogDescription className="font-light text-sm text-foreground/70">
+            {field ? 'Modifica los atributos del campo.' : 'Configura un nuevo campo para el motor de datos.'}
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 py-4">
-          {error && (
-            <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center gap-2 text-red-500 text-xs animate-in fade-in slide-in-from-top-1">
-              <AlertCircle size={14} className="shrink-0" />
-              <p>{error}</p>
-            </div>
-          )}
-          <div className="space-y-2">
-            <Label htmlFor="displayName" className="text-muted">Nombre Visible</Label>
-            <Input
-              id="displayName"
-              placeholder="Ej: Nombre del Cliente"
-              className="bg-background border-border text-foreground"
-              {...form.register('displayName')}
-              onChange={(e) => {
-                form.setValue('displayName', e.target.value)
-                if (!field) {
-                  const slug = e.target.value
-                    .toLowerCase()
-                    .replace(/ /g, '_')
-                    .replace(/[^\w-]+/g, '')
-                  form.setValue('name', slug)
-                }
-              }}
-            />
-            {form.formState.errors.displayName && (
-              <p className="text-xs text-red-500">{form.formState.errors.displayName.message}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="name" className="text-muted">ID del Campo (API)</Label>
-            <Input
-              id="name"
-              placeholder="ej_nombre_cliente"
-              disabled={!!field}
-              className="bg-background border-border text-foreground"
-              {...form.register('name')}
-            />
-            {form.formState.errors.name && (
-              <p className="text-xs text-red-500">{form.formState.errors.name.message}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-muted">Tipo de Dato</Label>
-            <Select
-              disabled={!!field}
-              value={form.watch('fieldType')}
-              onValueChange={(val) => form.setValue('fieldType', val as any)}
-            >
-              <SelectTrigger className="bg-background border-border text-foreground">
-                <SelectValue placeholder="Selecciona un tipo" />
-              </SelectTrigger>
-              <SelectContent className="bg-surface border-border text-foreground font-poppins">
-                <SelectItem value="TEXT">Texto</SelectItem>
-                <SelectItem value="NUMBER">Número</SelectItem>
-                <SelectItem value="BOOLEAN">Booleano (Sí/No)</SelectItem>
-                <SelectItem value="DATE">Fecha</SelectItem>
-                <SelectItem value="ENUM">Selección (Enum)</SelectItem>
-                <SelectItem value="RELATION">Relación</SelectItem>
-                <SelectItem value="FILE">Archivo</SelectItem>
-                <SelectItem value="LOCATION">Ubicación</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          {selectedType === 'TEXT' && (
-            <div className="space-y-4 rounded-xl border border-border/30 p-4">
-              <div className="space-y-2">
-                <Label className="text-muted">Placeholder (Ejemplo)</Label>
-                <Input
-                  value={String((form.watch('config') as any)?.placeholder || '')}
-                  onChange={(e) =>
-                    form.setValue('config', {
-                      ...(form.getValues('config') as object),
-                      placeholder: e.target.value,
-                    })
-                  }
-                  placeholder="ej: Juan Pérez"
-                  className="bg-background border-border text-foreground"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-muted text-[10px] uppercase">Mínimo (Caracteres)</Label>
-                  <Input
-                    type="number"
-                    value={String((form.watch('config') as any)?.minLength || '')}
-                    onChange={(e) =>
-                      form.setValue('config', {
-                        ...(form.getValues('config') as object),
-                        minLength: e.target.value ? parseInt(e.target.value) : undefined,
-                      })
-                    }
-                    placeholder="0"
-                    className="bg-background border-border text-foreground h-8 text-xs"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-muted text-[10px] uppercase">Máximo (Caracteres)</Label>
-                  <Input
-                    type="number"
-                    value={String((form.watch('config') as any)?.maxLength || '')}
-                    onChange={(e) =>
-                      form.setValue('config', {
-                        ...(form.getValues('config') as object),
-                        maxLength: e.target.value ? parseInt(e.target.value) : undefined,
-                      })
-                    }
-                    placeholder="255"
-                    className="bg-background border-border text-foreground h-8 text-xs"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {selectedType === 'NUMBER' && (
-            <div className="space-y-4 rounded-xl border border-border/30 p-4">
-              <div className="space-y-2">
-                <Label className="text-muted">Placeholder (Ejemplo)</Label>
-                <Input
-                  value={String((form.watch('config') as any)?.placeholder || '')}
-                  onChange={(e) =>
-                    form.setValue('config', {
-                      ...(form.getValues('config') as object),
-                      placeholder: e.target.value,
-                    })
-                  }
-                  placeholder="ej: 100"
-                  className="bg-background border-border text-foreground"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-muted text-[10px] uppercase">Valor Mínimo</Label>
-                  <Input
-                    type="number"
-                    value={String((form.watch('config') as any)?.min || '')}
-                    onChange={(e) =>
-                      form.setValue('config', {
-                        ...(form.getValues('config') as object),
-                        min: e.target.value ? Number(e.target.value) : undefined,
-                      })
-                    }
-                    placeholder="0"
-                    className="bg-background border-border text-foreground h-8 text-xs"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-muted text-[10px] uppercase">Valor Máximo</Label>
-                  <Input
-                    type="number"
-                    value={String((form.watch('config') as any)?.max || '')}
-                    onChange={(e) =>
-                      form.setValue('config', {
-                        ...(form.getValues('config') as object),
-                        max: e.target.value ? Number(e.target.value) : undefined,
-                      })
-                    }
-                    placeholder="1000"
-                    className="bg-background border-border text-foreground h-8 text-xs"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-          {selectedType === 'ENUM' && (
-            <div className="space-y-3">
-              <Label className="text-muted flex justify-between">
-                <span>Opciones del Enum</span>
-                <span className="text-[10px] opacity-40">ENTER o COMA para añadir</span>
-              </Label>
-              <TagInput
-                value={(form.watch('config') as any)?.options || []}
-                onChange={(options) => {
-                  form.setValue('config', { ...form.getValues('config'), options })
-                }}
-                placeholder="Añade opciones..."
-              />
-            </div>
-          )}
-
-          {selectedType === 'RELATION' && (
-            <div className="space-y-3 rounded-xl border border-border/30 p-3">
-              <div className="space-y-2">
-                <Label className="text-muted">Colección Destino</Label>
-                <Select
-                  value={String((form.watch('config') as any)?.targetCollectionId || '')}
-                  onValueChange={(value) =>
-                    form.setValue('config', {
-                      ...form.getValues('config'),
-                      targetCollectionId: value,
-                    })
-                  }
+        <form onSubmit={form.handleSubmit(handleSubmit)} className="flex min-h-0 flex-1 flex-col">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-2">
+            <div className="space-y-4">
+              {error && (
+                <div
+                  role="alert"
+                  className="flex items-start gap-2 rounded-lg border border-red-500/20 bg-red-500/8 p-3 text-sm text-red-600 dark:text-red-400"
                 >
-                  <SelectTrigger className="bg-background border-border text-foreground">
-                    <SelectValue placeholder="Selecciona una colección" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-surface border-border text-foreground">
-                    {availableCollections.map((collection) => (
-                      <SelectItem key={collection.id} value={collection.id}>
-                        {collection.displayName || collection.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-muted">Tipo de Relación</Label>
-                <Select
-                  value={String((form.watch('config') as any)?.relationType || '')}
-                  onValueChange={(value) =>
-                    form.setValue('config', {
-                      ...form.getValues('config'),
-                      relationType: value,
-                      allowMultiple: value !== 'ONE_TO_ONE',
-                      displayField: (form.getValues('config') as any)?.displayField || 'id',
-                    })
-                  }
-                >
-                  <SelectTrigger className="bg-background border-border text-foreground">
-                    <SelectValue placeholder="Selecciona cardinalidad" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-surface border-border text-foreground">
-                    <SelectItem value="ONE_TO_ONE">1:1</SelectItem>
-                    <SelectItem value="ONE_TO_MANY">1:N</SelectItem>
-                    <SelectItem value="MANY_TO_MANY">N:M</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-
-
-            </div>
-          )}
-
-          {selectedType === 'FILE' && (
-            <div className="space-y-3 rounded-xl border border-border/30 p-3">
-              <div className="space-y-2">
-                <Label htmlFor="maxSizeBytes" className="text-muted text-xs">Tamaño máximo (MB)</Label>
-                <Input
-                  id="maxSizeBytes"
-                  type="number"
-                  min={1}
-                  placeholder="10"
-                  className="bg-background border-border text-foreground h-9"
-                  value={
-                    ((form.watch('config') as any)?.maxSizeBytes
-                      ? Number((form.watch('config') as any)?.maxSizeBytes) / (1024 * 1024)
-                      : '') as any
-                  }
-                  onChange={(e) => {
-                    const mb = e.target.value ? Number(e.target.value) : undefined
-                    form.setValue('config', {
-                      ...form.getValues('config'),
-                      maxSizeBytes: mb ? Math.round(mb * 1024 * 1024) : undefined,
-                    })
-                  }}
-                />
-              </div>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label className="text-muted text-xs">Mime types permitidos</Label>
-                  <span className="text-[10px] text-primary/60 font-medium">Solo formatos maestros</span>
+                  <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                  <p>{error}</p>
                 </div>
+              )}
 
-                <div className="relative">
-                  <Search size={12} className="absolute left-2.5 top-2.5 text-muted opacity-50" />
+              <FormSection title="Datos base">
+                <div className="space-y-2">
+                  <Label htmlFor="displayName" className="text-[11px] font-semibold uppercase text-foreground/70 flex justify-between">
+                    <span>Nombre visible</span>
+                    {form.formState.errors.displayName && (
+                      <span className="text-red-400 normal-case tracking-normal">{form.formState.errors.displayName.message}</span>
+                    )}
+                  </Label>
                   <Input
-                    placeholder="Buscar formato... (ej: png)"
-                    className="h-8 pl-8 text-[11px] bg-background/50 border-border/20 mb-2"
+                    id="displayName"
+                    placeholder="ej: Nombre del Cliente"
+                    className={cn(inputFieldClass, form.formState.errors.displayName && 'border-red-400/50')}
+                    {...form.register('displayName')}
                     onChange={(e) => {
-                      // We can filter the display list
-                      const term = e.target.value.toLowerCase()
-                      const filtered = mimeTypes.filter(m =>
-                        m.label.toLowerCase().includes(term) ||
-                        m.value.toLowerCase().includes(term) ||
-                        m.extension?.toLowerCase().includes(term)
-                      )
-                      // Local state for search only
-                      setMimeSearch(term)
+                      form.setValue('displayName', e.target.value)
+                      if (!field) {
+                        const slug = e.target.value
+                          .toLowerCase()
+                          .replace(/ /g, '_')
+                          .replace(/[^\w-]+/g, '')
+                        form.setValue('name', slug)
+                      }
                     }}
                   />
                 </div>
 
-                <div className="max-h-48 overflow-y-auto rounded-xl border border-border/20 bg-foreground/5 p-2 space-y-1 scrollbar-thin">
-                  {loadingMimeTypes ? (
-                    <div className="py-8 text-center animate-pulse text-[10px] text-muted font-medium uppercase tracking-widest">Cargando catálogo...</div>
-                  ) : (
-                    mimeTypes
-                      .filter(m => !mimeSearch || m.label.toLowerCase().includes(mimeSearch) || m.value.toLowerCase().includes(mimeSearch))
-                      .map((mime) => {
-                        const isSelected = ((form.watch('config') as any)?.allowedMimeTypes || []).includes(mime.value)
-                        return (
-                          <button
-                            key={mime.value}
-                            type="button"
-                            onClick={() => {
-                              const current = (form.getValues('config') as any)?.allowedMimeTypes || []
-                              const next = isSelected
-                                ? current.filter((v: string) => v !== mime.value)
-                                : [...current, mime.value]
-                              form.setValue('config', { ...form.getValues('config'), allowedMimeTypes: next })
-                            }}
-                            className={cn(
-                              "w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-all",
-                              isSelected
-                                ? "bg-primary/10 text-primary border border-primary/20"
-                                : "hover:bg-surface-hover/20 text-muted-foreground/80 border border-transparent"
-                            )}
-                          >
-                            <div className="flex flex-col">
-                              <span className="text-[11px] font-bold uppercase tracking-tight">{mime.label}</span>
-                              <span className="text-[9px] opacity-60 font-mono">{mime.value}</span>
-                            </div>
-                            {isSelected ? (
-                              <div className="h-4 w-4 rounded-full bg-primary flex items-center justify-center">
-                                <Plus size={10} className="text-background rotate-45" />
-                              </div>
-                            ) : (
-                              <Plus size={12} className="opacity-0 group-hover:opacity-40" />
-                            )}
-                          </button>
-                        )
-                      })
-                  )}
-                  {mimeTypes.length > 0 && mimeTypes.filter(m => !mimeSearch || m.label.toLowerCase().includes(mimeSearch) || m.value.toLowerCase().includes(mimeSearch)).length === 0 && (
-                    <div className="py-6 text-center text-[10px] text-muted italic">No se encontraron formatos.</div>
-                  )}
+                <div className="space-y-2">
+                  <Label htmlFor="name" className="text-[11px] font-semibold uppercase text-foreground/70 flex justify-between">
+                    <span>ID Técnico</span>
+                    {form.formState.errors.name && (
+                      <span className="text-red-400 normal-case tracking-normal">{form.formState.errors.name.message}</span>
+                    )}
+                  </Label>
+                  <Input
+                    id="name"
+                    placeholder="ej_nombre_cliente"
+                    disabled={!!field}
+                    className={cn(inputFieldClass, 'font-mono text-xs', field && 'opacity-60 cursor-not-allowed', form.formState.errors.name && 'border-red-400/50')}
+                    {...form.register('name')}
+                  />
                 </div>
 
-                {((form.watch('config') as any)?.allowedMimeTypes || []).length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-border/10">
-                    {((form.watch('config') as any)?.allowedMimeTypes || []).map((mValue: string) => {
-                      const match = mimeTypes.find(mt => mt.value === mValue)
-                      return (
-                        <Badge key={mValue} variant="secondary" className="bg-primary/5 text-primary border-primary/10 text-[9px] py-0 px-2 h-5">
-                          {match?.extension || mValue.split('/')[1]}
-                          <button
-                            onClick={() => {
-                              const next = (form.getValues('config') as any)?.allowedMimeTypes.filter((v: string) => v !== mValue)
-                              form.setValue('config', { ...form.getValues('config'), allowedMimeTypes: next })
-                            }}
-                            className="ml-1 hover:text-red-400"
-                          >
-                            <X size={10} />
-                          </button>
-                        </Badge>
-                      )
-                    })}
+                <div className="space-y-2">
+                  <Label className="text-[11px] font-semibold uppercase text-foreground/70">Tipo de dato</Label>
+                  <Select
+                    disabled={!!field}
+                    value={form.watch('fieldType')}
+                    onValueChange={(val) => form.setValue('fieldType', val as any)}
+                  >
+                    <SelectTrigger className={selectTriggerClass}>
+                      <SelectValue placeholder="Tipo" />
+                    </SelectTrigger>
+                    <SelectContent className="border-border bg-surface font-poppins text-foreground">
+                      <SelectItem value="TEXT">Texto</SelectItem>
+                      <SelectItem value="NUMBER">Número</SelectItem>
+                      <SelectItem value="BOOLEAN">Sí / No</SelectItem>
+                      <SelectItem value="DATE">Fecha</SelectItem>
+                      <SelectItem value="ENUM">Lista (enum)</SelectItem>
+                      <SelectItem value="RELATION">Relación</SelectItem>
+                      <SelectItem value="FILE">Archivo</SelectItem>
+                      <SelectItem value="LOCATION">Ubicación</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </FormSection>
+              {selectedType === 'TEXT' && (
+                <FormSection title="Texto">
+                  <SwitchRow
+                    id="text-multiline"
+                    label="Multilínea"
+                    checked={!!config.multiline}
+                    onCheckedChange={(checked) => updateConfig({ multiline: checked })}
+                  />
+                  <div className="space-y-2">
+                    <Label className="text-[11px] font-semibold uppercase text-foreground/70">Placeholder</Label>
+                    <Input
+                      value={String(config.placeholder || '')}
+                      onChange={(e) => updateConfig({ placeholder: e.target.value })}
+                      placeholder="Ej: Texto de ayuda opcional"
+                      className={inputFieldClass}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-[11px] font-semibold uppercase text-foreground/70">
+                        Mín. caracteres
+                      </Label>
+                      <Input
+                        type="number"
+                        value={String(config.minLength || '')}
+                        onChange={(e) => updateConfig({ minLength: e.target.value ? parseInt(e.target.value) : undefined })}
+                        placeholder="—"
+                        className={inputFieldClass}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-[11px] font-semibold uppercase text-foreground/70">
+                        Máx. caracteres
+                      </Label>
+                      <Input
+                        type="number"
+                        value={String(config.maxLength || '')}
+                        onChange={(e) => updateConfig({ maxLength: e.target.value ? parseInt(e.target.value) : undefined })}
+                        placeholder="255"
+                        className={inputFieldClass}
+                      />
+                    </div>
+                  </div>
+                </FormSection>
+              )}
+
+              {selectedType === 'NUMBER' && (
+                <FormSection title="Número">
+                  <div className="space-y-2">
+                    <Label className="text-[11px] font-semibold uppercase text-foreground/70">Placeholder</Label>
+                    <Input
+                      value={String(config.placeholder || '')}
+                      onChange={(e) => updateConfig({ placeholder: e.target.value })}
+                      placeholder="Opcional"
+                      className={inputFieldClass}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-[11px] font-semibold uppercase text-foreground/70">
+                        Mínimo
+                      </Label>
+                      <Input
+                        type="number"
+                        value={String(config.min || '')}
+                        onChange={(e) => updateConfig({ min: e.target.value ? Number(e.target.value) : undefined })}
+                        placeholder="—"
+                        className={inputFieldClass}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-[11px] font-semibold uppercase text-foreground/70">
+                        Máximo
+                      </Label>
+                      <Input
+                        type="number"
+                        value={String(config.max || '')}
+                        onChange={(e) => updateConfig({ max: e.target.value ? Number(e.target.value) : undefined })}
+                        placeholder="—"
+                        className={inputFieldClass}
+                      />
+                    </div>
+                  </div>
+                </FormSection>
+              )}
+
+              {selectedType === 'ENUM' && (
+                <FormSection title="Opciones">
+                  <TagInput
+                    value={config.options || []}
+                    onChange={(options) => updateConfig({ options })}
+                    placeholder="Enter o coma"
+                  />
+                </FormSection>
+              )}
+
+              {selectedType === 'RELATION' && (
+                <FormSection title="Relación">
+                  <div className="space-y-2">
+                    <Label className="text-[11px] font-semibold uppercase text-foreground/70">Colección Destino</Label>
+                    <Select
+                      value={String(config.targetCollectionId || '')}
+                      onValueChange={(value) => updateConfig({ targetCollectionId: value })}
+                    >
+                      <SelectTrigger className={selectTriggerClass}>
+                        <SelectValue placeholder="—" />
+                      </SelectTrigger>
+                      <SelectContent className="border-border bg-surface text-foreground">
+                        {availableCollections.map((collection) => (
+                          <SelectItem key={collection.id} value={collection.id}>
+                            {collection.displayName || collection.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-[11px] font-semibold uppercase text-foreground/70">Cardinalidad</Label>
+                    <Select
+                      value={String(config.relationType || '')}
+                      onValueChange={(value) =>
+                        updateConfig({
+                          relationType: value,
+                          allowMultiple: value !== 'ONE_TO_ONE',
+                          displayField: ((form.getValues('config') as any)?.displayField) || 'id',
+                        })
+                      }
+                    >
+                      <SelectTrigger className={selectTriggerClass}>
+                        <SelectValue placeholder="—" />
+                      </SelectTrigger>
+                      <SelectContent className="border-border bg-surface text-foreground">
+                        <SelectItem value="ONE_TO_ONE">1:1</SelectItem>
+                        <SelectItem value="ONE_TO_MANY">1:N</SelectItem>
+                        <SelectItem value="MANY_TO_MANY">N:M</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </FormSection>
+              )}
+
+              {selectedType === 'FILE' && (
+                <FormSection title="Archivo">
+                  <div className="space-y-2">
+                    <Label htmlFor="maxSizeBytes" className="text-[11px] font-semibold uppercase text-foreground/70">
+                      Máx. MegaBytes
+                    </Label>
+                    <Input
+                      id="maxSizeBytes"
+                      type="number"
+                      min={1}
+                      placeholder="10"
+                      className={inputFieldClass}
+                      value={config.maxSizeBytes ? Number(config.maxSizeBytes) / (1024 * 1024) : ''}
+                      onChange={(e) => {
+                        const mb = e.target.value ? Number(e.target.value) : undefined
+                        updateConfig({ maxSizeBytes: mb ? Math.round(mb * 1024 * 1024) : undefined })
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[11px] font-semibold uppercase text-foreground/70">Tipos de Archivo (MIME)</Label>
+
+                    <div className="relative">
+                      <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40" />
+                      <Input
+                        placeholder="Buscar por extensión o nombre..."
+                        className={cn(inputFieldClass, 'h-10 pl-9')}
+                        onChange={(e) => {
+                          setMimeSearch(e.target.value.toLowerCase())
+                        }}
+                      />
+                    </div>
+
+                    <div className="max-h-40 space-y-0.5 overflow-y-auto rounded-lg border border-border/50 bg-surface-hover/50 p-1.5 dark:border-border/70 dark:bg-surface/90">
+                      {loadingMimeTypes ? (
+                        <div className="py-6 text-center text-[10px] text-muted animate-pulse">Cargando…</div>
+                      ) : (
+                        mimeTypes
+                          .filter(
+                            (m) =>
+                              !mimeSearch ||
+                              m.label.toLowerCase().includes(mimeSearch) ||
+                              m.value.toLowerCase().includes(mimeSearch) ||
+                              !!m.extension?.toLowerCase().includes(mimeSearch),
+                          )
+                          .map((mime) => {
+                            const isSelected = (config.allowedMimeTypes || []).includes(mime.value)
+                            return (
+                              <button
+                                key={mime.value}
+                                type="button"
+                                onClick={() => {
+                                  const current = ((form.getValues('config') as any)?.allowedMimeTypes || [])
+                                  const next = isSelected
+                                    ? current.filter((v: string) => v !== mime.value)
+                                    : [...current, mime.value]
+                                  updateConfig({ allowedMimeTypes: next })
+                                }}
+                                className={cn(
+                                  'group flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left transition-colors',
+                                  isSelected
+                                    ? 'border-primary/20 bg-primary/10 text-primary'
+                                    : 'border-transparent text-foreground/60 hover:bg-foreground/5 hover:text-foreground',
+                                )}
+                              >
+                                <div className="flex min-w-0 flex-col">
+                                  <span className="truncate text-[13px] font-medium text-foreground">{mime.label}</span>
+                                  <span className="truncate font-mono text-[10px] opacity-60">{mime.value}</span>
+                                </div>
+                                {isSelected ? (
+                                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-background">
+                                    <Plus size={12} className="rotate-45" />
+                                  </div>
+                                ) : (
+                                  <Plus
+                                    size={14}
+                                    className="shrink-0 opacity-0 transition-opacity group-hover:opacity-35"
+                                  />
+                                )}
+                              </button>
+                            )
+                          })
+                      )}
+                      {mimeTypes.length > 0 &&
+                        mimeTypes.filter(
+                          (m) =>
+                            !mimeSearch ||
+                            m.label.toLowerCase().includes(mimeSearch) ||
+                            m.value.toLowerCase().includes(mimeSearch) ||
+                            !!m.extension?.toLowerCase().includes(mimeSearch),
+                        ).length === 0 && (
+                          <div className="py-4 text-center text-[11px] text-muted">Vacío</div>
+                        )}
+                    </div>
+
+                    {(config.allowedMimeTypes || []).length > 0 && (
+                      <div className="flex flex-wrap gap-1 border-t border-border/40 pt-2">
+                        {(config.allowedMimeTypes || []).map((mValue: string) => {
+                          const match = mimeTypes.find((mt) => mt.value === mValue)
+                          return (
+                            <Badge
+                              key={mValue}
+                              variant="secondary"
+                              className="h-6 gap-1 border-primary/15 bg-primary/5 px-2 text-[10px] text-primary"
+                            >
+                              {match?.extension || mValue.split('/')[1]}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const current = ((form.getValues('config') as any)?.allowedMimeTypes || [])
+                                  const next = current.filter((v: string) => v !== mValue)
+                                  updateConfig({ allowedMimeTypes: next })
+                                }}
+                                className="ml-0.5 rounded-sm hover:text-red-500"
+                              >
+                                <X size={10} />
+                              </button>
+                            </Badge>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </FormSection>
+              )}
+
+              {selectedType === 'LOCATION' && (
+                <FormSection title="Ubicación">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="minLat" className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
+                        Lat. mín.
+                      </Label>
+                      <Input
+                        id="minLat"
+                        type="number"
+                        className={inputFieldClass}
+                        value={config.minLat ?? ''}
+                        onChange={(e) => updateConfig({ minLat: e.target.value === '' ? undefined : Number(e.target.value) })}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="maxLat" className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
+                        Lat. máx.
+                      </Label>
+                      <Input
+                        id="maxLat"
+                        type="number"
+                        className={inputFieldClass}
+                        value={config.maxLat ?? ''}
+                        onChange={(e) => updateConfig({ maxLat: e.target.value === '' ? undefined : Number(e.target.value) })}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="minLng" className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
+                        Lng. mín.
+                      </Label>
+                      <Input
+                        id="minLng"
+                        type="number"
+                        className={inputFieldClass}
+                        value={config.minLng ?? ''}
+                        onChange={(e) => updateConfig({ minLng: e.target.value === '' ? undefined : Number(e.target.value) })}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="maxLng" className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
+                        Lng. máx.
+                      </Label>
+                      <Input
+                        id="maxLng"
+                        type="number"
+                        className={inputFieldClass}
+                        value={config.maxLng ?? ''}
+                        onChange={(e) => updateConfig({ maxLng: e.target.value === '' ? undefined : Number(e.target.value) })}
+                      />
+                    </div>
+                  </div>
+                </FormSection>
+              )}
+
+              <FormSection
+                title="Comportamiento Adicional"
+                className="border-none"
+              >
+                {!['RELATION', 'FILE', 'LOCATION'].includes(selectedType) && (
+                  <div className="space-y-2">
+                    <Label htmlFor="defaultValue" className="text-[11px] font-semibold uppercase text-foreground/70">
+                      Valor por defecto
+                    </Label>
+                    {selectedType === 'BOOLEAN' ? (
+                      <Select
+                        value={form.watch('defaultValue')}
+                        onValueChange={(val) => form.setValue('defaultValue', val)}
+                      >
+                        <SelectTrigger className={selectTriggerClass}>
+                          <SelectValue placeholder="—" />
+                        </SelectTrigger>
+                        <SelectContent className="border-border bg-surface text-foreground rounded-lg">
+                          <SelectItem value="true">Sí</SelectItem>
+                          <SelectItem value="false">No</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : selectedType === 'ENUM' ? (
+                      <Select
+                        value={form.watch('defaultValue')}
+                        onValueChange={(val) => form.setValue('defaultValue', val)}
+                      >
+                        <SelectTrigger className={selectTriggerClass}>
+                          <SelectValue placeholder="—" />
+                        </SelectTrigger>
+                        <SelectContent className="border-border bg-surface text-foreground rounded-lg">
+                          {(config.options || []).map((opt: string) => (
+                            <SelectItem key={opt} value={opt}>
+                              {opt}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Input
+                        id="defaultValue"
+                        placeholder="Opcional"
+                        className={inputFieldClass}
+                        {...form.register('defaultValue')}
+                      />
+                    )}
                   </div>
                 )}
-              </div>
-            </div>
-          )}
 
-          {selectedType === 'LOCATION' && (
-            <div className="space-y-3 rounded-xl border border-border/30 p-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="minLat" className="text-muted text-xs">Lat mín</Label>
-                  <Input
-                    id="minLat"
-                    type="number"
-                    className="bg-background border-border text-foreground h-9"
-                    value={(form.watch('config') as any)?.minLat ?? ''}
-                    onChange={(e) =>
-                      form.setValue('config', {
-                        ...form.getValues('config'),
-                        minLat: e.target.value === '' ? undefined : Number(e.target.value),
-                      })
-                    }
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <SwitchRow
+                    id="isRequired"
+                    label="Obligatorio"
+                    checked={!!form.watch('isRequired')}
+                    onCheckedChange={(val) => form.setValue('isRequired', val)}
+                  />
+                  <SwitchRow
+                    id="isUnique"
+                    label="Único"
+                    checked={!!form.watch('isUnique')}
+                    onCheckedChange={(val) => form.setValue('isUnique', val)}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="maxLat" className="text-muted text-xs">Lat máx</Label>
-                  <Input
-                    id="maxLat"
-                    type="number"
-                    className="bg-background border-border text-foreground h-9"
-                    value={(form.watch('config') as any)?.maxLat ?? ''}
-                    onChange={(e) =>
-                      form.setValue('config', {
-                        ...form.getValues('config'),
-                        maxLat: e.target.value === '' ? undefined : Number(e.target.value),
-                      })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="minLng" className="text-muted text-xs">Lng mín</Label>
-                  <Input
-                    id="minLng"
-                    type="number"
-                    className="bg-background border-border text-foreground h-9"
-                    value={(form.watch('config') as any)?.minLng ?? ''}
-                    onChange={(e) =>
-                      form.setValue('config', {
-                        ...form.getValues('config'),
-                        minLng: e.target.value === '' ? undefined : Number(e.target.value),
-                      })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="maxLng" className="text-muted text-xs">Lng máx</Label>
-                  <Input
-                    id="maxLng"
-                    type="number"
-                    className="bg-background border-border text-foreground h-9"
-                    value={(form.watch('config') as any)?.maxLng ?? ''}
-                    onChange={(e) =>
-                      form.setValue('config', {
-                        ...form.getValues('config'),
-                        maxLng: e.target.value === '' ? undefined : Number(e.target.value),
-                      })
-                    }
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div className="space-y-4 pt-2 border-t border-border/10">
-            <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Configuración Avanzada</Label>
-
-            <div className="grid grid-cols-2 gap-4">
-            </div>
-
-            {!['RELATION', 'FILE', 'LOCATION'].includes(selectedType) && (
-              <div className="space-y-2">
-                <Label htmlFor="defaultValue" className="text-muted text-xs">Valor por Defecto</Label>
-                {selectedType === 'BOOLEAN' ? (
-                  <Select
-                    value={form.watch('defaultValue')}
-                    onValueChange={(val) => form.setValue('defaultValue', val)}
-                  >
-                    <SelectTrigger className="bg-background border-border text-foreground h-9">
-                      <SelectValue placeholder="Selecciona..." />
-                    </SelectTrigger>
-                    <SelectContent className="bg-surface border-border text-foreground">
-                      <SelectItem value="true">Verdadero (true)</SelectItem>
-                      <SelectItem value="false">Falso (false)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                ) : selectedType === 'ENUM' ? (
-                  <Select
-                    value={form.watch('defaultValue')}
-                    onValueChange={(val) => form.setValue('defaultValue', val)}
-                  >
-                    <SelectTrigger className="bg-background border-border text-foreground h-9">
-                      <SelectValue placeholder="Selecciona una opción..." />
-                    </SelectTrigger>
-                    <SelectContent className="bg-surface border-border text-foreground">
-                      {((form.watch('config') as any)?.options || []).map((opt: string) => (
-                        <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <Input
-                    id="defaultValue"
-                    placeholder="Ej: valor_inicial"
-                    className="bg-background border-border text-foreground h-9"
-                    {...form.register('defaultValue')}
-                  />
-                )}
-              </div>
-            )}
-
-            <div className="flex items-center justify-between space-x-2 bg-foreground/5 p-3 rounded-xl border border-border/5">
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="isRequired"
-                  checked={!!form.watch('isRequired')}
-                  onCheckedChange={(val) => form.setValue('isRequired', val)}
-                />
-                <Label htmlFor="isRequired" className="text-muted text-xs">Obligatorio</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="isUnique"
-                  checked={!!form.watch('isUnique')}
-                  onCheckedChange={(val) => form.setValue('isUnique', val)}
-                />
-                <Label htmlFor="isUnique" className="text-muted text-xs">Único</Label>
-              </div>
+              </FormSection>
             </div>
           </div>
 
-          <Button
-            type="submit"
-            className="w-full bg-primary text-background hover:bg-primary-hover"
-            disabled={loading}
-          >
-            {loading ? 'Guardando...' : field ? 'Actualizar' : 'Crear Campo'}
-          </Button>
+          <div className="shrink-0 bg-transparent px-6 py-4">
+            <DialogFooter className="flex-col gap-2 p-0 sm:flex-row sm:justify-end">
+              <Button
+                type="button"
+                variant="ghost"
+                className="text-foreground/60 hover:bg-foreground/5 hover:text-foreground font-semibold rounded-lg"
+                disabled={loading}
+                onClick={() => setOpen(false)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                className="w-full bg-primary font-semibold text-primary-foreground rounded-lg shadow-sm transition-all hover:bg-primary-hover hover:-translate-y-0.5 active:translate-y-0 sm:w-auto sm:min-w-[140px]"
+                disabled={loading}
+              >
+                {loading ? 'Guardando...' : field ? 'Guardar Cambios' : 'Crear Campo'}
+              </Button>
+            </DialogFooter>
+          </div>
         </form>
       </DialogContent>
     </Dialog>

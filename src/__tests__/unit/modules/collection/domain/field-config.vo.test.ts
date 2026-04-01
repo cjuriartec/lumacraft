@@ -29,6 +29,23 @@ describe('FieldConfig value object', () => {
     expect(config.fieldType).toBe('TEXT')
   })
 
+  it('accepts text config with multiline flag', () => {
+    const result = FieldConfig.create('TEXT', {
+      multiline: true,
+      maxLength: 2000,
+      placeholder: 'Notas…',
+    })
+
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.value.value).toEqual({
+        multiline: true,
+        maxLength: 2000,
+        placeholder: 'Notas…',
+      })
+    }
+  })
+
   it('accepts relation config for advanced relation fields', () => {
     const result = FieldConfig.create('RELATION', {
       targetCollectionId: '4f83f5eb-48ad-4c8f-aebb-f8030d7d32f9',

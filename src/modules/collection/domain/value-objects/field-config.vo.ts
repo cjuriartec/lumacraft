@@ -7,6 +7,7 @@ const textConfigSchema = z.object({
   minLength: z.number().int().min(0).optional(),
   maxLength: z.number().positive().optional(),
   placeholder: z.string().optional(),
+  multiline: z.boolean().optional(),
 })
 
 const numberConfigSchema = z.object({

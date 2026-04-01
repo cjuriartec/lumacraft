@@ -45,7 +45,7 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
   } = useRecords(collectionId)
   const { collections, updateCollection } = useCollections()
   const { loadStoredFilters, persistFilters } = useGridPersistence(collectionId)
-  
+
   const currentCollection = collections.find(c => c.id === collectionId)
 
   const [recordEditorOpen, setRecordEditorOpen] = useState(false)
@@ -154,7 +154,7 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="rounded-2xl bg-surface border border-border/5 overflow-hidden shadow-sm">
+              <div className="rounded-2xl bg-surface overflow-hidden shadow-xs">
                 <DataGrid
                   fields={fields}
                   records={records}
@@ -191,7 +191,7 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
                   </p>
                 </div>
                 <div className="w-full md:w-64">
-                   <Select
+                  <Select
                     value={currentCollection?.primaryFieldName || 'id'}
                     onValueChange={async (val: string) => {
                       if (currentCollection) {
@@ -201,17 +201,17 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
                         })
                       }
                     }}
-                   >
-                     <SelectTrigger className="bg-background border-border text-foreground">
-                       <SelectValue placeholder="Seleccionar campo principal" />
-                     </SelectTrigger>
-                     <SelectContent className="bg-surface border-border text-foreground">
-                        <SelectItem value="id">ID (Sistema)</SelectItem>
-                        {fields.map(f => (
-                          <SelectItem key={f.id} value={f.name}>{f.displayName || f.name}</SelectItem>
-                        ))}
-                     </SelectContent>
-                   </Select>
+                  >
+                    <SelectTrigger className="bg-surface-hover border-0 shadow-xs text-foreground">
+                      <SelectValue placeholder="Seleccionar campo principal" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-surface border-border text-foreground">
+                      <SelectItem value="id">ID (Sistema)</SelectItem>
+                      {fields.map(f => (
+                        <SelectItem key={f.id} value={f.name}>{f.displayName || f.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>

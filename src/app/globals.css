@@ -7,19 +7,19 @@
     --primary: #10b981;
     --primary-hover: #059669;
     --surface: #ffffff;
-    --surface-hover: #f1f5f9;
+    --surface-hover: #fafbfb;
     --muted: rgba(26, 30, 38, 0.45);
     --border: rgba(26, 30, 38, 0.05);
     --sidebar-bg: #ffffff;
   }
 
   .dark {
-    --background: #020403;
+    --background: #0f1312;
     --foreground: #e8f0ec;
     --primary: #10b981;
     --primary-hover: #059669;
     --surface: #060908;
-    --surface-hover: #0d1411;
+    --surface-hover: #181d1b;
     --muted: rgba(232, 240, 236, 0.45);
     --border: rgba(232, 240, 236, 0.04);
     --sidebar-bg: #060908;
@@ -54,13 +54,16 @@ body {
 ::-webkit-scrollbar {
   width: 5px;
 }
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
   background: var(--border);
   border-radius: 3px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: var(--muted);
 }
@@ -73,6 +76,6 @@ body {
 
 /* Focus ring override for our custom theme */
 *:focus-visible {
-  outline: 2px solid rgba(16,185,129,0.5);
+  outline: 2px solid rgba(16, 185, 129, 0.5);
   outline-offset: 2px;
 }

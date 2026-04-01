@@ -64,7 +64,7 @@ export default function CollectionsPage() {
           {collections.map((collection) => (
             <div
               key={collection.id}
-              className="group rounded-xl p-5 transition-all duration-200 hover:-translate-y-0.5 bg-surface"
+              className="group rounded-xl p-5 transition-all duration-200 hover:-translate-y-0.5 bg-surface dark:bg-surface-hover dark:ring-1 dark:ring-white/5"
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="w-10 h-10 rounded-lg flex items-center justify-center transition-transform duration-200 group-hover:scale-105 bg-primary/10 text-primary">
@@ -126,7 +126,7 @@ export default function CollectionsPage() {
 
           {/* Add new card */}
           <CreateCollectionDialog onSuccess={refresh}>
-            <div className="rounded-xl p-5 flex flex-col items-center justify-center gap-2.5 cursor-pointer transition-all duration-200 hover:-translate-y-0.5 min-h-[180px] bg-transparent hover:bg-surface/50">
+            <div className="rounded-xl p-5 flex flex-col items-center justify-center gap-2.5 cursor-pointer transition-all duration-200 hover:-translate-y-0.5 min-h-[180px] bg-transparent hover:bg-surface/50 dark:hover:bg-surface-hover/30">
               <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-primary/10 text-primary/50">
                 <Plus size={18} />
               </div>

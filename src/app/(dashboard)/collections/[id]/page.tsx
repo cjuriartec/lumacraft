@@ -36,10 +36,10 @@ export default async function Page({ params }: Props) {
   }
 
   return (
-    <div className="w-full max-w-5xl mx-auto py-10 px-8 h-full">
-      <CollectionDetailPage 
-        collectionId={id} 
-        collectionName={collection.display_name || collection.name} 
+    <div className="w-full max-w-7xl mx-auto py-10 px-8 h-full">
+      <CollectionDetailPage
+        collectionId={id}
+        collectionName={collection.display_name || collection.name}
       />
     </div>
   )
