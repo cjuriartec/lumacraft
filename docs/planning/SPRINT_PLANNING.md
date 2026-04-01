@@ -12,7 +12,7 @@ Este documento proyecta la ejecución de las Historias de Usuario (detalladas en
 * **US-2.01 (3 SP)**: CRUD básico de Colecciones (Backend y UI base). ✅
 * **Total**: 11 SP + Overhead de Setup y migración a Supabase Cloud.
 
-### **Sprint 2: El Motor de Datos (Data Engine)** 🔄 *En Progreso*
+### **Sprint 2: El Motor de Datos (Data Engine)** ✅ *Completado*
 *Objetivo: Los administradores pueden crear tablas completas y los editores ver los grids.*
 * **US-2.02 (8 SP)**: Añadir campos y validaciones JSONB a las colecciones.
   - Tipos soportados: `TEXT`, `NUMBER`, `BOOLEAN`, `DATE`, `ENUM`.
@@ -30,7 +30,7 @@ Este documento proyecta la ejecución de las Historias de Usuario (detalladas en
 > - Búsqueda y filtrado avanzado en el grid → Sprint 3.
 > - Tipos de campo `RELATION`, `FILE`, `LOCATION` → Sprint 3.
 
-### **Sprint 3: Relaciones, Tipos Avanzados y UX del Grid**
+### **Sprint 3: Relaciones, Tipos Avanzados y UX del Grid** ✅ *Completado*
 *Objetivo: Conectar entidades, completar los tipos de campo y mejorar la experiencia del Data Grid.*
 * **US-3.01 (5 SP)**: Configuración de tipos de relación (1:1, 1:N) en la base de datos.
   - Implementar campo tipo `RELATION` en el Field Manager.
@@ -42,9 +42,9 @@ Este documento proyecta la ejecución de las Historias de Usuario (detalladas en
 
 ---
 
-## 🔒 Iteración 2: Seguridad y Editor de Plantillas (Sprints 4-5)
+## 🔒 Iteración 2: Seguridad y Editor de Plantillas (Sprints 4-5) 🔄 *En Progreso*
 
-### **Sprint 4: Seguridad Zero-Trust y Contexto IA**
+### **Sprint 4: Seguridad Zero-Trust y Contexto IA** 🔄 *En Progreso*
 *Objetivo: El sistema debe acoplar los permisos implícitos y resolver relaciones para la IA.*
 * **US-4.02 (5 SP)**: Ocultar UI y asegurar accesos (RLS en PostgreSQL) basados en permisos CRUD de colecciones.
 * **US-4.03 (5 SP)**: Lógica de override y acceso de lectura implícito en tablas dependientes (RLS).
