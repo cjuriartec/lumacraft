@@ -1,11 +1,13 @@
 'use client'
 
 import { useAuth } from '@/modules/auth/presentation/providers/auth-provider'
+import { useBreadcrumbs } from '@/shared/presentation/providers/breadcrumb-provider'
 import { Database, FileText, TrendingUp, ArrowRight, Sparkles, Zap } from 'lucide-react'
 import Link from 'next/link'
 
 export default function DashboardPage() {
   const { user } = useAuth()
+  useBreadcrumbs([{ label: 'Inicio' }])
   const firstName = user?.fullName?.split(' ')[0] || 'de nuevo'
 
   return (

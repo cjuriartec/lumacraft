@@ -5,6 +5,7 @@ import { useFields } from '../hooks/use-fields'
 import { useRecords } from '../hooks/use-records'
 import { useCollections } from '../hooks/use-collections'
 import { useGridPersistence } from '../hooks/use-grid-persistence'
+import { useBreadcrumbs } from '@/shared/presentation/providers/breadcrumb-provider'
 import { FieldManager } from '../components/field-manager'
 import { DataGrid } from '../components/data-grid'
 import { RecordFormDialog } from '../components/record-form-dialog'
@@ -27,6 +28,10 @@ interface CollectionDetailPageProps {
 }
 
 export function CollectionDetailPage({ collectionId, collectionName }: CollectionDetailPageProps) {
+  useBreadcrumbs([
+    { label: 'Colecciones', href: '/collections' },
+    { label: collectionName },
+  ])
   const { fields, loading: loadingFields, createField, updateField, deleteField } = useFields(collectionId)
   const {
     records,

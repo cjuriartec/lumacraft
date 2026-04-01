@@ -2,11 +2,13 @@
 
 import { useCollections } from '../hooks/use-collections'
 import { CreateCollectionDialog } from '../components/create-collection-dialog'
+import { useBreadcrumbs } from '@/shared/presentation/providers/breadcrumb-provider'
 import { Database, Trash2, ExternalLink, Settings2, Clock, Plus } from 'lucide-react'
 import Link from 'next/link'
 
 export default function CollectionsPage() {
   const { collections, loading, deleteCollection, refresh } = useCollections()
+  useBreadcrumbs([{ label: 'Colecciones' }])
 
   if (loading) {
     return (
