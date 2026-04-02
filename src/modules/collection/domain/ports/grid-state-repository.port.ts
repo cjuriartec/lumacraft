@@ -1,4 +1,4 @@
-import { ColumnFilter } from '../types/pagination.types';
+import { ColumnFilter } from "../types/pagination.types";
 
 export interface GridFiltersState {
   filters: ColumnFilter[];

@@ -1,31 +1,38 @@
-'use client'
+"use client";
 
-import { useAuth } from '../providers/auth-provider'
+import { Check, Laptop, LogOut, Moon, Settings, Sun, User as UserIcon } from "lucide-react";
+import { useTheme } from "next-themes";
+
+import { Avatar, AvatarFallback, AvatarImage } from "@/shared/presentation/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuPortal,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
-  DropdownMenuPortal,
-} from '@/shared/presentation/components/ui/dropdown-menu'
-import { Avatar, AvatarFallback, AvatarImage } from '@/shared/presentation/components/ui/avatar'
-import { LogOut, User as UserIcon, Settings, Sun, Moon, Laptop, Check } from 'lucide-react'
-import { useTheme } from 'next-themes'
+  DropdownMenuTrigger,
+} from "@/shared/presentation/components/ui/dropdown-menu";
+
+import { useAuth } from "../providers/auth-provider";
 
 export default function UserMenu() {
-  const { user, signOut } = useAuth()
-  const { setTheme, theme } = useTheme()
+  const { user, signOut } = useAuth();
+  const { setTheme, theme } = useTheme();
 
-  if (!user) return null
+  if (!user) return null;
 
   const initials = user.fullName
-    ? user.fullName.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
-    : user.email.value[0].toUpperCase()
+    ? user.fullName
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2)
+    : user.email.value[0].toUpperCase();
 
   return (
     <DropdownMenu>
@@ -39,7 +46,7 @@ export default function UserMenu() {
           </Avatar>
           <div className="hidden md:flex flex-col text-left justify-center pl-1 gap-1">
             <p className="text-[13px] font-semibold leading-none text-foreground truncate max-w-[130px]">
-              {user.fullName || 'Usuario'}
+              {user.fullName || "Usuario"}
             </p>
           </div>
         </button>
@@ -58,7 +65,7 @@ export default function UserMenu() {
           </Avatar>
           <div className="flex flex-col space-y-0.5 min-w-0">
             <p className="text-sm font-semibold leading-none truncate text-foreground">
-              {user.fullName || 'Usuario'}
+              {user.fullName || "Usuario"}
             </p>
             <p className="text-[11px] leading-none truncate text-foreground/50">
               {user.email.value}
@@ -79,26 +86,41 @@ export default function UserMenu() {
 
         <DropdownMenuSub>
           <DropdownMenuSubTrigger className="rounded-lg gap-2.5 cursor-pointer text-sm py-2 px-2.5 transition-colors duration-150 text-foreground/75 hover:bg-foreground/5 hover:text-foreground focus:bg-foreground/5">
-            <Sun size={14} className="rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-            <Moon size={14} className="absolute rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+            <Sun
+              size={14}
+              className="rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0"
+            />
+            <Moon
+              size={14}
+              className="absolute rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100"
+            />
             Apariencia
           </DropdownMenuSubTrigger>
           <DropdownMenuPortal>
             <DropdownMenuSubContent className="bg-sidebar border-border/10">
-              <DropdownMenuItem onClick={() => setTheme('light')} className={`text-xs gap-2 ${theme === 'light' ? 'bg-primary/10 text-primary focus:bg-primary/10 focus:text-primary' : 'text-foreground/75 hover:text-foreground focus:text-foreground hover:bg-foreground/5 focus:bg-foreground/5'}`}>
+              <DropdownMenuItem
+                onClick={() => setTheme("light")}
+                className={`text-xs gap-2 ${theme === "light" ? "bg-primary/10 text-primary focus:bg-primary/10 focus:text-primary" : "text-foreground/75 hover:text-foreground focus:text-foreground hover:bg-foreground/5 focus:bg-foreground/5"}`}
+              >
                 <Sun size={14} />
                 Claro
-                {theme === 'light' && <Check size={14} className="ml-auto" />}
+                {theme === "light" && <Check size={14} className="ml-auto" />}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTheme('dark')} className={`text-xs gap-2 ${theme === 'dark' ? 'bg-primary/10 text-primary focus:bg-primary/10 focus:text-primary' : 'text-foreground/75 hover:text-foreground focus:text-foreground hover:bg-foreground/5 focus:bg-foreground/5'}`}>
+              <DropdownMenuItem
+                onClick={() => setTheme("dark")}
+                className={`text-xs gap-2 ${theme === "dark" ? "bg-primary/10 text-primary focus:bg-primary/10 focus:text-primary" : "text-foreground/75 hover:text-foreground focus:text-foreground hover:bg-foreground/5 focus:bg-foreground/5"}`}
+              >
                 <Moon size={14} />
                 Oscuro
-                {theme === 'dark' && <Check size={14} className="ml-auto" />}
+                {theme === "dark" && <Check size={14} className="ml-auto" />}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTheme('system')} className={`text-xs gap-2 ${theme === 'system' ? 'bg-primary/10 text-primary focus:bg-primary/10 focus:text-primary' : 'text-foreground/75 hover:text-foreground focus:text-foreground hover:bg-foreground/5 focus:bg-foreground/5'}`}>
+              <DropdownMenuItem
+                onClick={() => setTheme("system")}
+                className={`text-xs gap-2 ${theme === "system" ? "bg-primary/10 text-primary focus:bg-primary/10 focus:text-primary" : "text-foreground/75 hover:text-foreground focus:text-foreground hover:bg-foreground/5 focus:bg-foreground/5"}`}
+              >
                 <Laptop size={14} />
                 Sistema
-                {theme === 'system' && <Check size={14} className="ml-auto" />}
+                {theme === "system" && <Check size={14} className="ml-auto" />}
               </DropdownMenuItem>
             </DropdownMenuSubContent>
           </DropdownMenuPortal>
@@ -115,5 +137,5 @@ export default function UserMenu() {
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-  )
+  );
 }

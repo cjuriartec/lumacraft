@@ -1,20 +1,21 @@
-import { IFieldRepository } from '../../domain/ports/field-repository.port'
-import { Field } from '../../domain/entities/field.entity'
-import { FieldType } from '../../domain/value-objects/field-type.vo'
-import { FieldConfig } from '../../domain/value-objects/field-config.vo'
-import { Result, ok, fail } from '@/shared/domain/result'
+import { fail, Result } from "@/shared/domain/result";
+
+import { Field } from "../../domain/entities/field.entity";
+import { IFieldRepository } from "../../domain/ports/field-repository.port";
+import { FieldConfig } from "../../domain/value-objects/field-config.vo";
+import { FieldType } from "../../domain/value-objects/field-type.vo";
 
 export interface CreateFieldRequest {
-  collectionId: string
-  name: string
-  displayName?: string
-  description?: string
-  fieldType: string
-  isRequired?: boolean
-  isUnique?: boolean
-  defaultValue?: string
-  config?: Record<string, unknown>
-  sortOrder?: number
+  collectionId: string;
+  name: string;
+  displayName?: string;
+  description?: string;
+  fieldType: string;
+  isRequired?: boolean;
+  isUnique?: boolean;
+  defaultValue?: string;
+  config?: Record<string, unknown>;
+  sortOrder?: number;
 }
 
 export class CreateFieldUseCase {
@@ -22,15 +23,15 @@ export class CreateFieldUseCase {
 
   async execute(request: CreateFieldRequest): Promise<Result<Field>> {
     // 1. Validate field type
-    const fieldTypeRes = FieldType.create(request.fieldType)
-    if (!fieldTypeRes.ok) return fail(fieldTypeRes.error)
+    const fieldTypeRes = FieldType.create(request.fieldType);
+    if (!fieldTypeRes.ok) return fail(fieldTypeRes.error);
 
     // 2. Validate config
-    const fieldConfigRes = FieldConfig.create(fieldTypeRes.value.value, request.config || {})
-    if (!fieldConfigRes.ok) return fail(fieldConfigRes.error)
+    const fieldConfigRes = FieldConfig.create(fieldTypeRes.value.value, request.config || {});
+    if (!fieldConfigRes.ok) return fail(fieldConfigRes.error);
 
     // 3. Create entity
-    const field = new Field({
+    const result = Field.create({
       id: crypto.randomUUID(),
       collectionId: request.collectionId,
       name: request.name,
@@ -42,9 +43,13 @@ export class CreateFieldUseCase {
       defaultValue: request.defaultValue,
       config: fieldConfigRes.value,
       sortOrder: request.sortOrder,
-    })
+    });
+
+    if (!result.ok) {
+      return result;
+    }
 
     // 4. Persistence
-    return this.fieldRepository.create(field)
+    return this.fieldRepository.create(result.value);
   }
 }

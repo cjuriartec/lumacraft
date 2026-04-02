@@ -1,62 +1,67 @@
-'use client'
+"use client";
 
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
-import { useState, useEffect } from 'react'
-import { AlertCircle, Search, Plus, X } from 'lucide-react'
-import { Textarea } from '@/shared/presentation/components/ui/textarea'
+import { zodResolver } from "@hookform/resolvers/zod";
+import { AlertCircle, Plus, Search, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+
+import { Result } from "@/shared/domain/result";
+import { cn } from "@/shared/lib/utils";
+import { Badge } from "@/shared/presentation/components/ui/badge";
+import { Button } from "@/shared/presentation/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
   DialogTrigger,
-} from '@/shared/presentation/components/ui/dialog'
-import { Button } from '@/shared/presentation/components/ui/button'
-import { Input } from '@/shared/presentation/components/ui/input'
-import { Label } from '@/shared/presentation/components/ui/label'
-import { Switch } from '@/shared/presentation/components/ui/switch'
-import { Badge } from '@/shared/presentation/components/ui/badge'
+} from "@/shared/presentation/components/ui/dialog";
+import { Input } from "@/shared/presentation/components/ui/input";
+import { Label } from "@/shared/presentation/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/shared/presentation/components/ui/select'
-import { TagInput } from '@/shared/presentation/components/ui/tag-input'
-import { Field } from '../../domain/entities/field.entity'
-import { useMimeTypes } from '../hooks/use-mime-types'
-import { cn } from '@/shared/lib/utils'
+} from "@/shared/presentation/components/ui/select";
+import { Switch } from "@/shared/presentation/components/ui/switch";
+import { TagInput } from "@/shared/presentation/components/ui/tag-input";
+import { Textarea } from "@/shared/presentation/components/ui/textarea";
+
+import { Field } from "../../domain/entities/field.entity";
+import { useMimeTypes } from "../hooks/use-mime-types";
 
 const inputFieldClass = cn(
-  'h-10 rounded-lg border-border bg-foreground/5 text-foreground text-sm shadow-none transition-colors',
-  'placeholder:font-light focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/20',
-)
+  "h-10 rounded-lg border-border bg-foreground/5 text-foreground text-sm shadow-none transition-colors",
+  "placeholder:font-light focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/20",
+);
 
 const selectTriggerClass = cn(
-  'h-10 rounded-lg border-border bg-foreground/5 text-foreground text-sm shadow-none transition-colors',
-  'focus:ring-2 focus:ring-primary/20',
-)
+  "h-10 rounded-lg border-border bg-foreground/5 text-foreground text-sm shadow-none transition-colors",
+  "focus:ring-2 focus:ring-primary/20",
+);
 
 function FormSection({
   title,
   children,
   className,
 }: {
-  title: string
-  children: React.ReactNode
-  className?: string
+  title: string;
+  children: React.ReactNode;
+  className?: string;
 }) {
   return (
-    <section className={cn('pt-2', className)}>
-      <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground/70 mb-4">{title}</h3>
+    <section className={cn("pt-2", className)}>
+      <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground/70 mb-4">
+        {title}
+      </h3>
       <div className="space-y-4">{children}</div>
     </section>
-  )
+  );
 }
 
 function SwitchRow({
@@ -65,39 +70,62 @@ function SwitchRow({
   checked,
   onCheckedChange,
 }: {
-  id: string
-  label: string
-  checked: boolean
-  onCheckedChange: (v: boolean) => void
+  id: string;
+  label: string;
+  checked: boolean;
+  onCheckedChange: (v: boolean) => void;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-xl border border-border/30 bg-foreground/[0.02] px-4 py-3 transition-colors hover:bg-foreground/5">
+    <div className="flex items-center justify-between gap-3 rounded-xl border border-border/30 bg-foreground/2 px-4 py-3 transition-colors hover:bg-foreground/5">
       <Label htmlFor={id} className="cursor-pointer text-[12px] font-medium text-foreground/80">
         {label}
       </Label>
       <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} className="shrink-0" />
     </div>
-  )
+  );
 }
 
 const fieldSchema = z.object({
-  name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres').regex(/^[a-z0-9_]+$/, 'Solo minúsculas, números y guiones bajos'),
-  displayName: z.string().min(2, 'El nombre visible debe tener al menos 2 caracteres'),
+  name: z
+    .string()
+    .min(2, "El nombre debe tener al menos 2 caracteres")
+    .regex(/^[a-z0-9_]+$/, "Solo minúsculas, números y guiones bajos"),
+  displayName: z.string().min(2, "El nombre visible debe tener al menos 2 caracteres"),
   description: z.string().optional(),
-  fieldType: z.enum(['TEXT', 'NUMBER', 'BOOLEAN', 'DATE', 'ENUM', 'RELATION', 'FILE', 'LOCATION']),
+  fieldType: z.enum(["TEXT", "NUMBER", "BOOLEAN", "DATE", "ENUM", "RELATION", "FILE", "LOCATION"]),
   isRequired: z.boolean().default(false).optional(),
   isUnique: z.boolean().default(false).optional(),
   defaultValue: z.string().optional(),
-  config: z.record(z.string(), z.any()).default({}).optional(),
-})
+  config: z.any().optional(),
+});
 
-type FieldFormValues = z.infer<typeof fieldSchema>
+interface FieldConfigUI {
+  multiline?: boolean;
+  placeholder?: string;
+  minLength?: number;
+  maxLength?: number;
+  min?: number;
+  max?: number;
+  options?: string[];
+  targetCollectionId?: string;
+  relationType?: string;
+  allowMultiple?: boolean;
+  displayField?: string;
+  maxSizeBytes?: number;
+  allowedMimeTypes?: string[];
+  minLat?: number;
+  maxLat?: number;
+  minLng?: number;
+  maxLng?: number;
+}
+
+type FieldFormValues = z.infer<typeof fieldSchema>;
 
 interface FieldFormDialogProps {
-  field?: Field
-  onSubmit: (values: FieldFormValues) => Promise<any>
-  availableCollections?: Array<{ id: string; name: string; displayName?: string }>
-  children?: React.ReactNode
+  field?: Field;
+  onSubmit: (values: FieldFormValues) => Promise<Result<Field>>;
+  availableCollections?: Array<{ id: string; name: string; displayName?: string }>;
+  children?: React.ReactNode;
 }
 
 export function FieldFormDialog({
@@ -106,71 +134,71 @@ export function FieldFormDialog({
   availableCollections = [],
   children,
 }: FieldFormDialogProps) {
-  const { mimeTypes, loading: loadingMimeTypes } = useMimeTypes()
-  const [open, setOpen] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [mimeSearch, setMimeSearch] = useState('')
+  const { mimeTypes, loading: loadingMimeTypes } = useMimeTypes();
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [mimeSearch, setMimeSearch] = useState("");
 
   const form = useForm<FieldFormValues>({
-    resolver: zodResolver(fieldSchema) as any,
+    resolver: zodResolver(fieldSchema),
     defaultValues: field
       ? {
-        name: field.name,
-        displayName: field.displayName || '',
-        description: field.description || '',
-        fieldType: field.fieldType.value as any,
-        isRequired: field.isRequired,
-        isUnique: field.isUnique,
-        defaultValue: field.defaultValue || '',
-        config: (field.config?.value as any) || {},
-      }
+          name: field.name,
+          displayName: field.displayName || "",
+          description: field.description || "",
+          fieldType: field.fieldType.value as FieldFormValues["fieldType"],
+          isRequired: field.isRequired,
+          isUnique: field.isUnique,
+          defaultValue: field.defaultValue || "",
+          config: (field.config?.value as FieldConfigUI) || {},
+        }
       : {
-        name: '',
-        displayName: '',
-        description: '',
-        fieldType: 'TEXT',
-        isRequired: false,
-        isUnique: false,
-        defaultValue: '',
-        config: {},
-      },
-  })
+          name: "",
+          displayName: "",
+          description: "",
+          fieldType: "TEXT",
+          isRequired: false,
+          isUnique: false,
+          defaultValue: "",
+          config: {},
+        },
+  });
 
   // Reset when open
   useEffect(() => {
     if (open) {
-      setError(null)
-      if (!field) form.reset()
+      setError(null);
+      if (!field) form.reset();
     }
-  }, [open, field, form])
+  }, [open, field, form]);
 
-  const selectedType = form.watch('fieldType')
-  const config = (form.watch('config') as Record<string, any>) || {}
+  const selectedType = form.watch("fieldType");
+  const config: FieldConfigUI = form.watch("config") || {};
 
-  const updateConfig = (updates: Record<string, any>) => {
-    form.setValue('config', {
-      ...((form.getValues('config') as Record<string, any>) || {}),
+  const updateConfig = (updates: Partial<FieldConfigUI>) => {
+    form.setValue("config", {
+      ...(form.getValues("config") || {}),
       ...updates,
-    })
-  }
+    });
+  };
 
   const handleSubmit = async (values: FieldFormValues) => {
-    setLoading(true)
-    setError(null)
+    setLoading(true);
+    setError(null);
     try {
-      const res = await onSubmit(values)
+      const res = await onSubmit(values);
       if (res.ok) {
-        setOpen(false)
+        setOpen(false);
       } else {
-        setError(res.error.message)
+        setError(res.error?.message || "Error desconocido");
       }
-    } catch (e: any) {
-      setError(e.message || 'Error al guardar el campo.')
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Error al guardar el campo.");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -179,16 +207,18 @@ export function FieldFormDialog({
       </DialogTrigger>
       <DialogContent
         className={cn(
-          'flex max-h-[min(90vh,720px)] w-[calc(100vw-1.25rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[480px]',
-          'rounded-2xl border-none bg-surface shadow-[0_32px_64px_rgba(0,0,0,0.6)]'
+          "flex max-h-[min(90vh,720px)] w-[calc(100vw-1.25rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[480px]",
+          "rounded-2xl border-none bg-surface shadow-[0_32px_64px_rgba(0,0,0,0.6)]",
         )}
       >
         <DialogHeader className="shrink-0 px-6 pt-6 pb-2 text-left">
           <DialogTitle className="text-xl font-bold tracking-[-0.01em] text-foreground">
-            {field ? 'Editar campo' : 'Nuevo campo'}
+            {field ? "Editar campo" : "Nuevo campo"}
           </DialogTitle>
           <DialogDescription className="font-light text-sm text-foreground/70">
-            {field ? 'Modifica los atributos del campo.' : 'Configura un nuevo campo para el motor de datos.'}
+            {field
+              ? "Modifica los atributos del campo."
+              : "Configura un nuevo campo para el motor de datos."}
           </DialogDescription>
         </DialogHeader>
 
@@ -207,64 +237,89 @@ export function FieldFormDialog({
 
               <FormSection title="Datos base">
                 <div className="space-y-2">
-                  <Label htmlFor="displayName" className="text-[11px] font-semibold uppercase text-foreground/70 flex justify-between">
+                  <Label
+                    htmlFor="displayName"
+                    className="text-[11px] font-semibold uppercase text-foreground/70 flex justify-between"
+                  >
                     <span>Nombre visible</span>
                     {form.formState.errors.displayName && (
-                      <span className="text-red-400 normal-case tracking-normal">{form.formState.errors.displayName.message}</span>
+                      <span className="text-red-400 normal-case tracking-normal">
+                        {form.formState.errors.displayName.message}
+                      </span>
                     )}
                   </Label>
                   <Input
                     id="displayName"
                     placeholder="ej: Nombre del Cliente"
-                    className={cn(inputFieldClass, form.formState.errors.displayName && 'border-red-400/50')}
-                    {...form.register('displayName')}
+                    className={cn(
+                      inputFieldClass,
+                      form.formState.errors.displayName && "border-red-400/50",
+                    )}
+                    {...form.register("displayName")}
                     onChange={(e) => {
-                      form.setValue('displayName', e.target.value)
+                      form.setValue("displayName", e.target.value);
                       if (!field) {
                         const slug = e.target.value
                           .toLowerCase()
-                          .replace(/ /g, '_')
-                          .replace(/[^\w-]+/g, '')
-                        form.setValue('name', slug)
+                          .replace(/ /g, "_")
+                          .replace(/[^\w-]+/g, "");
+                        form.setValue("name", slug);
                       }
                     }}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="description" className="text-[11px] font-semibold uppercase text-foreground/70">
+                  <Label
+                    htmlFor="description"
+                    className="text-[11px] font-semibold uppercase text-foreground/70"
+                  >
                     Descripción
                   </Label>
                   <Textarea
                     id="description"
                     placeholder="Describe el propósito de este campo, qué datos almacena y cómo debe utilizarse..."
-                    className={cn(inputFieldClass, 'min-h-[80px] resize-y')}
-                    {...form.register('description')}
+                    className={cn(inputFieldClass, "min-h-[80px] resize-y")}
+                    {...form.register("description")}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="name" className="text-[11px] font-semibold uppercase text-foreground/70 flex justify-between">
+                  <Label
+                    htmlFor="name"
+                    className="text-[11px] font-semibold uppercase text-foreground/70 flex justify-between"
+                  >
                     <span>ID Técnico</span>
                     {form.formState.errors.name && (
-                      <span className="text-red-400 normal-case tracking-normal">{form.formState.errors.name.message}</span>
+                      <span className="text-red-400 normal-case tracking-normal">
+                        {form.formState.errors.name.message}
+                      </span>
                     )}
                   </Label>
                   <Input
                     id="name"
                     placeholder="ej_nombre_cliente"
                     disabled={!!field}
-                    className={cn(inputFieldClass, 'font-mono text-xs', field && 'opacity-60 cursor-not-allowed', form.formState.errors.name && 'border-red-400/50')}
-                    {...form.register('name')}
+                    className={cn(
+                      inputFieldClass,
+                      "font-mono text-xs",
+                      field && "opacity-60 cursor-not-allowed",
+                      form.formState.errors.name && "border-red-400/50",
+                    )}
+                    {...form.register("name")}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-[11px] font-semibold uppercase text-foreground/70">Tipo de dato</Label>
+                  <Label className="text-[11px] font-semibold uppercase text-foreground/70">
+                    Tipo de dato
+                  </Label>
                   <Select
                     disabled={!!field}
-                    value={form.watch('fieldType')}
-                    onValueChange={(val) => form.setValue('fieldType', val as any)}
+                    value={form.watch("fieldType")}
+                    onValueChange={(val) =>
+                      form.setValue("fieldType", val as FieldFormValues["fieldType"])
+                    }
                   >
                     <SelectTrigger className={selectTriggerClass}>
                       <SelectValue placeholder="Tipo" />
@@ -282,7 +337,7 @@ export function FieldFormDialog({
                   </Select>
                 </div>
               </FormSection>
-              {selectedType === 'TEXT' && (
+              {selectedType === "TEXT" && (
                 <FormSection title="Texto">
                   <SwitchRow
                     id="text-multiline"
@@ -291,9 +346,11 @@ export function FieldFormDialog({
                     onCheckedChange={(checked) => updateConfig({ multiline: checked })}
                   />
                   <div className="space-y-2">
-                    <Label className="text-[11px] font-semibold uppercase text-foreground/70">Placeholder</Label>
+                    <Label className="text-[11px] font-semibold uppercase text-foreground/70">
+                      Placeholder
+                    </Label>
                     <Input
-                      value={String(config.placeholder || '')}
+                      value={String(config.placeholder || "")}
                       onChange={(e) => updateConfig({ placeholder: e.target.value })}
                       placeholder="Ej: Texto de ayuda opcional"
                       className={inputFieldClass}
@@ -306,8 +363,12 @@ export function FieldFormDialog({
                       </Label>
                       <Input
                         type="number"
-                        value={String(config.minLength || '')}
-                        onChange={(e) => updateConfig({ minLength: e.target.value ? parseInt(e.target.value) : undefined })}
+                        value={String(config.minLength || "")}
+                        onChange={(e) =>
+                          updateConfig({
+                            minLength: e.target.value ? parseInt(e.target.value) : undefined,
+                          })
+                        }
                         placeholder="—"
                         className={inputFieldClass}
                       />
@@ -318,8 +379,12 @@ export function FieldFormDialog({
                       </Label>
                       <Input
                         type="number"
-                        value={String(config.maxLength || '')}
-                        onChange={(e) => updateConfig({ maxLength: e.target.value ? parseInt(e.target.value) : undefined })}
+                        value={String(config.maxLength || "")}
+                        onChange={(e) =>
+                          updateConfig({
+                            maxLength: e.target.value ? parseInt(e.target.value) : undefined,
+                          })
+                        }
                         placeholder="255"
                         className={inputFieldClass}
                       />
@@ -328,12 +393,14 @@ export function FieldFormDialog({
                 </FormSection>
               )}
 
-              {selectedType === 'NUMBER' && (
+              {selectedType === "NUMBER" && (
                 <FormSection title="Número">
                   <div className="space-y-2">
-                    <Label className="text-[11px] font-semibold uppercase text-foreground/70">Placeholder</Label>
+                    <Label className="text-[11px] font-semibold uppercase text-foreground/70">
+                      Placeholder
+                    </Label>
                     <Input
-                      value={String(config.placeholder || '')}
+                      value={String(config.placeholder || "")}
                       onChange={(e) => updateConfig({ placeholder: e.target.value })}
                       placeholder="Opcional"
                       className={inputFieldClass}
@@ -346,8 +413,10 @@ export function FieldFormDialog({
                       </Label>
                       <Input
                         type="number"
-                        value={String(config.min || '')}
-                        onChange={(e) => updateConfig({ min: e.target.value ? Number(e.target.value) : undefined })}
+                        value={String(config.min || "")}
+                        onChange={(e) =>
+                          updateConfig({ min: e.target.value ? Number(e.target.value) : undefined })
+                        }
                         placeholder="—"
                         className={inputFieldClass}
                       />
@@ -358,8 +427,10 @@ export function FieldFormDialog({
                       </Label>
                       <Input
                         type="number"
-                        value={String(config.max || '')}
-                        onChange={(e) => updateConfig({ max: e.target.value ? Number(e.target.value) : undefined })}
+                        value={String(config.max || "")}
+                        onChange={(e) =>
+                          updateConfig({ max: e.target.value ? Number(e.target.value) : undefined })
+                        }
                         placeholder="—"
                         className={inputFieldClass}
                       />
@@ -368,7 +439,7 @@ export function FieldFormDialog({
                 </FormSection>
               )}
 
-              {selectedType === 'ENUM' && (
+              {selectedType === "ENUM" && (
                 <FormSection title="Opciones">
                   <TagInput
                     value={config.options || []}
@@ -378,12 +449,14 @@ export function FieldFormDialog({
                 </FormSection>
               )}
 
-              {selectedType === 'RELATION' && (
+              {selectedType === "RELATION" && (
                 <FormSection title="Relación">
                   <div className="space-y-2">
-                    <Label className="text-[11px] font-semibold uppercase text-foreground/70">Colección Destino</Label>
+                    <Label className="text-[11px] font-semibold uppercase text-foreground/70">
+                      Colección Destino
+                    </Label>
                     <Select
-                      value={String(config.targetCollectionId || '')}
+                      value={String(config.targetCollectionId || "")}
                       onValueChange={(value) => updateConfig({ targetCollectionId: value })}
                     >
                       <SelectTrigger className={selectTriggerClass}>
@@ -400,14 +473,18 @@ export function FieldFormDialog({
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-[11px] font-semibold uppercase text-foreground/70">Cardinalidad</Label>
+                    <Label className="text-[11px] font-semibold uppercase text-foreground/70">
+                      Cardinalidad
+                    </Label>
                     <Select
-                      value={String(config.relationType || '')}
+                      value={String(config.relationType || "")}
                       onValueChange={(value) =>
                         updateConfig({
                           relationType: value,
-                          allowMultiple: value !== 'ONE_TO_ONE',
-                          displayField: ((form.getValues('config') as any)?.displayField) || 'id',
+                          allowMultiple: value !== "ONE_TO_ONE",
+                          displayField:
+                            (form.getValues("config") as FieldConfigUI | undefined)?.displayField ||
+                            "id",
                         })
                       }
                     >
@@ -424,10 +501,13 @@ export function FieldFormDialog({
                 </FormSection>
               )}
 
-              {selectedType === 'FILE' && (
+              {selectedType === "FILE" && (
                 <FormSection title="Archivo">
                   <div className="space-y-2">
-                    <Label htmlFor="maxSizeBytes" className="text-[11px] font-semibold uppercase text-foreground/70">
+                    <Label
+                      htmlFor="maxSizeBytes"
+                      className="text-[11px] font-semibold uppercase text-foreground/70"
+                    >
                       Máx. MegaBytes
                     </Label>
                     <Input
@@ -436,30 +516,39 @@ export function FieldFormDialog({
                       min={1}
                       placeholder="10"
                       className={inputFieldClass}
-                      value={config.maxSizeBytes ? Number(config.maxSizeBytes) / (1024 * 1024) : ''}
+                      value={config.maxSizeBytes ? Number(config.maxSizeBytes) / (1024 * 1024) : ""}
                       onChange={(e) => {
-                        const mb = e.target.value ? Number(e.target.value) : undefined
-                        updateConfig({ maxSizeBytes: mb ? Math.round(mb * 1024 * 1024) : undefined })
+                        const mb = e.target.value ? Number(e.target.value) : undefined;
+                        updateConfig({
+                          maxSizeBytes: mb ? Math.round(mb * 1024 * 1024) : undefined,
+                        });
                       }}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-[11px] font-semibold uppercase text-foreground/70">Tipos de Archivo (MIME)</Label>
+                    <Label className="text-[11px] font-semibold uppercase text-foreground/70">
+                      Tipos de Archivo (MIME)
+                    </Label>
 
                     <div className="relative">
-                      <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40" />
+                      <Search
+                        size={14}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40"
+                      />
                       <Input
                         placeholder="Buscar por extensión o nombre..."
-                        className={cn(inputFieldClass, 'h-10 pl-9')}
+                        className={cn(inputFieldClass, "h-10 pl-9")}
                         onChange={(e) => {
-                          setMimeSearch(e.target.value.toLowerCase())
+                          setMimeSearch(e.target.value.toLowerCase());
                         }}
                       />
                     </div>
 
                     <div className="max-h-40 space-y-0.5 overflow-y-auto rounded-lg border border-border/50 bg-surface-hover/50 p-1.5 dark:border-border/70 dark:bg-surface/90">
                       {loadingMimeTypes ? (
-                        <div className="py-6 text-center text-[10px] text-muted animate-pulse">Cargando…</div>
+                        <div className="py-6 text-center text-[10px] text-muted animate-pulse">
+                          Cargando…
+                        </div>
                       ) : (
                         mimeTypes
                           .filter(
@@ -470,28 +559,34 @@ export function FieldFormDialog({
                               !!m.extension?.toLowerCase().includes(mimeSearch),
                           )
                           .map((mime) => {
-                            const isSelected = (config.allowedMimeTypes || []).includes(mime.value)
+                            const isSelected = (config.allowedMimeTypes || []).includes(mime.value);
                             return (
                               <button
                                 key={mime.value}
                                 type="button"
                                 onClick={() => {
-                                  const current = ((form.getValues('config') as any)?.allowedMimeTypes || [])
+                                  const current =
+                                    (form.getValues("config") as FieldConfigUI | undefined)
+                                      ?.allowedMimeTypes || [];
                                   const next = isSelected
                                     ? current.filter((v: string) => v !== mime.value)
-                                    : [...current, mime.value]
-                                  updateConfig({ allowedMimeTypes: next })
+                                    : [...current, mime.value];
+                                  updateConfig({ allowedMimeTypes: next });
                                 }}
                                 className={cn(
-                                  'group flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left transition-colors',
+                                  "group flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left transition-colors",
                                   isSelected
-                                    ? 'border-primary/20 bg-primary/10 text-primary'
-                                    : 'border-transparent text-foreground/60 hover:bg-foreground/5 hover:text-foreground',
+                                    ? "border-primary/20 bg-primary/10 text-primary"
+                                    : "border-transparent text-foreground/60 hover:bg-foreground/5 hover:text-foreground",
                                 )}
                               >
                                 <div className="flex min-w-0 flex-col">
-                                  <span className="truncate text-[13px] font-medium text-foreground">{mime.label}</span>
-                                  <span className="truncate font-mono text-[10px] opacity-60">{mime.value}</span>
+                                  <span className="truncate text-[13px] font-medium text-foreground">
+                                    {mime.label}
+                                  </span>
+                                  <span className="truncate font-mono text-[10px] opacity-60">
+                                    {mime.value}
+                                  </span>
                                 </div>
                                 {isSelected ? (
                                   <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-background">
@@ -504,7 +599,7 @@ export function FieldFormDialog({
                                   />
                                 )}
                               </button>
-                            )
+                            );
                           })
                       )}
                       {mimeTypes.length > 0 &&
@@ -522,27 +617,29 @@ export function FieldFormDialog({
                     {(config.allowedMimeTypes || []).length > 0 && (
                       <div className="flex flex-wrap gap-1 border-t border-border/40 pt-2">
                         {(config.allowedMimeTypes || []).map((mValue: string) => {
-                          const match = mimeTypes.find((mt) => mt.value === mValue)
+                          const match = mimeTypes.find((mt) => mt.value === mValue);
                           return (
                             <Badge
                               key={mValue}
                               variant="secondary"
                               className="h-6 gap-1 border-primary/15 bg-primary/5 px-2 text-[10px] text-primary"
                             >
-                              {match?.extension || mValue.split('/')[1]}
+                              {match?.extension || mValue.split("/")[1]}
                               <button
                                 type="button"
                                 onClick={() => {
-                                  const current = ((form.getValues('config') as any)?.allowedMimeTypes || [])
-                                  const next = current.filter((v: string) => v !== mValue)
-                                  updateConfig({ allowedMimeTypes: next })
+                                  const current =
+                                    (form.getValues("config") as FieldConfigUI | undefined)
+                                      ?.allowedMimeTypes || [];
+                                  const next = current.filter((v: string) => v !== mValue);
+                                  updateConfig({ allowedMimeTypes: next });
                                 }}
                                 className="ml-0.5 rounded-sm hover:text-red-500"
                               >
                                 <X size={10} />
                               </button>
                             </Badge>
-                          )
+                          );
                         })}
                       </div>
                     )}
@@ -550,74 +647,102 @@ export function FieldFormDialog({
                 </FormSection>
               )}
 
-              {selectedType === 'LOCATION' && (
+              {selectedType === "LOCATION" && (
                 <FormSection title="Ubicación">
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1.5">
-                      <Label htmlFor="minLat" className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
+                      <Label
+                        htmlFor="minLat"
+                        className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted"
+                      >
                         Lat. mín.
                       </Label>
                       <Input
                         id="minLat"
                         type="number"
                         className={inputFieldClass}
-                        value={config.minLat ?? ''}
-                        onChange={(e) => updateConfig({ minLat: e.target.value === '' ? undefined : Number(e.target.value) })}
+                        value={config.minLat ?? ""}
+                        onChange={(e) =>
+                          updateConfig({
+                            minLat: e.target.value === "" ? undefined : Number(e.target.value),
+                          })
+                        }
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="maxLat" className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
+                      <Label
+                        htmlFor="maxLat"
+                        className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted"
+                      >
                         Lat. máx.
                       </Label>
                       <Input
                         id="maxLat"
                         type="number"
                         className={inputFieldClass}
-                        value={config.maxLat ?? ''}
-                        onChange={(e) => updateConfig({ maxLat: e.target.value === '' ? undefined : Number(e.target.value) })}
+                        value={config.maxLat ?? ""}
+                        onChange={(e) =>
+                          updateConfig({
+                            maxLat: e.target.value === "" ? undefined : Number(e.target.value),
+                          })
+                        }
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="minLng" className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
+                      <Label
+                        htmlFor="minLng"
+                        className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted"
+                      >
                         Lng. mín.
                       </Label>
                       <Input
                         id="minLng"
                         type="number"
                         className={inputFieldClass}
-                        value={config.minLng ?? ''}
-                        onChange={(e) => updateConfig({ minLng: e.target.value === '' ? undefined : Number(e.target.value) })}
+                        value={config.minLng ?? ""}
+                        onChange={(e) =>
+                          updateConfig({
+                            minLng: e.target.value === "" ? undefined : Number(e.target.value),
+                          })
+                        }
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="maxLng" className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
+                      <Label
+                        htmlFor="maxLng"
+                        className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted"
+                      >
                         Lng. máx.
                       </Label>
                       <Input
                         id="maxLng"
                         type="number"
                         className={inputFieldClass}
-                        value={config.maxLng ?? ''}
-                        onChange={(e) => updateConfig({ maxLng: e.target.value === '' ? undefined : Number(e.target.value) })}
+                        value={config.maxLng ?? ""}
+                        onChange={(e) =>
+                          updateConfig({
+                            maxLng: e.target.value === "" ? undefined : Number(e.target.value),
+                          })
+                        }
                       />
                     </div>
                   </div>
                 </FormSection>
               )}
 
-              <FormSection
-                title="Comportamiento Adicional"
-                className="border-none"
-              >
-                {!['RELATION', 'FILE', 'LOCATION'].includes(selectedType) && (
+              <FormSection title="Comportamiento Adicional" className="border-none">
+                {!["RELATION", "FILE", "LOCATION"].includes(selectedType) && (
                   <div className="space-y-2">
-                    <Label htmlFor="defaultValue" className="text-[11px] font-semibold uppercase text-foreground/70">
+                    <Label
+                      htmlFor="defaultValue"
+                      className="text-[11px] font-semibold uppercase text-foreground/70"
+                    >
                       Valor por defecto
                     </Label>
-                    {selectedType === 'BOOLEAN' ? (
+                    {selectedType === "BOOLEAN" ? (
                       <Select
-                        value={form.watch('defaultValue')}
-                        onValueChange={(val) => form.setValue('defaultValue', val)}
+                        value={form.watch("defaultValue")}
+                        onValueChange={(val) => form.setValue("defaultValue", val)}
                       >
                         <SelectTrigger className={selectTriggerClass}>
                           <SelectValue placeholder="—" />
@@ -627,10 +752,10 @@ export function FieldFormDialog({
                           <SelectItem value="false">No</SelectItem>
                         </SelectContent>
                       </Select>
-                    ) : selectedType === 'ENUM' ? (
+                    ) : selectedType === "ENUM" ? (
                       <Select
-                        value={form.watch('defaultValue')}
-                        onValueChange={(val) => form.setValue('defaultValue', val)}
+                        value={form.watch("defaultValue")}
+                        onValueChange={(val) => form.setValue("defaultValue", val)}
                       >
                         <SelectTrigger className={selectTriggerClass}>
                           <SelectValue placeholder="—" />
@@ -648,7 +773,7 @@ export function FieldFormDialog({
                         id="defaultValue"
                         placeholder="Opcional"
                         className={inputFieldClass}
-                        {...form.register('defaultValue')}
+                        {...form.register("defaultValue")}
                       />
                     )}
                   </div>
@@ -658,14 +783,14 @@ export function FieldFormDialog({
                   <SwitchRow
                     id="isRequired"
                     label="Obligatorio"
-                    checked={!!form.watch('isRequired')}
-                    onCheckedChange={(val) => form.setValue('isRequired', val)}
+                    checked={!!form.watch("isRequired")}
+                    onCheckedChange={(val) => form.setValue("isRequired", val)}
                   />
                   <SwitchRow
                     id="isUnique"
                     label="Único"
-                    checked={!!form.watch('isUnique')}
-                    onCheckedChange={(val) => form.setValue('isUnique', val)}
+                    checked={!!form.watch("isUnique")}
+                    onCheckedChange={(val) => form.setValue("isUnique", val)}
                   />
                 </div>
               </FormSection>
@@ -688,12 +813,12 @@ export function FieldFormDialog({
                 className="w-full bg-primary font-semibold text-primary-foreground rounded-lg shadow-sm transition-all hover:bg-primary-hover hover:-translate-y-0.5 active:translate-y-0 sm:w-auto sm:min-w-[140px]"
                 disabled={loading}
               >
-                {loading ? 'Guardando...' : field ? 'Guardar Cambios' : 'Crear Campo'}
+                {loading ? "Guardando..." : field ? "Guardar Cambios" : "Crear Campo"}
               </Button>
             </DialogFooter>
           </div>
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

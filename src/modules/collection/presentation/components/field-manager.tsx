@@ -1,9 +1,10 @@
-'use client'
+"use client";
 
-import { useCollections } from '../hooks/use-collections'
-import { FieldFormDialog } from './field-form-dialog'
-import { Badge } from '@/shared/presentation/components/ui/badge'
-import { Button } from '@/shared/presentation/components/ui/button'
+import { GripVertical, Plus, Settings2, Trash2 } from "lucide-react";
+
+import { Result } from "@/shared/domain/result";
+import { Badge } from "@/shared/presentation/components/ui/badge";
+import { Button } from "@/shared/presentation/components/ui/button";
 import {
   Table,
   TableBody,
@@ -11,36 +12,41 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/shared/presentation/components/ui/table'
-import { Plus, Settings2, Trash2, GripVertical } from 'lucide-react'
+} from "@/shared/presentation/components/ui/table";
+
+import { CreateFieldRequest } from "../../application/use-cases/create-field.use-case";
+import { UpdateFieldRequest } from "../../application/use-cases/update-field.use-case";
+import { Field } from "../../domain/entities/field.entity";
+import { useCollections } from "../hooks/use-collections";
+import { FieldFormDialog } from "./field-form-dialog";
 
 interface FieldManagerProps {
-  collectionId: string
-  fields: any[]
-  loading?: boolean
-  createField: (params: any) => Promise<any>
-  updateField: (params: any) => Promise<any>
-  deleteField: (id: string) => Promise<any>
-  reorderFields?: (fieldIds: string[]) => Promise<any>
+  collectionId: string;
+  fields: Field[];
+  loading?: boolean;
+  createField: (params: Omit<CreateFieldRequest, "collectionId">) => Promise<Result<Field>>;
+  updateField: (params: Omit<UpdateFieldRequest, "collectionId">) => Promise<Result<Field>>;
+  deleteField: (id: string) => Promise<Result<void>>;
+  reorderFields?: (fieldIds: string[]) => Promise<Result<void>>;
 }
 
-export function FieldManager({ 
-  collectionId, 
-  fields, 
-  loading, 
-  createField, 
-  updateField, 
-  deleteField 
+export function FieldManager({
+  collectionId,
+  fields,
+  loading,
+  createField,
+  updateField,
+  deleteField,
 }: FieldManagerProps) {
-  const { collections } = useCollections()
-  const relationCollections = collections.filter((collection) => collection.id !== collectionId)
+  const { collections } = useCollections();
+  const relationCollections = collections.filter((collection) => collection.id !== collectionId);
 
   if (loading) {
     return (
       <div className="p-8 flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-emerald-500" />
       </div>
-    )
+    );
   }
 
   return (
@@ -55,7 +61,10 @@ export function FieldManager({
           </p>
         </div>
         <FieldFormDialog onSubmit={createField} availableCollections={relationCollections}>
-          <Button size="sm" className="bg-primary text-background hover:bg-primary-hover shadow-sm transition-all hover:-translate-y-0.5 active:translate-y-0">
+          <Button
+            size="sm"
+            className="bg-primary text-background hover:bg-primary-hover shadow-sm transition-all hover:-translate-y-0.5 active:translate-y-0"
+          >
             <Plus size={16} className="mr-2" />
             Añadir Campo
           </Button>
@@ -67,12 +76,24 @@ export function FieldManager({
           <TableHeader>
             <TableRow className="hover:bg-transparent border-b border-border/50">
               <TableHead className="w-[50px]"></TableHead>
-              <TableHead className="py-4 px-4 text-[11px] font-semibold uppercase tracking-wider text-muted">Nombre Visible</TableHead>
-              <TableHead className="py-4 px-4 text-[11px] font-semibold uppercase tracking-wider text-muted">Descripción</TableHead>
-              <TableHead className="py-4 px-4 text-[11px] font-semibold uppercase tracking-wider text-muted">ID (API)</TableHead>
-              <TableHead className="py-4 px-4 text-[11px] font-semibold uppercase tracking-wider text-muted">Tipo</TableHead>
-              <TableHead className="py-4 px-4 text-[11px] font-semibold uppercase tracking-wider text-muted">Validación</TableHead>
-              <TableHead className="py-4 px-4 text-[11px] font-semibold uppercase tracking-wider text-muted text-right">Acciones</TableHead>
+              <TableHead className="py-4 px-4 text-[11px] font-semibold uppercase tracking-wider text-muted">
+                Nombre Visible
+              </TableHead>
+              <TableHead className="py-4 px-4 text-[11px] font-semibold uppercase tracking-wider text-muted">
+                Descripción
+              </TableHead>
+              <TableHead className="py-4 px-4 text-[11px] font-semibold uppercase tracking-wider text-muted">
+                ID (API)
+              </TableHead>
+              <TableHead className="py-4 px-4 text-[11px] font-semibold uppercase tracking-wider text-muted">
+                Tipo
+              </TableHead>
+              <TableHead className="py-4 px-4 text-[11px] font-semibold uppercase tracking-wider text-muted">
+                Validación
+              </TableHead>
+              <TableHead className="py-4 px-4 text-[11px] font-semibold uppercase tracking-wider text-muted text-right">
+                Acciones
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -84,7 +105,10 @@ export function FieldManager({
               </TableRow>
             ) : (
               fields.map((field) => (
-                <TableRow key={field.id} className="group border-b border-border/5 hover:bg-surface-hover/30 transition-colors">
+                <TableRow
+                  key={field.id}
+                  className="group border-b border-border/5 hover:bg-surface-hover/30 transition-colors"
+                >
                   <TableCell className="py-4 px-4 text-muted/40">
                     <GripVertical size={14} className="cursor-grab" />
                   </TableCell>
@@ -92,23 +116,38 @@ export function FieldManager({
                     {field.displayName || field.name}
                   </TableCell>
                   <TableCell className="py-4 px-4 text-xs text-foreground/60 max-w-[200px]">
-                    <span className="line-clamp-2">{field.description || <span className="italic text-muted/40">—</span>}</span>
+                    <span className="line-clamp-2">
+                      {field.description || <span className="italic text-muted/40">—</span>}
+                    </span>
                   </TableCell>
                   <TableCell className="py-4 px-4 text-xs font-mono text-foreground/80">
                     {field.name}
                   </TableCell>
                   <TableCell className="py-4 px-4">
-                    <Badge variant="secondary" className="font-normal text-[11px] bg-secondary/50 text-secondary-foreground">
+                    <Badge
+                      variant="secondary"
+                      className="font-normal text-[11px] bg-secondary/50 text-secondary-foreground"
+                    >
                       {field.fieldType.value}
                     </Badge>
                   </TableCell>
                   <TableCell className="py-4 px-4">
                     <div className="flex gap-1.5">
                       {field.isRequired && (
-                        <Badge variant="outline" className="text-[10px] py-0 border-red-500/30 text-red-500 bg-red-500/5">REQUERIDO</Badge>
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] py-0 border-red-500/30 text-red-500 bg-red-500/5"
+                        >
+                          REQUERIDO
+                        </Badge>
                       )}
                       {field.isUnique && (
-                        <Badge variant="outline" className="text-[10px] py-0 border-blue-500/30 text-blue-500 bg-blue-500/5">ÚNICO</Badge>
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] py-0 border-blue-500/30 text-blue-500 bg-blue-500/5"
+                        >
+                          ÚNICO
+                        </Badge>
                       )}
                     </div>
                   </TableCell>
@@ -146,5 +185,5 @@ export function FieldManager({
         </Table>
       </div>
     </div>
-  )
+  );
 }

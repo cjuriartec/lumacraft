@@ -1,12 +1,12 @@
-import './shared'
+import "./shared";
+import "@testing-library/jest-dom";
 
-import '@testing-library/jest-dom'
-import { cleanup } from '@testing-library/react'
-import { afterEach, vi } from 'vitest'
+import { cleanup } from "@testing-library/react";
+import { afterEach, vi } from "vitest";
 
 afterEach(() => {
-  cleanup()
-})
+  cleanup();
+});
 
 class ResizeObserverMock {
   observe() {}
@@ -19,20 +19,21 @@ class IntersectionObserverMock {
   unobserve() {}
   disconnect() {}
   takeRecords() {
-    return []
+    return [];
   }
 }
 
 if (!globalThis.ResizeObserver) {
-  globalThis.ResizeObserver = ResizeObserverMock as typeof ResizeObserver
+  globalThis.ResizeObserver = ResizeObserverMock as typeof ResizeObserver;
 }
 
 if (!globalThis.IntersectionObserver) {
-  globalThis.IntersectionObserver = IntersectionObserverMock as unknown as typeof IntersectionObserver
+  globalThis.IntersectionObserver =
+    IntersectionObserverMock as unknown as typeof IntersectionObserver;
 }
 
 if (!window.matchMedia) {
-  Object.defineProperty(window, 'matchMedia', {
+  Object.defineProperty(window, "matchMedia", {
     writable: true,
     value: vi.fn().mockImplementation((query: string) => ({
       matches: false,
@@ -44,5 +45,5 @@ if (!window.matchMedia) {
       removeEventListener: vi.fn(),
       dispatchEvent: vi.fn(),
     })),
-  })
+  });
 }

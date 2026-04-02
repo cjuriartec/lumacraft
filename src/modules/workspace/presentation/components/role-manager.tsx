@@ -1,9 +1,20 @@
-'use client'
+"use client";
 
-import React, { useState } from 'react'
-import { Plus, Edit2, Trash2, Shield, Loader2, Info } from 'lucide-react'
-import { useRoles } from '../hooks/use-roles'
-import { useWorkspace } from '../providers/workspace-provider'
+import { Edit2, Loader2, Plus, Shield, Trash2 } from "lucide-react";
+import React, { useState } from "react";
+
+import { cn } from "@/shared/lib/utils";
+import { Button } from "@/shared/presentation/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/shared/presentation/components/ui/dialog";
+import { Input } from "@/shared/presentation/components/ui/input";
+import { Label } from "@/shared/presentation/components/ui/label";
 import {
   Table,
   TableBody,
@@ -11,73 +22,72 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/shared/presentation/components/ui/table'
-import { Button } from '@/shared/presentation/components/ui/button'
-import { Input } from '@/shared/presentation/components/ui/input'
-import { Textarea } from '@/shared/presentation/components/ui/textarea'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/shared/presentation/components/ui/dialog'
-import { Label } from '@/shared/presentation/components/ui/label'
-import { cn } from '@/shared/lib/utils'
+} from "@/shared/presentation/components/ui/table";
+import { Textarea } from "@/shared/presentation/components/ui/textarea";
+
+import { useRoles } from "../hooks/use-roles";
+import { useWorkspace } from "../providers/workspace-provider";
 
 const inputFieldClass = cn(
-  'h-11 rounded-xl border-border/10 bg-foreground/5 text-foreground text-sm shadow-none transition-colors px-4',
-  'placeholder:font-light focus-visible:border-primary/30 focus-visible:ring-2 focus-visible:ring-primary/10',
-)
+  "h-11 rounded-xl border-border/10 bg-foreground/5 text-foreground text-sm shadow-none transition-colors px-4",
+  "placeholder:font-light focus-visible:border-primary/30 focus-visible:ring-2 focus-visible:ring-primary/10",
+);
 
 export function RoleManager() {
-  const { currentWorkspace } = useWorkspace()
-  const { roles, loading, createRole, updateRole, deleteRole } = useRoles(currentWorkspace?.id)
+  const { currentWorkspace } = useWorkspace();
+  const { roles, loading, createRole, updateRole, deleteRole } = useRoles(currentWorkspace?.id);
 
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [editingRole, setEditingRole] = useState<{ id: string; name: string; description: string | null } | null>(null)
-  const [formData, setFormData] = useState({ name: '', description: '' })
-  const [submitting, setSubmitting] = useState(false)
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingRole, setEditingRole] = useState<{
+    id: string;
+    name: string;
+    description: string | null;
+  } | null>(null);
+  const [formData, setFormData] = useState({ name: "", description: "" });
+  const [submitting, setSubmitting] = useState(false);
 
   const handleOpenCreate = () => {
-    setEditingRole(null)
-    setFormData({ name: '', description: '' })
-    setDialogOpen(true)
-  }
+    setEditingRole(null);
+    setFormData({ name: "", description: "" });
+    setDialogOpen(true);
+  };
 
-  const handleOpenEdit = (role: any) => {
-    setEditingRole({ id: role.id, name: role.name, description: role.description })
-    setFormData({ name: role.name, description: role.description || '' })
-    setDialogOpen(true)
-  }
+  const handleOpenEdit = (role: { id: string; name: string; description: string | null }) => {
+    setEditingRole({ id: role.id, name: role.name, description: role.description });
+    setFormData({ name: role.name, description: role.description || "" });
+    setDialogOpen(true);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setSubmitting(true)
+    e.preventDefault();
+    setSubmitting(true);
 
     if (editingRole) {
-      await updateRole({ id: editingRole.id, name: formData.name, description: formData.description })
+      await updateRole({
+        id: editingRole.id,
+        name: formData.name,
+        description: formData.description,
+      });
     } else {
-      await createRole({ name: formData.name, description: formData.description })
+      await createRole({ name: formData.name, description: formData.description });
     }
 
-    setSubmitting(false)
-    setDialogOpen(false)
-  }
+    setSubmitting(false);
+    setDialogOpen(false);
+  };
 
   const handleDelete = async (id: string, name: string) => {
     if (confirm(`¿Estás seguro de eliminar el rol "${name}"? Esta acción no se puede deshacer.`)) {
-      await deleteRole(id)
+      await deleteRole(id);
     }
-  }
+  };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center p-12">
         <Loader2 className="h-8 w-8 animate-spin text-primary/50" />
       </div>
-    )
+    );
   }
 
   return (
@@ -85,9 +95,15 @@ export function RoleManager() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold tracking-tight text-foreground">Roles de Usuario</h2>
-          <p className="text-sm text-muted-foreground font-light">Gestiona los roles personalizados para los miembros del workspace.</p>
+          <p className="text-sm text-muted-foreground font-light">
+            Gestiona los roles personalizados para los miembros del workspace.
+          </p>
         </div>
-        <Button onClick={handleOpenCreate} size="sm" className="bg-primary text-background hover:bg-primary/90 shadow-sm transition-all hover:-translate-y-0.5 active:translate-y-0">
+        <Button
+          onClick={handleOpenCreate}
+          size="sm"
+          className="bg-primary text-background hover:bg-primary/90 shadow-sm transition-all hover:-translate-y-0.5 active:translate-y-0"
+        >
           <Plus size={16} className="mr-2" />
           Crear Rol
         </Button>
@@ -97,18 +113,29 @@ export function RoleManager() {
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent border-b border-border/10 bg-surface-hover/30">
-              <TableHead className="w-[200px] text-[11px] font-semibold uppercase tracking-[0.12em] py-4">Nombre</TableHead>
-              <TableHead className="text-[11px] font-semibold uppercase tracking-[0.12em] py-4">Descripción</TableHead>
-              <TableHead className="w-[120px] text-[11px] font-semibold uppercase tracking-[0.12em] py-4 text-right">Acciones</TableHead>
+              <TableHead className="w-[200px] text-[11px] font-semibold uppercase tracking-[0.12em] py-4">
+                Nombre
+              </TableHead>
+              <TableHead className="text-[11px] font-semibold uppercase tracking-[0.12em] py-4">
+                Descripción
+              </TableHead>
+              <TableHead className="w-[120px] text-[11px] font-semibold uppercase tracking-[0.12em] py-4 text-right">
+                Acciones
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {roles.map((role) => (
-              <TableRow key={role.id} className="group hover:bg-surface-hover/30 transition-colors border-b border-border/5 last:border-0">
+              <TableRow
+                key={role.id}
+                className="group hover:bg-surface-hover/30 transition-colors border-b border-border/5 last:border-0"
+              >
                 <TableCell className="py-4">
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-sm text-foreground">{role.name}</span>
-                    {role.isSuperadmin && <Shield size={12} className="text-primary fill-primary/10" />}
+                    {role.isSuperadmin && (
+                      <Shield size={12} className="text-primary fill-primary/10" />
+                    )}
                   </div>
                 </TableCell>
                 <TableCell className="py-4 text-xs font-light text-muted-foreground leading-relaxed max-w-md truncate">
@@ -145,7 +172,10 @@ export function RoleManager() {
             ))}
             {roles.length === 0 && (
               <TableRow>
-                <TableCell colSpan={3} className="h-32 text-center text-muted-foreground font-light text-sm italic">
+                <TableCell
+                  colSpan={3}
+                  className="h-32 text-center text-muted-foreground font-light text-sm italic"
+                >
                   No hay roles personalizados configurados.
                 </TableCell>
               </TableRow>
@@ -158,17 +188,22 @@ export function RoleManager() {
         <DialogContent className="flex flex-col gap-0 overflow-hidden p-0 sm:max-w-[480px] rounded-2xl border-none bg-surface shadow-[0_32px_64px_rgba(0,0,0,0.6)]">
           <DialogHeader className="shrink-0 px-8 pt-8 pb-4 text-left">
             <DialogTitle className="text-xl font-bold tracking-[-0.01em] text-foreground">
-              {editingRole ? 'Editar Rol' : 'Nuevo Rol'}
+              {editingRole ? "Editar Rol" : "Nuevo Rol"}
             </DialogTitle>
             <DialogDescription className="font-light text-sm text-foreground/70">
-              {editingRole ? 'Modifica el nombre y descripción del rol.' : 'Configura un nuevo rol para tu workspace.'}
+              {editingRole
+                ? "Modifica el nombre y descripción del rol."
+                : "Configura un nuevo rol para tu workspace."}
             </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="flex flex-col">
             <div className="px-8 py-4 space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="role-name" className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground/70 ml-1">
+                <Label
+                  htmlFor="role-name"
+                  className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground/70 ml-1"
+                >
                   Nombre del Rol
                 </Label>
                 <Input
@@ -182,7 +217,10 @@ export function RoleManager() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="role-description" className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground/70 ml-1">
+                <Label
+                  htmlFor="role-description"
+                  className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground/70 ml-1"
+                >
                   Descripción
                 </Label>
                 <Textarea
@@ -191,7 +229,7 @@ export function RoleManager() {
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Describe las responsabilidades de este rol..."
                   rows={4}
-                  className={cn(inputFieldClass, 'min-h-[120px] py-4')}
+                  className={cn(inputFieldClass, "min-h-[120px] py-4")}
                 />
               </div>
             </div>
@@ -214,8 +252,10 @@ export function RoleManager() {
                 >
                   {submitting ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : editingRole ? (
+                    "Guardar Cambios"
                   ) : (
-                    editingRole ? 'Guardar Cambios' : 'Crear Rol'
+                    "Crear Rol"
                   )}
                 </Button>
               </DialogFooter>
@@ -224,5 +264,5 @@ export function RoleManager() {
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }

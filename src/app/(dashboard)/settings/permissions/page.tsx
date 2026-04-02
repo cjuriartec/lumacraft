@@ -1,14 +1,12 @@
-'use client'
+"use client";
 
-import React from 'react'
-import { useBreadcrumbs } from '@/shared/presentation/providers/breadcrumb-provider'
-import { PermissionManager } from '@/modules/authorization/presentation/components/permission-manager'
+import React from "react";
+
+import { PermissionManager } from "@/modules/authorization/presentation/components/permission-manager";
+import { useBreadcrumbs } from "@/shared/presentation/providers/breadcrumb-provider";
 
 export default function PermissionsPage() {
-  useBreadcrumbs([
-    { label: 'Configuración', href: '/settings' },
-    { label: 'Gestión de Permisos' },
-  ])
+  useBreadcrumbs([{ label: "Configuración", href: "/settings" }, { label: "Gestión de Permisos" }]);
 
   return (
     <div className="flex-1 w-full max-w-5xl px-4 py-8 md:px-8 mx-auto space-y-8 animate-in fade-in zoom-in-95 duration-400">
@@ -20,11 +18,12 @@ export default function PermissionsPage() {
           Gestión de Permisos
         </h1>
         <p className="text-sm font-light text-foreground/70 max-w-xl leading-relaxed">
-          Configura los accesos granulares por colección para cada rol en tu workspace. Estas reglas son forzadas a nivel de base de datos (RLS).
+          Configura los accesos granulares por colección para cada rol en tu workspace. Estas reglas
+          son forzadas a nivel de base de datos (RLS).
         </p>
       </div>
 
       <PermissionManager />
     </div>
-  )
+  );
 }

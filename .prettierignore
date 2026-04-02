@@ -1,0 +1,13 @@
+.next
+out
+build
+node_modules
+public
+*.min.js
+*.lock
+package-lock.json
+coverage
+test-results
+.gemini
+.turbo
+next-env.d.ts

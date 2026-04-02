@@ -1,48 +1,52 @@
-'use client'
+"use client";
 
-import { useEffect, useState } from 'react'
-import { useFields } from '../hooks/use-fields'
-import { useRecords } from '../hooks/use-records'
-import { useCollections } from '../hooks/use-collections'
-import { useGridPersistence } from '../hooks/use-grid-persistence'
-import { useBreadcrumbs } from '@/shared/presentation/providers/breadcrumb-provider'
-import { FieldManager } from '../components/field-manager'
-import { DataGrid } from '../components/data-grid'
-import { RecordFormDialog } from '../components/record-form-dialog'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/presentation/components/ui/tabs'
+import { LayoutGrid, ListFilter } from "lucide-react";
+import { useEffect, useState } from "react";
+
+import { usePermissions } from "@/modules/authorization/presentation/providers/permission-provider";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/shared/presentation/components/ui/select'
-import { LayoutGrid, ListFilter } from 'lucide-react'
-import { DataRecord } from '../../domain/entities/record.entity'
-import { Field } from '../../domain/entities/field.entity'
-import { ColumnFilter } from '../../domain/types/pagination.types'
-import { usePermissions } from '@/modules/authorization/presentation/providers/permission-provider'
+} from "@/shared/presentation/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/presentation/components/ui/tabs";
+import { useBreadcrumbs } from "@/shared/presentation/providers/breadcrumb-provider";
+
+import { Field } from "../../domain/entities/field.entity";
+import { DataRecord } from "../../domain/entities/record.entity";
+import { ColumnFilter } from "../../domain/types/pagination.types";
+import { DataGrid } from "../components/data-grid";
+import { FieldManager } from "../components/field-manager";
+import { RecordFormDialog } from "../components/record-form-dialog";
+import { useCollections } from "../hooks/use-collections";
+import { useFields } from "../hooks/use-fields";
+import { useGridPersistence } from "../hooks/use-grid-persistence";
+import { useRecords } from "../hooks/use-records";
 
 interface CollectionDetailPageProps {
-  collectionId: string
-  collectionName: string
+  collectionId: string;
+  collectionName: string;
 }
 
 export function CollectionDetailPage({ collectionId, collectionName }: CollectionDetailPageProps) {
-  useBreadcrumbs([
-    { label: 'Colecciones', href: '/collections' },
-    { label: collectionName },
-  ])
-  const { can, isOwner, isSuperAdmin } = usePermissions()
-  const canCreate = can(collectionId, 'create')
-  const canUpdate = can(collectionId, 'update')
-  const canDelete = can(collectionId, 'delete')
-  const canManageSchema = isOwner || isSuperAdmin
-  const { fields, loading: loadingFields, createField, updateField, deleteField } = useFields(collectionId)
+  useBreadcrumbs([{ label: "Colecciones", href: "/collections" }, { label: collectionName }]);
+  const { can, isOwner, isSuperAdmin } = usePermissions();
+  const canCreate = can(collectionId, "create");
+  const canUpdate = can(collectionId, "update");
+  const canDelete = can(collectionId, "delete");
+  const canManageSchema = isOwner || isSuperAdmin;
+  const {
+    fields,
+    loading: loadingFields,
+    createField,
+    updateField,
+    deleteField,
+  } = useFields(collectionId);
   const {
     records,
     total,
-    loading: loadingRecords,
     pagination,
     createRecord,
     updateRecord,
@@ -53,83 +57,85 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
     setSearchFields,
     setFilters,
     setPagination,
-  } = useRecords(collectionId)
-  const { collections, updateCollection } = useCollections()
-  const { loadStoredFilters, persistFilters } = useGridPersistence(collectionId)
+  } = useRecords(collectionId);
+  const { collections, updateCollection } = useCollections();
+  const { loadStoredFilters, persistFilters } = useGridPersistence(collectionId);
 
-  const currentCollection = collections.find(c => c.id === collectionId)
+  const currentCollection = collections.find((c) => c.id === collectionId);
 
-  const [recordEditorOpen, setRecordEditorOpen] = useState(false)
-  const [editingRecord, setEditingRecord] = useState<DataRecord | undefined>(undefined)
-  const [initialFilterValues, setInitialFilterValues] = useState<Record<string, string>>({})
-  const [isHydrated, setIsHydrated] = useState(false)
+  const [recordEditorOpen, setRecordEditorOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<DataRecord | undefined>(undefined);
+  const [initialFilterValues, setInitialFilterValues] = useState<Record<string, string>>({});
+  const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
     async function hydrate() {
-      const stored = await loadStoredFilters()
+      const stored = await loadStoredFilters();
       if (stored) {
-        setPagination(prev => ({
+        setPagination((prev) => ({
           ...prev,
           filters: stored.filters || [],
-          search: stored.search || ''
-        }))
-        setInitialFilterValues(stored.rawValues || {})
+          search: stored.search || "",
+        }));
+        setInitialFilterValues(stored.rawValues || {});
       }
-      setIsHydrated(true)
+      setIsHydrated(true);
     }
-    void hydrate()
-  }, [loadStoredFilters, setPagination])
+    void hydrate();
+  }, [loadStoredFilters, setPagination]);
 
   // Automatically sync searchFields with searchable field names
   useEffect(() => {
     if (fields.length > 0) {
       const searchableFields = fields
-        .filter(f => ['TEXT', 'NUMBER', 'ENUM', 'URL', 'EMAIL', 'PHONE'].includes(f.fieldType.value))
-        .map(f => f.name)
-      setSearchFields(searchableFields)
+        .filter((f) =>
+          ["TEXT", "NUMBER", "ENUM", "URL", "EMAIL", "PHONE"].includes(f.fieldType.value),
+        )
+        .map((f) => f.name);
+      setSearchFields(searchableFields);
     }
-  }, [fields, setSearchFields])
+  }, [fields, setSearchFields]);
 
   const handleFiltersChange = (filters: ColumnFilter[], rawValues: Record<string, string>) => {
-    setFilters(filters)
-    persistFilters(filters, rawValues, pagination.search || '')
-  }
+    setFilters(filters);
+    persistFilters(filters, rawValues, pagination.search || "");
+  };
 
   const handleSearchChange = (value: string) => {
-    setSearch(value)
-    persistFilters(pagination.filters || [], initialFilterValues, value)
-  }
+    setSearch(value);
+    persistFilters(pagination.filters || [], initialFilterValues, value);
+  };
 
   const handleEditRecord = (record: DataRecord) => {
-    setEditingRecord(record)
-    setRecordEditorOpen(true)
-  }
+    setEditingRecord(record);
+    setRecordEditorOpen(true);
+  };
 
   const handleCreateRecord = () => {
-    setEditingRecord(undefined)
-    setRecordEditorOpen(true)
-  }
+    setEditingRecord(undefined);
+    setRecordEditorOpen(true);
+  };
 
   const handleRecordSubmit = async (data: Record<string, unknown>) => {
     if (editingRecord) {
-      return await updateRecord(editingRecord.id, data)
+      return await updateRecord(editingRecord.id, data);
     } else {
-      return await createRecord(data)
+      return await createRecord(data);
     }
-  }
+  };
 
   useEffect(() => {
-    setSearchFields(fields.map((field) => field.name))
-  }, [fields, setSearchFields])
+    setSearchFields(fields.map((field) => field.name));
+  }, [fields, setSearchFields]);
 
   const handleInlineEdit = async (record: DataRecord, field: Field, value: unknown) => {
     await updateRecord(record.id, {
       ...record.data,
       [field.name]: value,
-    })
-  }
+    });
+  };
 
-  if (!isHydrated) return null
+  if (!isHydrated) return null;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-20">
@@ -141,7 +147,8 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
           {collectionName}
         </h1>
         <p className="text-sm font-light text-foreground/70 max-w-xl leading-relaxed">
-          Administra registros y configura el esquema estructural para <span className="font-medium text-foreground">{collectionName}</span>.
+          Administra registros y configura el esquema estructural para{" "}
+          <span className="font-medium text-foreground">{collectionName}</span>.
         </p>
       </div>
 
@@ -149,12 +156,16 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
         <TabsList className="mb-8">
           <TabsTrigger value="data" className="flex items-center">
             <LayoutGrid size={16} className="mr-2" />
-            Datos {total > 0 && <span className="ml-2 text-[10px] opacity-40 font-mono">({total})</span>}
+            Datos{" "}
+            {total > 0 && <span className="ml-2 text-[10px] opacity-40 font-mono">({total})</span>}
           </TabsTrigger>
           {canManageSchema && (
             <TabsTrigger value="fields" className="flex items-center">
               <ListFilter size={16} className="mr-2" />
-              Esquema {fields.length > 0 && <span className="ml-2 text-[10px] opacity-40 font-mono">({fields.length})</span>}
+              Esquema{" "}
+              {fields.length > 0 && (
+                <span className="ml-2 text-[10px] opacity-40 font-mono">({fields.length})</span>
+              )}
             </TabsTrigger>
           )}
         </TabsList>
@@ -203,18 +214,19 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
                 <div className="max-w-md">
                   <h3 className="text-sm font-bold text-foreground mb-1">Campo Principal</h3>
                   <p className="text-[12px] text-muted-foreground leading-relaxed">
-                    Define qué campo se usará para representar estos registros cuando se creen relaciones desde otras colecciones.
+                    Define qué campo se usará para representar estos registros cuando se creen
+                    relaciones desde otras colecciones.
                   </p>
                 </div>
                 <div className="w-full md:w-64">
                   <Select
-                    value={currentCollection?.primaryFieldName || 'id'}
+                    value={currentCollection?.primaryFieldName || "id"}
                     onValueChange={async (val: string) => {
                       if (currentCollection) {
                         await updateCollection({
                           ...currentCollection.toJSON(),
-                          primaryFieldName: val === 'id' ? null : val
-                        })
+                          primaryFieldName: val === "id" ? null : val,
+                        });
                       }
                     }}
                   >
@@ -223,8 +235,10 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
                     </SelectTrigger>
                     <SelectContent className="bg-surface border-border text-foreground">
                       <SelectItem value="id">ID (Sistema)</SelectItem>
-                      {fields.map(f => (
-                        <SelectItem key={f.id} value={f.name}>{f.displayName || f.name}</SelectItem>
+                      {fields.map((f) => (
+                        <SelectItem key={f.id} value={f.name}>
+                          {f.displayName || f.name}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -254,5 +268,5 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
         onSubmit={handleRecordSubmit}
       />
     </div>
-  )
+  );
 }

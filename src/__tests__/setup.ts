@@ -1,1 +1,1 @@
-import './setup/component'
+import "./setup/component";

@@ -1,27 +1,29 @@
-import { fireEvent, render, screen, waitFor, act } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { makeField, makeRecord, resetFactories } from '@/__tests__/factories/domain-factories'
-import { CollectionDetailPage } from '@/modules/collection/presentation/pages/collection-detail-page'
+import { makeField, makeRecord, resetFactories } from "@/__tests__/factories/domain-factories";
+import { Field } from "@/modules/collection/domain/entities/field.entity";
+import { DataRecord } from "@/modules/collection/domain/entities/record.entity";
+import { CollectionDetailPage } from "@/modules/collection/presentation/pages/collection-detail-page";
 
 const fieldsState = vi.hoisted(() => ({
-  fields: [] as any[],
+  fields: [] as Field[],
   loading: false,
   createField: vi.fn(),
   updateField: vi.fn(),
   deleteField: vi.fn(),
-}))
+}));
 
 const recordsState = vi.hoisted(() => ({
-  records: [] as any[],
+  records: [] as DataRecord[],
   total: 0,
   loading: false,
   pagination: {
     page: 1,
     pageSize: 25,
-    sortField: 'created_at',
-    sortDirection: 'desc' as const,
-    search: '',
+    sortField: "created_at",
+    sortDirection: "desc" as const,
+    search: "",
     searchFields: [],
     filters: [],
   },
@@ -34,63 +36,68 @@ const recordsState = vi.hoisted(() => ({
   setSearchFields: vi.fn(),
   setFilters: vi.fn(),
   setPagination: vi.fn(),
-}))
+}));
 
 const collectionsState = vi.hoisted(() => ({
-  collections: [] as any[],
+  collections: [] as unknown[],
   loading: false,
   createCollection: vi.fn(),
   updateCollection: vi.fn(),
   deleteCollection: vi.fn(),
   refresh: vi.fn(),
-}))
+}));
 
 const gridPersistenceState = vi.hoisted(() => ({
   loadStoredFilters: vi.fn(async () => null),
   persistFilters: vi.fn(),
-}))
+}));
 
 const permissionsState = vi.hoisted(() => ({
   can: vi.fn(() => true),
   isOwner: true,
   isSuperAdmin: false,
-}))
+}));
 
-vi.mock('@/modules/collection/presentation/hooks/use-fields', () => ({
+vi.mock("@/modules/collection/presentation/hooks/use-fields", () => ({
   useFields: () => fieldsState,
-}))
+}));
 
-vi.mock('@/modules/collection/presentation/hooks/use-records', () => ({
+vi.mock("@/modules/collection/presentation/hooks/use-records", () => ({
   useRecords: () => recordsState,
-}))
+}));
 
-vi.mock('@/modules/collection/presentation/hooks/use-collections', () => ({
+vi.mock("@/modules/collection/presentation/hooks/use-collections", () => ({
   useCollections: () => collectionsState,
-}))
+}));
 
-vi.mock('@/modules/collection/presentation/hooks/use-grid-persistence', () => ({
+vi.mock("@/modules/collection/presentation/hooks/use-grid-persistence", () => ({
   useGridPersistence: () => gridPersistenceState,
-}))
+}));
 
-vi.mock('@/shared/presentation/providers/breadcrumb-provider', () => ({
+vi.mock("@/shared/presentation/providers/breadcrumb-provider", () => ({
   useBreadcrumbs: vi.fn(),
-}))
+}));
 
-vi.mock('@/modules/authorization/presentation/providers/permission-provider', () => ({
+vi.mock("@/modules/authorization/presentation/providers/permission-provider", () => ({
   usePermissions: () => permissionsState,
-}))
+}));
 
-vi.mock('@/modules/collection/presentation/components/field-manager', () => ({
+vi.mock("@/modules/collection/presentation/components/field-manager", () => ({
   FieldManager: () => <div data-testid="field-manager">field-manager</div>,
-}))
+}));
 
-vi.mock('@/modules/collection/presentation/components/data-grid', () => ({
+vi.mock("@/modules/collection/presentation/components/data-grid", () => ({
   DataGrid: ({
     records,
     onAddRecord,
     onEdit,
     onDelete,
-  }: any) => (
+  }: {
+    records: DataRecord[];
+    onAddRecord: () => void;
+    onEdit: (r: DataRecord) => void;
+    onDelete: (id: string) => void;
+  }) => (
     <div data-testid="data-grid">
       <span>data-grid</span>
       {onAddRecord ? (
@@ -110,95 +117,105 @@ vi.mock('@/modules/collection/presentation/components/data-grid', () => ({
       ) : null}
     </div>
   ),
-}))
+}));
 
-vi.mock('@/modules/collection/presentation/components/record-form-dialog', () => ({
+vi.mock("@/modules/collection/presentation/components/record-form-dialog", () => ({
   RecordFormDialog: ({
     open,
     record,
     onSubmit,
-  }: any) =>
+  }: {
+    open: boolean;
+    record?: DataRecord;
+    onSubmit: (data: Record<string, unknown>) => Promise<void>;
+  }) =>
     open ? (
       <div data-testid="record-form-dialog">
-        <span>{record ? `editing:${record.id}` : 'editing:new'}</span>
-        <button type="button" onClick={() => void onSubmit({ title: 'Submitted' })}>
+        <span>{record ? `editing:${record.id}` : "editing:new"}</span>
+        <button type="button" onClick={() => void onSubmit({ title: "Submitted" })}>
           submit-dialog
         </button>
       </div>
     ) : null,
-}))
+}));
 
-describe('CollectionDetailPage', () => {
+describe("CollectionDetailPage", () => {
   beforeEach(() => {
-    resetFactories()
-    vi.clearAllMocks()
-    fieldsState.fields = [makeField({ id: 'field-1', collectionId: 'collection-1', name: 'title', fieldType: 'TEXT' })]
-    fieldsState.loading = false
-    recordsState.records = [makeRecord({ id: 'record-1', collectionId: 'collection-1', data: { title: 'Alpha' } })]
-    recordsState.total = 1
-    recordsState.loading = false
-    recordsState.createRecord.mockReset().mockResolvedValue({ ok: true })
-    recordsState.updateRecord.mockReset().mockResolvedValue({ ok: true })
-    recordsState.deleteRecord.mockReset().mockResolvedValue({ ok: true })
-    collectionsState.collections = [{ id: 'collection-1', name: 'Projects', toJSON: () => ({ id: 'collection-1' }) }]
-    gridPersistenceState.loadStoredFilters.mockResolvedValue(null)
-  })
+    resetFactories();
+    vi.clearAllMocks();
+    fieldsState.fields = [
+      makeField({ id: "field-1", collectionId: "collection-1", name: "title", fieldType: "TEXT" }),
+    ];
+    fieldsState.loading = false;
+    recordsState.records = [
+      makeRecord({ id: "record-1", collectionId: "collection-1", data: { title: "Alpha" } }),
+    ];
+    recordsState.total = 1;
+    recordsState.loading = false;
+    recordsState.createRecord.mockReset().mockResolvedValue({ ok: true });
+    recordsState.updateRecord.mockReset().mockResolvedValue({ ok: true });
+    recordsState.deleteRecord.mockReset().mockResolvedValue({ ok: true });
+    collectionsState.collections = [
+      { id: "collection-1", name: "Projects", toJSON: () => ({ id: "collection-1" }) },
+    ];
+    gridPersistenceState.loadStoredFilters.mockResolvedValue(null);
+  });
 
-  it('renders the loading state while fields are syncing', async () => {
-    fieldsState.loading = true
-    
-    render(<CollectionDetailPage collectionId="collection-1" collectionName="Projects" />)
-    
+  it("renders the loading state while fields are syncing", async () => {
+    fieldsState.loading = true;
+
+    render(<CollectionDetailPage collectionId="collection-1" collectionName="Projects" />);
+
     // Page will initially wait for hydration (isHydrated starts false)
     // Then it should show loading fields
     await waitFor(() => {
-        expect(screen.getByText('Sincronizando esquema...')).toBeInTheDocument()
-    })
-  })
+      expect(screen.getByText("Sincronizando esquema...")).toBeInTheDocument();
+    });
+  });
 
-  it('creates a record from the dialog opened by the new record button', async () => {
-    render(<CollectionDetailPage collectionId="collection-1" collectionName="Projects" />)
+  it("creates a record from the dialog opened by the new record button", async () => {
+    render(<CollectionDetailPage collectionId="collection-1" collectionName="Projects" />);
 
     // Wait for hydration
     await waitFor(() => {
-      expect(screen.getByTestId('data-grid')).toBeInTheDocument()
-    })
+      expect(screen.getByTestId("data-grid")).toBeInTheDocument();
+    });
 
-    fireEvent.click(screen.getByText('add-record'))
-    
-    await waitFor(() => {
-        expect(screen.getByText('editing:new')).toBeInTheDocument()
-    })
-    
-    fireEvent.click(screen.getByText('submit-dialog'))
+    fireEvent.click(screen.getByText("add-record"));
 
     await waitFor(() => {
-        expect(recordsState.createRecord).toHaveBeenCalledWith({ title: 'Submitted' })
-    })
-  })
+      expect(screen.getByText("editing:new")).toBeInTheDocument();
+    });
 
-  it('edits and deletes records via the data grid callbacks', async () => {
-    render(<CollectionDetailPage collectionId="collection-1" collectionName="Projects" />)
+    fireEvent.click(screen.getByText("submit-dialog"));
 
     await waitFor(() => {
-      expect(screen.getByTestId('data-grid')).toBeInTheDocument()
-    })
+      expect(recordsState.createRecord).toHaveBeenCalledWith({ title: "Submitted" });
+    });
+  });
 
-    fireEvent.click(screen.getByText('edit-record'))
-    
-    await waitFor(() => {
-      expect(screen.getByText('editing:record-1')).toBeInTheDocument()
-    })
-    
-    fireEvent.click(screen.getByText('submit-dialog'))
-    
-    await waitFor(() => {
-      expect(recordsState.updateRecord).toHaveBeenCalledWith('record-1', { title: 'Submitted' })
-    })
+  it("edits and deletes records via the data grid callbacks", async () => {
+    render(<CollectionDetailPage collectionId="collection-1" collectionName="Projects" />);
 
-    fireEvent.click(screen.getByText('delete-record'))
     await waitFor(() => {
-      expect(recordsState.deleteRecord).toHaveBeenCalledWith('record-1')
-    })
-  })
-})
+      expect(screen.getByTestId("data-grid")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText("edit-record"));
+
+    await waitFor(() => {
+      expect(screen.getByText("editing:record-1")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText("submit-dialog"));
+
+    await waitFor(() => {
+      expect(recordsState.updateRecord).toHaveBeenCalledWith("record-1", { title: "Submitted" });
+    });
+
+    fireEvent.click(screen.getByText("delete-record"));
+    await waitFor(() => {
+      expect(recordsState.deleteRecord).toHaveBeenCalledWith("record-1");
+    });
+  });
+});

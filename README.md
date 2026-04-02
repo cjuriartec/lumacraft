@@ -4,7 +4,7 @@
 [![Supabase](https://img.shields.io/badge/Supabase-BaaS-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.0-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
-[![Architecture](https://img.shields.io/badge/Architecture-Hexagonal-blue?style=flat-square)](https://en.wikipedia.org/wiki/Hexagonal_architecture_(software))
+[![Architecture](https://img.shields.io/badge/Architecture-Hexagonal-blue?style=flat-square)](<https://en.wikipedia.org/wiki/Hexagonal_architecture_(software)>)
 
 **Lumacraft** es una plataforma modular de gestión de datos dinámicos potenciada por IA, diseñada para escalar mediante una arquitectura multitenant robusta y un motor de generación de documentos inteligente.
 
@@ -13,6 +13,7 @@
 ## 🚀 Propósito del Proyecto
 
 El objetivo de Lumacraft es proporcionar una infraestructura flexible que permita a las organizaciones:
+
 1.  **Crear estructuras de datos dinámicas** sin necesidad de despliegues constantes (Data Engine).
 2.  **Gestionar permisos granulares** (RBAC) con aislamiento estricto entre cuentas (Multi-tenancy).
 3.  **Generar documentos inteligentes** basados en contextos enriquecidos por el motor de datos.
@@ -20,52 +21,59 @@ El objetivo de Lumacraft es proporcionar una infraestructura flexible que permit
 
 ---
 
-## 🏛️ Arquitectura: Screaming + Hexagonal
+## 🏛️ Arquitectura: Screaming + Hexagonal (Domain-Driven)
 
-Este proyecto implementa **Screaming Architecture** (las carpetas gritan el dominio del negocio) y **Hexagonal Architecture** (Puertos y Adaptadores) para garantizar que la lógica de negocio esté desacoplada de los detalles técnicos.
+Este proyecto implementa **Screaming Architecture** (las carpetas gritan el dominio del negocio) y **Hexagonal Architecture** (Puertos y Adaptadores) con un enfoque en **Domain-Driven Design (DDD)**.
+
+### Principios de Diseño
+
+1.  **Valid by Construction**: Las entidades de dominio (`Collection`, `Field`, `Role`) solo pueden instanciarse a través de fábricas estáticas (`Entity.create()`) que validan invariantes usando **Value Objects**.
+2.  **Value Objects (VOs)**: Los tipos primitivos están envueltos en objetos con lógica de validación propia (e.g., `Identifier` para slugs, `DisplayName` para etiquetas).
+3.  **Result Pattern**: No se utilizan excepciones para errores de negocio esperados. Todas las operaciones devuelven un objeto `Result<T, E>`.
+4.  **Agnosticismo de Infraestructura**: La lógica de negocio (`domain` y `application`) no conoce nada sobre Supabase, Next.js o librerías externas.
 
 ### Estructura de Folders (`src/`)
--   `modules/`: Dominios de negocio (Contextos Delimitados).
-    -   `auth/`: Gestión de sesiones y autenticación.
-    -   `workspace/`: Multi-tenancy y administración de cuentas.
-    -   `collection/`: Motor dinámico de datos (Colecciones, Campos, Registros).
--   `shared/`: Infraestructura compartida, clases base y UI común.
-    -   `domain/`: Patrón Result, Entidades base, Errores de dominio.
-    -   `infrastructure/`: Clientes Supabase, Repositorios base, Inyección de Dependencias.
-    -   `presentation/`: Componentes UI compartidos, layouts y proveedores.
--   `app/`: Capa de entrega (Next.js App Router).
+
+- `modules/`: Dominios de negocio (Contextos Delimitados).
+  - `domain/`: Entidades, Value Objects y Puertos (Interfaces de Repositorio).
+  - `application/`: Casos de uso (Orquestación de lógica).
+  - `infrastructure/`: Adaptadores (Supabase, APIs externas).
+  - `presentation/`: UI enfocada al módulo (React components, hooks).
+- `shared/`: Infraestructura compartida y base del sistema de tipos.
+- `app/`: Capa de entrega (Next.js App Router).
 
 ---
 
 ## 🛠️ Stack Tecnológico
 
-| Capa | Tecnología |
-| :--- | :--- |
-| **Frontend** | Next.js 15 (App Router), React 19, Tailwind CSS 4 |
-| **Backend (BaaS)** | Supabase (PostgreSQL, Auth, Storage, Edge Functions) |
-| **IA** | Google Gemini API (AI Engine) |
-| **Validación** | Zod (Runtime typing) |
-| **Testing** | Vitest, Testing Library, Playwright (E2E) |
-| **Componentes** | Radix UI, Lucide Icons, shadcn/ui |
+| Capa               | Tecnología                                         |
+| :----------------- | :------------------------------------------------- |
+| **Frontend**       | Next.js 16 (App Router), React 19, Tailwind CSS 4  |
+| **Backend (BaaS)** | Supabase (PostgreSQL, Auth, Storage, RLs Granular) |
+| **Validación**     | Domain VOs (Internal), Zod (API/Form Boundaries)   |
+| **Testing**        | Vitest (Unit/Integration), Playwright (E2E)        |
+| **Componentes**    | Radix UI, Lucide Icons, Noir Minimalist Custom CSS |
 
 ---
 
 ## ✨ Características Principales
 
--   **Data Engine**: Creación de colecciones personalizadas con campos dinámicos (Texto, Números, Relaciones, Archivos) usando PostgreSQL JSONB con índices GIN.
--   **Multi-tenant RBAC**: Aislamiento estricto de datos por `account_id` y roles configurables con permisos CRUD independientes por colección.
--   **AI Engine**: Integración agnóstica de proveedores (actualmente Gemini Pro/Flash) para tareas de redacción y análisis basadas en contexto real.
--   **Template Engine**: Editor visual de plantillas con bloques lógicos (condicionales, bucles, IA) para generación masiva de PDF/DOCX.
+- **Data Engine Hardened**: Motor de datos con validación estricta de esquemas a nivel de dominio y base de datos (PostgreSQL).
+- **Zero-Trust Authz**: Sistema de permisos granulares basado en roles persistidos en DB y forzados mediante RLS.
+- **Eager Loading Engine**: Sistema inteligente de resolución de relaciones para evitar N+1 y flickering en la UI.
+- **Noir Aesthetics**: Interfaz premium minimalista con soporte nativo para Light/Dark mode y animaciones fluidas.
 
 ---
 
 ## 🏁 Empezando
 
 ### Requisitos Previos
--   Node.js 20+
--   Instancia de Supabase (Local o Cloud)
+
+- Node.js 20+
+- Instancia de Supabase (Local o Cloud)
 
 ### Instalación
+
 1.  Clonar el repositorio:
     ```bash
     git clone https://github.com/usuario/lumacraft.git
@@ -90,10 +98,10 @@ Este proyecto implementa **Screaming Architecture** (las carpetas gritan el domi
 
 ## 🧪 Comandos Útiles
 
--   `npm run test:unit`: Ejecuta tests unitarios del dominio y casos de uso.
--   `npm run test:integration`: Ejecuta tests de integración contra adaptadores.
--   `npm run test:coverage`: Genera informe de cobertura de código.
--   `npm run lint`: Ejecuta el linter de ESLint.
+- `npm run test:unit`: Ejecuta tests unitarios del dominio y casos de uso.
+- `npm run test:integration`: Ejecuta tests de integración contra adaptadores.
+- `npm run test:coverage`: Genera informe de cobertura de código.
+- `npm run lint`: Ejecuta el linter de ESLint.
 
 ---
 
@@ -110,4 +118,3 @@ Este proyecto implementa **Screaming Architecture** (las carpetas gritan el domi
 ## 📄 Licencia
 
 Este proyecto está bajo la Licencia MIT - mira el archivo [LICENSE](LICENSE) para detalles.
-

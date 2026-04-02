@@ -1,15 +1,16 @@
-import { IPermissionRepository } from '../../domain/ports/permission-repository.port'
-import { CollectionPermission } from '../../domain/entities/permission.entity'
-import { Result, ok, fail, DomainError } from '@/shared/domain/result'
+import { Result } from "@/shared/domain/result";
+
+import { CollectionPermission } from "../../domain/entities/permission.entity";
+import { IPermissionRepository } from "../../domain/ports/permission-repository.port";
 
 export interface UpsertPermissionRequest {
-  id?: string
-  roleId: string
-  collectionId: string
-  canRead: boolean
-  canCreate: boolean
-  canUpdate: boolean
-  canDelete: boolean
+  id?: string;
+  roleId: string;
+  collectionId: string;
+  canRead: boolean;
+  canCreate: boolean;
+  canUpdate: boolean;
+  canDelete: boolean;
 }
 
 export class ManagePermissionsUseCase {
@@ -24,16 +25,16 @@ export class ManagePermissionsUseCase {
       canCreate: request.canCreate,
       canUpdate: request.canUpdate,
       canDelete: request.canDelete,
-    })
+    });
 
-    return this.permissionRepository.upsert(permission)
+    return this.permissionRepository.upsert(permission);
   }
 
   async delete(id: string): Promise<Result<void>> {
-    return this.permissionRepository.delete(id)
+    return this.permissionRepository.delete(id);
   }
 
   async listByCollection(collectionId: string): Promise<Result<CollectionPermission[]>> {
-    return this.permissionRepository.findByCollectionId(collectionId)
+    return this.permissionRepository.findByCollectionId(collectionId);
   }
 }

@@ -1,74 +1,79 @@
-'use client'
+"use client";
 
-import React, { useState } from 'react'
-import { Loader2 } from 'lucide-react'
-import { useMembers } from '../hooks/use-members'
-import { useRoles } from '../hooks/use-roles'
-import { useWorkspace } from '../providers/workspace-provider'
-import { Button } from '@/shared/presentation/components/ui/button'
-import { Input } from '@/shared/presentation/components/ui/input'
+import { Loader2 } from "lucide-react";
+import React, { useState } from "react";
+
+import { cn } from "@/shared/lib/utils";
+import { Button } from "@/shared/presentation/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogDescription,
   DialogFooter,
-} from '@/shared/presentation/components/ui/dialog'
+  DialogHeader,
+  DialogTitle,
+} from "@/shared/presentation/components/ui/dialog";
+import { Input } from "@/shared/presentation/components/ui/input";
+import { Label } from "@/shared/presentation/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/shared/presentation/components/ui/select'
-import { Label } from '@/shared/presentation/components/ui/label'
-import { cn } from '@/shared/lib/utils'
+} from "@/shared/presentation/components/ui/select";
+
+import { useMembers } from "../hooks/use-members";
+import { useRoles } from "../hooks/use-roles";
+import { useWorkspace } from "../providers/workspace-provider";
 
 const inputFieldClass = cn(
-  'h-11 rounded-xl border-border/10 bg-foreground/5 text-foreground text-sm shadow-none transition-colors px-4',
-  'placeholder:font-light focus-visible:border-primary/30 focus-visible:ring-2 focus-visible:ring-primary/10',
-)
+  "h-11 rounded-xl border-border/10 bg-foreground/5 text-foreground text-sm shadow-none transition-colors px-4",
+  "placeholder:font-light focus-visible:border-primary/30 focus-visible:ring-2 focus-visible:ring-primary/10",
+);
 
 interface InviteMemberModalProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
 export function InviteMemberModal({ open, onOpenChange }: InviteMemberModalProps) {
-  const { currentWorkspace } = useWorkspace()
-  const { addMemberByEmail } = useMembers(currentWorkspace?.id)
-  const { roles } = useRoles(currentWorkspace?.id)
+  const { currentWorkspace } = useWorkspace();
+  const { addMemberByEmail } = useMembers(currentWorkspace?.id);
+  const { roles } = useRoles(currentWorkspace?.id);
 
-  const [submitting, setSubmitting] = useState(false)
-  const [formError, setFormError] = useState<string | null>(null)
-  const [formData, setFormData] = useState({ email: '', roleId: '' })
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [formData, setFormData] = useState({ email: "", roleId: "" });
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!formData.roleId) return
-    setSubmitting(true)
-    setFormError(null)
-    const result = await addMemberByEmail({ email: formData.email.trim(), roleId: formData.roleId })
-    setSubmitting(false)
-    if (!result) return
+    e.preventDefault();
+    if (!formData.roleId) return;
+    setSubmitting(true);
+    setFormError(null);
+    const result = await addMemberByEmail({
+      email: formData.email.trim(),
+      roleId: formData.roleId,
+    });
+    setSubmitting(false);
+    if (!result) return;
     if (result.ok) {
       // Clear form on success
-      setFormData({ email: '', roleId: '' })
-      onOpenChange(false)
+      setFormData({ email: "", roleId: "" });
+      onOpenChange(false);
     } else {
-      setFormError(result.error.message)
+      setFormError(result.error.message);
     }
-  }
+  };
 
   // Clear form when closing intentionally
   const handleOpenChange = (isOpen: boolean) => {
     if (!isOpen) {
-      setFormData({ email: '', roleId: '' })
-      setFormError(null)
+      setFormData({ email: "", roleId: "" });
+      setFormError(null);
     }
-    onOpenChange(isOpen)
-  }
+    onOpenChange(isOpen);
+  };
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -85,14 +90,20 @@ export function InviteMemberModal({ open, onOpenChange }: InviteMemberModalProps
         <form onSubmit={handleSubmit} className="flex flex-col">
           <div className="px-8 py-4 space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground/70 ml-1">
+              <Label
+                htmlFor="email"
+                className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground/70 ml-1"
+              >
                 Correo Electrónico
               </Label>
               <Input
                 id="email"
                 type="email"
                 value={formData.email}
-                onChange={(e) => { setFormData({ ...formData, email: e.target.value }); setFormError(null) }}
+                onChange={(e) => {
+                  setFormData({ ...formData, email: e.target.value });
+                  setFormError(null);
+                }}
                 placeholder="usuario@ejemplo.com"
                 required
                 className={inputFieldClass}
@@ -144,16 +155,12 @@ export function InviteMemberModal({ open, onOpenChange }: InviteMemberModalProps
                 disabled={submitting || !formData.roleId || !formData.email.trim()}
                 className="w-full bg-primary font-semibold text-primary-foreground rounded-xl shadow-sm transition-all hover:bg-primary/90 hover:-translate-y-0.5 active:translate-y-0 sm:w-auto sm:min-w-[140px]"
               >
-                {submitting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  'Añadir Miembro'
-                )}
+                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Añadir Miembro"}
               </Button>
             </DialogFooter>
           </div>
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

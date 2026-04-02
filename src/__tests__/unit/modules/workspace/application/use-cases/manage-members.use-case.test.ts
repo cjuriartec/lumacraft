@@ -1,15 +1,18 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { ManageMembersUseCase } from '../../../../../../modules/workspace/application/use-cases/manage-members.use-case'
-import { IWorkspaceMemberRepository } from '../../../../../../modules/workspace/domain/ports/workspace-member-repository.port'
-import { IWorkspaceRepository } from '../../../../../../modules/workspace/domain/ports/workspace-repository.port'
-import { WorkspaceMember } from '../../../../../../modules/workspace/domain/entities/workspace-member.entity'
-import { Workspace } from '../../../../../../modules/workspace/domain/entities/workspace.entity'
-import { ok, fail, DomainError } from '../../../../../../shared/domain/result'
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-describe('ManageMembersUseCase', () => {
-  let useCase: ManageMembersUseCase
-  let memberRepository: any
-  let workspaceRepository: any
+import {
+  makeWorkspace,
+  makeWorkspaceMember,
+} from "../../../../../../__tests__/factories/domain-factories";
+import { ManageMembersUseCase } from "../../../../../../modules/workspace/application/use-cases/manage-members.use-case";
+import { IWorkspaceMemberRepository } from "../../../../../../modules/workspace/domain/ports/workspace-member-repository.port";
+import { IWorkspaceRepository } from "../../../../../../modules/workspace/domain/ports/workspace-repository.port";
+import { DomainError, ok } from "../../../../../../shared/domain/result";
+
+describe("ManageMembersUseCase", () => {
+  let useCase: ManageMembersUseCase;
+  let memberRepository: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  let workspaceRepository: any; // eslint-disable-line @typescript-eslint/no-explicit-any
 
   beforeEach(() => {
     memberRepository = {
@@ -19,75 +22,80 @@ describe('ManageMembersUseCase', () => {
       updateMemberRole: vi.fn(),
       removeMember: vi.fn(),
       findByUserAndWorkspace: vi.fn(),
-    } as any
+    };
 
     workspaceRepository = {
       findById: vi.fn(),
       findByUserId: vi.fn(),
       create: vi.fn(),
-    } as any
+    };
 
-    useCase = new ManageMembersUseCase(memberRepository, workspaceRepository)
-  })
+    useCase = new ManageMembersUseCase(
+      memberRepository as IWorkspaceMemberRepository,
+      workspaceRepository as IWorkspaceRepository,
+    );
+  });
 
-  describe('removeMember', () => {
-    it('should fail if member to remove is the workspace owner', async () => {
-      const workspaceId = 'workspace-1'
-      const userId = 'user-owner'
-      const memberId = 'member-1'
+  describe("removeMember", () => {
+    it("should fail if member to remove is the workspace owner", async () => {
+      const workspaceId = "workspace-1";
+      const userId = "user-owner";
+      const memberId = "member-1";
 
-      const member = new WorkspaceMember({
+      const member = makeWorkspaceMember({
         id: memberId,
         workspaceId,
         userId,
-        roleId: 'role-1'
-      })
+        roleId: "role-1",
+      });
 
-      const workspace = new Workspace({
+      const workspace = makeWorkspace({
         id: workspaceId,
-        name: 'My Workspace',
-        ownerId: userId
-      })
+        name: "My Workspace",
+        ownerId: userId,
+      });
 
-      memberRepository.findById.mockResolvedValue(ok(member))
-      workspaceRepository.findById.mockResolvedValue(ok(workspace))
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (memberRepository as any).findById.mockResolvedValue(ok(member));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (workspaceRepository as any).findById.mockResolvedValue(ok(workspace));
 
-      const result = await useCase.removeMember(memberId)
+      const result = await useCase.removeMember(memberId);
 
-      expect(result.ok).toBe(false)
+      expect(result.ok).toBe(false);
       if (!result.ok) {
-        expect((result.error as DomainError).code).toBe('FORBIDDEN')
-        expect(result.error.message).toContain('Owner cannot be removed')
+        expect((result.error as DomainError).code).toBe("FORBIDDEN");
+        expect(result.error.message).toContain("Owner cannot be removed");
       }
-      expect(memberRepository.removeMember).not.toHaveBeenCalled()
-    })
+      expect(memberRepository.removeMember).not.toHaveBeenCalled();
+    });
 
-    it('should succeed if member is NOT the owner', async () => {
-      const workspaceId = 'workspace-1'
-      const userId = 'user-regular'
-      const memberId = 'member-1'
+    it("should succeed if member is NOT the owner", async () => {
+      const workspaceId = "workspace-1";
+      const userId = "user-regular";
+      const memberId = "member-1";
 
-      const member = new WorkspaceMember({
+      const member = makeWorkspaceMember({
         id: memberId,
         workspaceId,
         userId,
-        roleId: 'role-1'
-      })
+        roleId: "role-1",
+      });
 
-      const workspace = new Workspace({
+      const workspace = makeWorkspace({
         id: workspaceId,
-        name: 'My Workspace',
-        ownerId: 'different-owner'
-      })
+        name: "My Workspace",
+        ownerId: "different-owner",
+      });
 
-      memberRepository.findById.mockResolvedValue(ok(member))
-      workspaceRepository.findById.mockResolvedValue(ok(workspace))
-      memberRepository.removeMember.mockResolvedValue(ok(undefined))
+      memberRepository.findById.mockResolvedValue(ok(member));
+      workspaceRepository.findById.mockResolvedValue(ok(workspace));
+      memberRepository.removeMember.mockResolvedValue(ok(undefined));
 
-      const result = await useCase.removeMember(memberId)
+      const result = await useCase.removeMember(memberId);
 
-      expect(result.ok).toBe(true)
-      expect(memberRepository.removeMember).toHaveBeenCalledWith(memberId)
-    })
-  })
-})
+      expect(result.ok).toBe(true);
+      expect(memberRepository.removeMember).toHaveBeenCalledWith(memberId);
+    });
+  });
+});

@@ -1,4 +1,7 @@
-import { IGridStateRepository, GridFiltersState } from '../../domain/ports/grid-state-repository.port';
+import {
+  GridFiltersState,
+  IGridStateRepository,
+} from "../../domain/ports/grid-state-repository.port";
 
 export class PersistGridFiltersUseCase {
   constructor(private readonly repository: IGridStateRepository) {}

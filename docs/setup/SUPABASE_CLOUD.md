@@ -32,9 +32,9 @@ Una vez creado el proyecto:
 1. Ve a **Settings** → **API** en el sidebar del dashboard
 2. Copia los siguientes valores:
 
-| Campo en Dashboard | Variable en `.env.local` |
-|---|---|
-| **Project URL** | `NEXT_PUBLIC_SUPABASE_URL` |
+| Campo en Dashboard         | Variable en `.env.local`               |
+| -------------------------- | -------------------------------------- |
+| **Project URL**            | `NEXT_PUBLIC_SUPABASE_URL`             |
 | **Publishable key** (anon) | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` |
 
 3. Pega los valores en tu archivo `.env.local`:
@@ -80,6 +80,7 @@ npx supabase link
 ```
 
 El CLI te pedirá:
+
 1. **Seleccionar el proyecto** de la lista (elige `lumacraft`)
 2. **Database password**: Ingresa la contraseña que definiste al crear el proyecto
 
@@ -102,6 +103,7 @@ npx supabase db push
 ```
 
 Esto ejecutará todas las migraciones pendientes:
+
 - `20240330000001_initial_schema.sql` — Tablas base (accounts, roles, members, collections)
 - `20240330000002_workspace_trigger.sql` — Trigger de creación automática de workspace
 - `20240330000003_rls_policies.sql` — Políticas de seguridad (RLS)
@@ -163,13 +165,13 @@ lumacraft/
 
 ## 🛑 Troubleshooting
 
-| Problema | Solución |
-|---|---|
-| `Invalid API key` | Verifica que el valor de `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` en `.env.local` sea correcto |
-| `supabase link` falla | Asegúrate de haber ejecutado `npx supabase login` primero |
-| `db push` dice "no migrations" | Verifica que estés en la raíz del proyecto y que exista `supabase/migrations/` |
-| Google OAuth no redirige | Comprueba que el Redirect URI en Google Cloud Console coincida exactamente con tu URL de Supabase |
-| Error CORS en el browser | Agrega `http://localhost:3000` en **Authentication → URL Configuration → Redirect URLs** en el dashboard |
+| Problema                       | Solución                                                                                                 |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| `Invalid API key`              | Verifica que el valor de `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` en `.env.local` sea correcto             |
+| `supabase link` falla          | Asegúrate de haber ejecutado `npx supabase login` primero                                                |
+| `db push` dice "no migrations" | Verifica que estés en la raíz del proyecto y que exista `supabase/migrations/`                           |
+| Google OAuth no redirige       | Comprueba que el Redirect URI en Google Cloud Console coincida exactamente con tu URL de Supabase        |
+| Error CORS en el browser       | Agrega `http://localhost:3000` en **Authentication → URL Configuration → Redirect URLs** en el dashboard |
 
 ---
 

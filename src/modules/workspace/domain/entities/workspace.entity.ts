@@ -1,29 +1,51 @@
-import { BaseEntity } from '@/shared/domain/base-entity'
+import { BaseEntity } from "@/shared/domain/base-entity";
+import { fail, ok, Result } from "@/shared/domain/result";
+import { DisplayName } from "@/shared/domain/value-objects/display-name.vo";
 
 interface WorkspaceProps {
-  id: string
-  name: string
-  ownerId: string
-  settings?: Record<string, unknown>
-  isActive?: boolean
-  createdAt?: Date
-  updatedAt?: Date
+  id: string;
+  name: DisplayName;
+  ownerId: string;
+  settings?: Record<string, unknown>;
+  isActive?: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export class Workspace extends BaseEntity {
-  private props: WorkspaceProps
+  private props: WorkspaceProps;
 
   constructor(props: WorkspaceProps) {
-    super(props.id, props.createdAt, props.updatedAt)
-    this.props = props
+    super(props.id, props.createdAt, props.updatedAt);
+    this.props = props;
   }
 
   get name(): string {
-    return this.props.name
+    return this.props.name.value;
   }
 
   get ownerId(): string {
-    return this.props.ownerId
+    return this.props.ownerId;
+  }
+
+  public static create(props: {
+    id: string;
+    name: string;
+    ownerId: string;
+    settings?: Record<string, unknown>;
+    isActive?: boolean;
+    createdAt?: Date;
+    updatedAt?: Date;
+  }): Result<Workspace> {
+    const nameResult = DisplayName.create(props.name, "Workspace Name");
+    if (!nameResult.ok) return fail(nameResult.error);
+
+    return ok(
+      new Workspace({
+        ...props,
+        name: nameResult.value,
+      }),
+    );
   }
 
   public toJSON() {
@@ -33,6 +55,6 @@ export class Workspace extends BaseEntity {
       ownerId: this.ownerId,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
-    }
+    };
   }
 }

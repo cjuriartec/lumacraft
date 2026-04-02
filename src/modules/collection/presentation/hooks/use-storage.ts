@@ -1,35 +1,35 @@
-'use client'
+"use client";
 
-import { useMemo } from 'react'
-import { useSupabase } from '@/shared/presentation/providers/supabase-provider'
-import { SupabaseStorageRepository } from '../../infrastructure/repositories/supabase-storage.repository'
-import { DownloadFileUseCase } from '../../application/use-cases/download-file.use-case'
-import { UploadFileUseCase, DeleteFileUseCase } from '../../application/use-cases/file-mgmt.use-case'
+import { useMemo } from "react";
+
+import { useSupabase } from "@/shared/presentation/providers/supabase-provider";
+
+import { CollectionUseCaseFactory } from "../../application/collection-use-case.factory";
 
 export function useStorage() {
-  const { supabase } = useSupabase()
+  const { supabase } = useSupabase();
 
-  const repository = useMemo(() => new SupabaseStorageRepository(supabase), [supabase])
+  const factory = useMemo(() => CollectionUseCaseFactory.create(supabase), [supabase]);
 
-  const uploadUseCase = useMemo(() => new UploadFileUseCase(repository), [repository])
-  const downloadUseCase = useMemo(() => new DownloadFileUseCase(repository), [repository])
-  const deleteUseCase = useMemo(() => new DeleteFileUseCase(repository), [repository])
+  const uploadUseCase = useMemo(() => factory.uploadFile(), [factory]);
+  const downloadUseCase = useMemo(() => factory.downloadFile(), [factory]);
+  const deleteUseCase = useMemo(() => factory.deleteFile(), [factory]);
 
   const uploadFile = async (bucket: string, path: string, file: File) => {
-    return uploadUseCase.execute(bucket, path, file)
-  }
+    return uploadUseCase.execute(bucket, path, file);
+  };
 
   const downloadFile = async (bucket: string, path: string) => {
-    return downloadUseCase.execute(bucket, path)
-  }
+    return downloadUseCase.execute(bucket, path);
+  };
 
   const deleteFiles = async (bucket: string, paths: string[]) => {
-    return deleteUseCase.execute(bucket, paths)
-  }
+    return deleteUseCase.execute(bucket, paths);
+  };
 
   return {
     uploadFile,
     downloadFile,
-    deleteFiles
-  }
+    deleteFiles,
+  };
 }

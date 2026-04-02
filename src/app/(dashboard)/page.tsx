@@ -1,18 +1,18 @@
-'use client'
+"use client";
 
-import { useAuth } from '@/modules/auth/presentation/providers/auth-provider'
-import { useBreadcrumbs } from '@/shared/presentation/providers/breadcrumb-provider'
-import { Database, FileText, TrendingUp, ArrowRight, Sparkles, Zap } from 'lucide-react'
-import Link from 'next/link'
+import { ArrowRight, Database, FileText, Sparkles, TrendingUp, Zap } from "lucide-react";
+import Link from "next/link";
+
+import { useAuth } from "@/modules/auth/presentation/providers/auth-provider";
+import { useBreadcrumbs } from "@/shared/presentation/providers/breadcrumb-provider";
 
 export default function DashboardPage() {
-  const { user } = useAuth()
-  useBreadcrumbs([{ label: 'Inicio' }])
-  const firstName = user?.fullName?.split(' ')[0] || 'de nuevo'
+  const { user } = useAuth();
+  useBreadcrumbs([{ label: "Inicio" }]);
+  const firstName = user?.fullName?.split(" ")[0] || "de nuevo";
 
   return (
     <div className="p-8 max-w-5xl mx-auto">
-
       {/* Header */}
       <div className="mb-12">
         <p className="text-xs font-semibold uppercase mb-3 text-primary tracking-[0.12em]">
@@ -28,18 +28,8 @@ export default function DashboardPage() {
 
       {/* Stats Row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-12">
-        <StatCard
-          title="Colecciones"
-          value="0"
-          icon={<Database size={18} />}
-          trend="Esta semana"
-        />
-        <StatCard
-          title="Registros Totales"
-          value="0"
-          icon={<TrendingUp size={18} />}
-          trend="Hoy"
-        />
+        <StatCard title="Colecciones" value="0" icon={<Database size={18} />} trend="Esta semana" />
+        <StatCard title="Registros Totales" value="0" icon={<TrendingUp size={18} />} trend="Hoy" />
         <StatCard
           title="Documentos Generados"
           value="0"
@@ -87,27 +77,30 @@ export default function DashboardPage() {
             AI Engine con Gemini
           </h2>
           <p className="font-light max-w-lg text-foreground/70 leading-[1.65]">
-            Generación contextual de documentos, análisis de datos y automatización
-            de flujos de trabajo impulsados por Gemini Pro.
+            Generación contextual de documentos, análisis de datos y automatización de flujos de
+            trabajo impulsados por Gemini Pro.
           </p>
         </div>
 
         {/* Ghost icon */}
         <div className="absolute right-10 top-1/2 -translate-y-1/2">
-          <Sparkles
-            size={80}
-            className="text-primary opacity-5"
-          />
+          <Sparkles size={80} className="text-primary opacity-5" />
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function StatCard({
-  title, value, icon, trend
+  title,
+  value,
+  icon,
+  trend,
 }: {
-  title: string; value: string; icon: React.ReactNode; trend: string
+  title: string;
+  value: string;
+  icon: React.ReactNode;
+  trend: string;
 }) {
   return (
     <div className="rounded-xl p-5 group transition-all duration-200 hover:-translate-y-0.5 bg-surface dark:bg-surface-hover dark:ring-1 dark:ring-white/5">
@@ -115,24 +108,26 @@ function StatCard({
         <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-primary/10 text-primary">
           {icon}
         </div>
-        <span className="text-[11px] font-medium text-foreground/60">
-          {trend}
-        </span>
+        <span className="text-[11px] font-medium text-foreground/60">{trend}</span>
       </div>
-      <p className="text-3xl font-bold mb-1 text-foreground tracking-[-0.02em]">
-        {value}
-      </p>
-      <p className="text-sm font-light text-foreground/70">
-        {title}
-      </p>
+      <p className="text-3xl font-bold mb-1 text-foreground tracking-[-0.02em]">{value}</p>
+      <p className="text-sm font-light text-foreground/70">{title}</p>
     </div>
-  )
+  );
 }
 
 function QuickAction({
-  href, icon, title, description, badge
+  href,
+  icon,
+  title,
+  description,
+  badge,
 }: {
-  href: string; icon: React.ReactNode; title: string; description: string; badge: string
+  href: string;
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  badge: string;
 }) {
   return (
     <Link
@@ -145,16 +140,12 @@ function QuickAction({
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1.5">
-            <h3 className="text-sm font-semibold text-foreground">
-              {title}
-            </h3>
+            <h3 className="text-sm font-semibold text-foreground">{title}</h3>
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-primary/10 text-primary tracking-[0.05em]">
               {badge}
             </span>
           </div>
-          <p className="text-[13px] font-light leading-relaxed text-foreground/70">
-            {description}
-          </p>
+          <p className="text-[13px] font-light leading-relaxed text-foreground/70">{description}</p>
         </div>
         <ArrowRight
           size={16}
@@ -162,5 +153,5 @@ function QuickAction({
         />
       </div>
     </Link>
-  )
+  );
 }

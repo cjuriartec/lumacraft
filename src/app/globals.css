@@ -2,12 +2,12 @@
 
 @layer base {
   :root {
-    --background: #fafafb;
+    --background: #f5f9f8;
     --foreground: #1a1e26;
     --primary: #10b981;
     --primary-hover: #059669;
     --surface: #ffffff;
-    --surface-hover: #fafbfb;
+    --surface-hover: #ffffff;
     --muted: rgba(26, 30, 38, 0.45);
     --border: rgba(26, 30, 38, 0.05);
     --sidebar-bg: #ffffff;
@@ -26,7 +26,7 @@
   }
 }
 
-@theme inline {
+@theme {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-primary: var(--primary);
@@ -36,7 +36,7 @@
   --color-muted: var(--muted);
   --color-border: var(--border);
   --color-sidebar: var(--sidebar-bg);
-  --font-sans: var(--font-poppins), 'Poppins', sans-serif;
+  --font-sans: var(--font-poppins), "Poppins", sans-serif;
 }
 
 * {

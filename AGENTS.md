@@ -1,6 +1,7 @@
 # 🤖 Lumacraft - Agent Instructions
 
 ## 🌐 Project Context
+
 **Lumacraft** is a premium, open-source dynamic data engine and platform builder (inspired by Airtable and Supabase). It allows users to create custom collections, fields, and manage data with a focus on multi-tenancy, high performance, and exceptional UI/UX.
 
 ---
@@ -10,6 +11,7 @@
 This project follows **Screaming Architecture** (folders represent business domains) and **Hexagonal Architecture** (Ports & Adapters) within each module.
 
 ### Folder Structure
+
 ```
 src/
 ├── modules/                # Business Domains (Bounded Contexts)
@@ -24,9 +26,11 @@ src/
 ```
 
 ### Module Structure (Hexagonal)
+
 Each module in `src/modules/` must have:
-1.  **domain/**: Entities, Value Objects, Repository Interfaces (Ports), and Business Logic. *Zero dependencies on external frameworks.*
-2.  **application/**: Use Cases (Interactors) that orchestrate business logic. *Mockable and testable.*
+
+1.  **domain/**: Entities, Value Objects, Repository Interfaces (Ports), and Business Logic. _Zero dependencies on external frameworks._
+2.  **application/**: Use Cases (Interactors) that orchestrate business logic. _Mockable and testable._
 3.  **infrastructure/**: Specific implementations (Adapters) like Supabase repositories, external APIs.
 4.  **presentation/**: React components, hooks, and views specific to the module.
 
@@ -45,16 +49,18 @@ Each module in `src/modules/` must have:
 ---
 
 ## 🎨 UI, Theming & Colors
+
 **Lumacraft** is a high-end application. Aesthetic precision is mandatory.
+
 1.  **Theme Adaptation**: Every component **must** support both Light and Dark modes.
 2.  **CSS Variables**: Use the predefined CSS variables from `globals.css` (e.g., `var(--primary)`, `var(--background)`, `var(--foreground)`).
 3.  **Tailwind Utility Classes**: Always use the semantic colors mapped in Tailwind: `bg-background`, `text-foreground`, `bg-primary`, `text-muted`, etc.
 4.  **Aesthetics (Noir Minimalist)**: Focus on a **clean, minimalist, and integrated** UI. Avoid excessive shadows, large gradients, or complex animations. Follow these patterns:
-    -   **Layout**: Use `max-w-5xl` for main dashboard pages with generous padding (`p-8` or `px-8 py-10`).
-    -   **Typography**: Main titles should be `text-[2.5rem]` with `tracking-[-0.02em]` and `font-bold`. Use `text-[11px] font-semibold uppercase tracking-[0.12em]` for primary tags/descriptors.
-    -   **Tables & Lists**: Use `bg-surface` for containers, `hover:bg-surface-hover/30` for row interactions, and minimal borders (`border-border/50`).
-    -   **Navigation**: Prefer `variant="line"` for Tabs to maintain a flat, integrated "Action Hub" feel.
-    -   **Interactive Elements**: Keep hover effects subtle (e.g., `-translate-y-0.5` with smooth transitions).
+    - **Layout**: Use `max-w-5xl` for main dashboard pages with generous padding (`p-8` or `px-8 py-10`).
+    - **Typography**: Main titles should be `text-[2.5rem]` with `tracking-[-0.02em]` and `font-bold`. Use `text-[11px] font-semibold uppercase tracking-[0.12em]` for primary tags/descriptors.
+    - **Tables & Lists**: Use `bg-surface` for containers, `hover:bg-surface-hover/30` for row interactions, and minimal borders (`border-border/50`).
+    - **Navigation**: Prefer `variant="line"` for Tabs to maintain a flat, integrated "Action Hub" feel.
+    - **Interactive Elements**: Keep hover effects subtle (e.g., `-translate-y-0.5` with smooth transitions).
 
 ---
 
@@ -70,7 +76,9 @@ Each module in `src/modules/` must have:
 ---
 
 ## 🧪 Testing Strategy (Post-Execution)
+
 **Critical Rule**: After any feature implementation or bug fix, the agent **must** create or update relevant tests.
+
 1.  **Unit Tests**: In `__tests__/unit/`. Focus on domain logic and use cases.
 2.  **Integration Tests**: In `__tests__/integration/`. Focus on repository implementations against Supabase.
 3.  **E2E Tests**: In `__tests__/e2e/`. Focus on critical user flows with Playwright.

@@ -1,31 +1,32 @@
-'use client'
+"use client";
 
-import { useCollections } from '../hooks/use-collections'
-import { CreateCollectionDialog } from '../components/create-collection-dialog'
-import { useBreadcrumbs } from '@/shared/presentation/providers/breadcrumb-provider'
-import { Database, Trash2, ExternalLink, Settings2, Clock, Plus } from 'lucide-react'
-import Link from 'next/link'
-import { useWorkspace } from '@/modules/workspace/presentation/providers/workspace-provider'
-import { useAuth } from '@/modules/auth/presentation/providers/auth-provider'
-import { useMembers } from '@/modules/workspace/presentation/hooks/use-members'
-import { useRoles } from '@/modules/workspace/presentation/hooks/use-roles'
+import { Clock, Database, ExternalLink, Plus, Settings2, Trash2 } from "lucide-react";
+import Link from "next/link";
+
+import { useAuth } from "@/modules/auth/presentation/providers/auth-provider";
+import { useMembers } from "@/modules/workspace/presentation/hooks/use-members";
+import { useRoles } from "@/modules/workspace/presentation/hooks/use-roles";
+import { useWorkspace } from "@/modules/workspace/presentation/providers/workspace-provider";
+import { useBreadcrumbs } from "@/shared/presentation/providers/breadcrumb-provider";
+
+import { CreateCollectionDialog } from "../components/create-collection-dialog";
+import { useCollections } from "../hooks/use-collections";
 
 export default function CollectionsPage() {
-  const { collections, loading, deleteCollection, refresh } = useCollections()
-  
-  // Calculate if the user has permissions to create/modify collections
-  const { currentWorkspace } = useWorkspace()
-  const { user } = useAuth()
-  const { members } = useMembers(currentWorkspace?.id)
-  const { roles } = useRoles(currentWorkspace?.id)
-  
-  const currentUserMember = members.find(m => m.userId === user?.id)
-  const currentUserIsAdmin = (
-    currentWorkspace?.ownerId === user?.id ||
-    roles.find(r => r.id === currentUserMember?.roleId)?.isSuperadmin === true
-  )
+  const { collections, loading, deleteCollection, refresh } = useCollections();
 
-  useBreadcrumbs([{ label: 'Colecciones' }])
+  // Calculate if the user has permissions to create/modify collections
+  const { currentWorkspace } = useWorkspace();
+  const { user } = useAuth();
+  const { members } = useMembers(currentWorkspace?.id);
+  const { roles } = useRoles(currentWorkspace?.id);
+
+  const currentUserMember = members.find((m) => m.userId === user?.id);
+  const currentUserIsAdmin =
+    currentWorkspace?.ownerId === user?.id ||
+    roles.find((r) => r.id === currentUserMember?.roleId)?.isSuperadmin === true;
+
+  useBreadcrumbs([{ label: "Colecciones" }]);
 
   if (loading) {
     return (
@@ -34,17 +35,14 @@ export default function CollectionsPage() {
           <div className="w-10 h-10 rounded-xl flex items-center justify-center animate-pulse bg-primary/10">
             <Database size={20} className="text-primary/50" />
           </div>
-          <p className="text-sm font-light text-foreground/60">
-            Cargando colecciones...
-          </p>
+          <p className="text-sm font-light text-foreground/60">Cargando colecciones...</p>
         </div>
       </div>
-    )
+    );
   }
 
   return (
     <div className="p-8 max-w-5xl mx-auto">
-
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
         <div>
@@ -56,8 +54,8 @@ export default function CollectionsPage() {
           </h1>
           <p className="text-sm font-light mt-1 text-foreground/70">
             {collections.length > 0
-              ? `${collections.length} colección${collections.length !== 1 ? 'es' : ''} configurada${collections.length !== 1 ? 's' : ''}`
-              : 'Gestiona tus tablas dinámicas de datos.'}
+              ? `${collections.length} colección${collections.length !== 1 ? "es" : ""} configurada${collections.length !== 1 ? "s" : ""}`
+              : "Gestiona tus tablas dinámicas de datos."}
           </p>
         </div>
         {currentUserIsAdmin && <CreateCollectionDialog onSuccess={refresh} />}
@@ -73,8 +71,8 @@ export default function CollectionsPage() {
             Sin colecciones todavía
           </h3>
           <p className="text-sm font-light max-w-sm mb-8 text-foreground/70 leading-[1.7]">
-            Crea tu primera colección para comenzar a estructurar datos que
-            alimentarán tus documentos e IA.
+            Crea tu primera colección para comenzar a estructurar datos que alimentarán tus
+            documentos e IA.
           </p>
           {currentUserIsAdmin && <CreateCollectionDialog onSuccess={refresh} />}
         </div>
@@ -102,8 +100,8 @@ export default function CollectionsPage() {
                       collectionToEdit={{
                         id: collection.id,
                         name: collection.name,
-                        displayName: collection.displayName || '',
-                        description: collection.description || '',
+                        displayName: collection.displayName || "",
+                        description: collection.description || "",
                       }}
                       onSuccess={refresh}
                     >
@@ -122,24 +120,29 @@ export default function CollectionsPage() {
                 {collection.displayName || collection.name}
               </h3>
               <p className="text-[13px] font-light line-clamp-2 mb-5 leading-relaxed text-foreground/70 min-h-[2.6rem]">
-                {collection.description || 'Sin descripción.'}
+                {collection.description || "Sin descripción."}
               </p>
 
               <div className="flex items-center justify-between pt-4 border-t border-border">
                 <div className="flex items-center gap-1.5 text-[11px] font-medium text-foreground/60 uppercase tracking-[0.05em]">
                   <Clock size={11} />
                   <span>
-                    {new Date(collection.createdAt).toLocaleDateString('es', {
-                      day: '2-digit', month: 'short', year: 'numeric',
+                    {new Date(collection.createdAt).toLocaleDateString("es", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
                     })}
                   </span>
                 </div>
-                <Link 
+                <Link
                   href={`/collections/${collection.id}`}
                   className="flex items-center gap-1 text-[12px] font-bold transition-all duration-150 group/btn text-primary hover:gap-1.5"
                 >
                   Ver Datos
-                  <ExternalLink size={12} className="opacity-70 group-hover/btn:opacity-100 transition-opacity" />
+                  <ExternalLink
+                    size={12}
+                    className="opacity-70 group-hover/btn:opacity-100 transition-opacity"
+                  />
                 </Link>
               </div>
             </div>
@@ -152,14 +155,12 @@ export default function CollectionsPage() {
                 <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-primary/10 text-primary/50">
                   <Plus size={18} />
                 </div>
-                <p className="text-[13px] font-light text-foreground/60">
-                  Nueva colección
-                </p>
+                <p className="text-[13px] font-light text-foreground/60">Nueva colección</p>
               </div>
             </CreateCollectionDialog>
           )}
         </div>
       )}
     </div>
-  )
+  );
 }

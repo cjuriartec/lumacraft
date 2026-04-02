@@ -1,24 +1,24 @@
-import { RelationTypeValue } from '../value-objects/field-config.vo'
+import { RelationTypeValue } from "../value-objects/field-config.vo";
 
 export interface RecordRelation {
-  id: string
-  accountId: string
-  fieldId: string
-  sourceRecordId: string
-  targetRecordId: string
-  createdAt: Date
+  id: string;
+  accountId: string;
+  fieldId: string;
+  sourceRecordId: string;
+  targetRecordId: string;
+  createdAt: Date;
 }
 
 export interface ValidateCardinalityRequest {
-  fieldId: string
-  sourceRecordId: string
-  targetRecordIds: string[]
-  relationType: RelationTypeValue
+  fieldId: string;
+  sourceRecordId: string;
+  targetRecordIds: string[];
+  relationType: RelationTypeValue;
 }
 
 export interface SyncFieldRelationsRequest {
-  accountId: string
-  fieldId: string
-  sourceRecordId: string
-  targetRecordIds: string[]
+  accountId: string;
+  fieldId: string;
+  sourceRecordId: string;
+  targetRecordIds: string[];
 }

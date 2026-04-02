@@ -1,88 +1,96 @@
-import { execFileSync } from 'node:child_process'
+import { execFileSync } from "node:child_process";
 
-import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.API_URL
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.API_URL;
 const publishableKey =
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
   process.env.PUBLISHABLE_KEY ??
-  process.env.ANON_KEY
+  process.env.ANON_KEY;
 const serviceRoleKey =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ??
-  process.env.SECRET_KEY ??
-  process.env.SERVICE_ROLE_KEY
+  process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SECRET_KEY ?? process.env.SERVICE_ROLE_KEY;
 const databaseUrl =
   process.env.DB_URL ??
-  (supabaseUrl && isLocalUrl(supabaseUrl) ? 'postgresql://postgres:postgres@127.0.0.1:54322/postgres' : undefined)
+  (supabaseUrl && isLocalUrl(supabaseUrl)
+    ? "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
+    : undefined);
 
 function isLocalUrl(url: string) {
-  return /127\.0\.0\.1|localhost/.test(url)
+  return /127\.0\.0\.1|localhost/.test(url);
 }
 
 export const canRunLocalSupabaseTests =
   Boolean(supabaseUrl && publishableKey && serviceRoleKey) &&
-  (process.env.ENABLE_REMOTE_SUPABASE_TESTS === 'true' || isLocalUrl(supabaseUrl!))
+  (process.env.ENABLE_REMOTE_SUPABASE_TESTS === "true" || isLocalUrl(supabaseUrl!));
 
 function requireEnv(name: string, value: string | undefined) {
   if (!value) {
-    throw new Error(`Missing required Supabase test environment variable: ${name}`)
+    throw new Error(`Missing required Supabase test environment variable: ${name}`);
   }
 
-  return value
+  return value;
 }
 
 function escapeSqlLiteral(value: string) {
-  return value.replaceAll("'", "''")
+  return value.replaceAll("'", "''");
 }
 
 function runSql(sql: string) {
   execFileSync(
-    'psql',
-    ['--dbname', requireEnv('DB_URL', databaseUrl), '--no-psqlrc', '-v', 'ON_ERROR_STOP=1', '-c', sql],
+    "psql",
+    [
+      "--dbname",
+      requireEnv("DB_URL", databaseUrl),
+      "--no-psqlrc",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-c",
+      sql,
+    ],
     {
-      stdio: 'ignore',
-    }
-  )
+      stdio: "ignore",
+    },
+  );
 }
 
 export function createAnonSupabaseClient() {
   return createClient(
-    requireEnv('NEXT_PUBLIC_SUPABASE_URL', supabaseUrl),
-    requireEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', publishableKey),
+    requireEnv("NEXT_PUBLIC_SUPABASE_URL", supabaseUrl),
+    requireEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", publishableKey),
     {
       auth: {
         autoRefreshToken: false,
         persistSession: false,
       },
-    }
-  )
+    },
+  );
 }
 
 export function createServiceRoleSupabaseClient() {
   return createClient(
-    requireEnv('NEXT_PUBLIC_SUPABASE_URL', supabaseUrl),
-    requireEnv('SUPABASE_SERVICE_ROLE_KEY', serviceRoleKey),
+    requireEnv("NEXT_PUBLIC_SUPABASE_URL", supabaseUrl),
+    requireEnv("SUPABASE_SERVICE_ROLE_KEY", serviceRoleKey),
     {
       auth: {
         autoRefreshToken: false,
         persistSession: false,
       },
-    }
-  )
+    },
+  );
 }
 
 export interface TestUserSession {
-  id: string
-  email: string
-  password: string
-  client: SupabaseClient
+  id: string;
+  email: string;
+  password: string;
+  client: SupabaseClient;
 }
 
 export async function createTestUser(label: string): Promise<TestUserSession> {
-  const nonce = crypto.randomUUID().slice(0, 8)
-  const email = `${label}-${nonce}@example.com`
-  const password = 'Passw0rd!123'
-  const signupClient = createAnonSupabaseClient()
+  const nonce = crypto.randomUUID().slice(0, 8);
+  const email = `${label}-${nonce}@example.com`;
+  const password = "Passw0rd!123";
+  const signupClient = createAnonSupabaseClient();
 
   const { data, error } = await signupClient.auth.signUp({
     email,
@@ -92,20 +100,20 @@ export async function createTestUser(label: string): Promise<TestUserSession> {
         full_name: `Test ${label}`,
       },
     },
-  })
+  });
 
   if (error || !data.user) {
-    throw error ?? new Error('Failed to create test user')
+    throw error ?? new Error("Failed to create test user");
   }
 
-  const client = createAnonSupabaseClient()
+  const client = createAnonSupabaseClient();
   const signInResult = await client.auth.signInWithPassword({
     email,
     password,
-  })
+  });
 
   if (signInResult.error) {
-    throw signInResult.error
+    throw signInResult.error;
   }
 
   return {
@@ -113,43 +121,63 @@ export async function createTestUser(label: string): Promise<TestUserSession> {
     email,
     password,
     client,
-  }
+  };
 }
 
 export async function getPersonalAccountId(userId: string) {
-  const service = createServiceRoleSupabaseClient()
+  const service = createServiceRoleSupabaseClient();
 
   for (let attempt = 0; attempt < 10; attempt += 1) {
-    const { data, error } = await service.from('accounts').select('id').eq('owner_id', userId).maybeSingle()
+    const { data, error } = await service
+      .from("accounts")
+      .select("id")
+      .eq("owner_id", userId)
+      .maybeSingle();
 
     if (data?.id) {
-      return data.id as string
+      return data.id as string;
     }
 
     if (error) {
-      throw error
+      throw error;
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 100))
+    await new Promise((resolve) => setTimeout(resolve, 100));
   }
 
-  throw new Error(`Workspace not found for ${userId}`)
+  throw new Error(`Workspace not found for ${userId}`);
 }
 
 export async function addMemberToAccount(accountId: string, userId: string) {
-  const service = createServiceRoleSupabaseClient()
-  const { error } = await service.from('account_members').insert({
+  const service = createServiceRoleSupabaseClient();
+
+  // Get the Superadmin role for this account
+  const { data: roleData, error: roleError } = await service
+    .from("roles")
+    .select("id")
+    .eq("account_id", accountId)
+    .eq("is_superadmin", true)
+    .single();
+
+  if (roleError) {
+    throw new Error(
+      `Failed to find Superadmin role for account ${accountId}: ${roleError.message}`,
+    );
+  }
+
+  const { error } = await service.from("account_members").insert({
     account_id: accountId,
     user_id: userId,
-  })
+    role_id: roleData.id,
+  });
 
   if (error) {
-    throw error
+    throw error;
   }
 }
 
 export async function cleanupTestUser(userId: string) {
-  const escapedUserId = escapeSqlLiteral(userId)
+  const escapedUserId = escapeSqlLiteral(userId);
 
   runSql(`
     DELETE FROM public.account_members
@@ -160,5 +188,5 @@ export async function cleanupTestUser(userId: string) {
 
     DELETE FROM auth.users
     WHERE id = '${escapedUserId}';
-  `)
+  `);
 }

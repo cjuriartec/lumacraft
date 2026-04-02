@@ -1,88 +1,97 @@
-import { BaseRepository } from '@/shared/infrastructure/base-repository'
-import { IFieldRepository } from '../../domain/ports/field-repository.port'
-import { Field } from '../../domain/entities/field.entity'
-import { FieldType } from '../../domain/value-objects/field-type.vo'
-import { FieldConfig } from '../../domain/value-objects/field-config.vo'
-import { Result, ok, fail, DomainError } from '@/shared/domain/result'
-import { SupabaseClient } from '@supabase/supabase-js'
+import { SupabaseClient } from "@supabase/supabase-js";
+
+import { DomainError, fail, ok, Result } from "@/shared/domain/result";
+import { BaseRepository } from "@/shared/infrastructure/base-repository";
+
+import { Field } from "../../domain/entities/field.entity";
+import { IFieldRepository } from "../../domain/ports/field-repository.port";
+import { FieldConfig } from "../../domain/value-objects/field-config.vo";
+import { FieldType } from "../../domain/value-objects/field-type.vo";
 
 export class SupabaseFieldRepository extends BaseRepository implements IFieldRepository {
   constructor(supabase: SupabaseClient) {
-    super(supabase, 'fields')
+    super(supabase, "fields");
   }
 
   public async findByCollectionId(collectionId: string): Promise<Result<Field[]>> {
     const { data, error } = await this.table
-      .select('*')
-      .eq('collection_id', collectionId)
-      .order('sort_order', { ascending: true })
+      .select("*")
+      .eq("collection_id", collectionId)
+      .order("sort_order", { ascending: true });
 
-    if (error) return fail(new DomainError(error.message, 'DB_ERROR'))
+    if (error) return fail(new DomainError(error.message, "DB_ERROR"));
 
-    return ok(data.map((item: Record<string, unknown>) => this.toEntity(item)))
+    return ok(data.map((item: Record<string, unknown>) => this.toEntity(item)));
   }
 
   public async findById(id: string): Promise<Result<Field | null>> {
-    const { data, error } = await this.table.select('*').eq('id', id).single()
+    const { data, error } = await this.table.select("*").eq("id", id).single();
 
     if (error) {
-      if (error.code === 'PGRST116') return ok(null)
-      return fail(new DomainError(error.message, 'DB_ERROR'))
+      if (error.code === "PGRST116") return ok(null);
+      return fail(new DomainError(error.message, "DB_ERROR"));
     }
 
-    return ok(this.toEntity(data))
+    return ok(this.toEntity(data));
   }
 
   public async create(field: Field): Promise<Result<Field>> {
-    const persistence = this.toPersistence(field)
-    const { data, error } = await this.table.insert(persistence).select().single()
+    const persistence = this.toPersistence(field);
+    const { data, error } = await this.table.insert(persistence).select().single();
 
-    if (error) return fail(new DomainError(error.message, 'DB_ERROR'))
+    if (error) return fail(new DomainError(error.message, "DB_ERROR"));
 
-    return ok(this.toEntity(data))
+    return ok(this.toEntity(data));
   }
 
   public async update(field: Field): Promise<Result<Field>> {
-    const persistence = this.toPersistence(field)
+    const persistence = this.toPersistence(field);
     const { data, error } = await this.table
       .update(persistence)
-      .eq('id', field.id)
+      .eq("id", field.id)
       .select()
-      .single()
+      .single();
 
-    if (error) return fail(new DomainError(error.message, 'DB_ERROR'))
+    if (error) return fail(new DomainError(error.message, "DB_ERROR"));
 
-    return ok(this.toEntity(data))
+    return ok(this.toEntity(data));
   }
 
   public async delete(id: string): Promise<Result<void>> {
-    const { error } = await this.table.delete().eq('id', id)
-    if (error) return fail(new DomainError(error.message, 'DB_ERROR'))
-    return ok(undefined)
+    const { error } = await this.table.delete().eq("id", id);
+    if (error) return fail(new DomainError(error.message, "DB_ERROR"));
+    return ok(undefined);
   }
 
   public async reorder(collectionId: string, fieldIds: string[]): Promise<Result<void>> {
     const updates = fieldIds.map((id, index) => ({
       id,
       sort_order: index,
-    }))
+    }));
 
     // Basic implementation with loop for now. Consider server function for batch updates if list is large.
     for (const update of updates) {
-      const { error } = await this.table.update({ sort_order: update.sort_order }).eq('id', update.id)
-      if (error) return fail(new DomainError(error.message, 'DB_ERROR'))
+      const { error } = await this.table
+        .update({ sort_order: update.sort_order })
+        .eq("id", update.id);
+      if (error) return fail(new DomainError(error.message, "DB_ERROR"));
     }
 
-    return ok(undefined)
+    return ok(undefined);
   }
 
   private toEntity(data: Record<string, unknown>): Field {
-    const fieldTypeRes = FieldType.create(data.field_type as string)
-    if (!fieldTypeRes.ok) throw new Error('Stored data has invalid field type')
+    const fieldTypeRes = FieldType.create(data.field_type as string);
+    if (!fieldTypeRes.ok) {
+      throw new DomainError(`Invalid field type in DB: ${data.field_type}`, "DATA_INTEGRITY_ERROR");
+    }
 
-    const fieldConfig = FieldConfig.create(fieldTypeRes.value.value, (data.config as Record<string, unknown>) || {})
-    
-    return new Field({
+    const fieldConfig = FieldConfig.create(
+      fieldTypeRes.value.value,
+      (data.config as Record<string, unknown>) || {},
+    );
+
+    const result = Field.create({
       id: data.id as string,
       collectionId: data.collection_id as string,
       name: data.name as string,
@@ -96,11 +105,20 @@ export class SupabaseFieldRepository extends BaseRepository implements IFieldRep
       sortOrder: data.sort_order as number,
       createdAt: new Date(data.created_at as string),
       updatedAt: new Date(data.updated_at as string),
-    })
+    });
+
+    if (!result.ok) {
+      throw new DomainError(
+        `Failed to hydrate Field entity from database: ${result.error.message}`,
+        "DATA_INTEGRITY_ERROR",
+      );
+    }
+
+    return result.value;
   }
 
   private toPersistence(field: Field) {
-    const json = field.toJSON()
+    const json = field.toJSON();
     return {
       id: json.id,
       collection_id: json.collectionId,
@@ -114,6 +132,6 @@ export class SupabaseFieldRepository extends BaseRepository implements IFieldRep
       config: json.config,
       sort_order: json.sortOrder,
       updated_at: new Date().toISOString(),
-    }
+    };
   }
 }
