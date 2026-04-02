@@ -63,7 +63,7 @@ _Objetivo: El sistema debe acoplar los permisos implícitos y resolver relacione
 
 ### **Sprint 5: Template Engine Builder (Beta)**
 
-_Objetivo: Implementar el lienzo de Craft.js/Plate para armar documentos interactivos._
+_Objetivo: Implementar el lienzo de Plate para armar documentos interactivos._
 
 - **US-5.01 (13 SP)**: Lienzo Drag & Drop con serialización de bloques al backend.
 - **US-5.02 (5 SP)**: Bloques de Variables inyectando datos directamente del Eager Loading (Sprint 4).

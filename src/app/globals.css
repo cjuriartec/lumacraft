@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:is(.dark *));
+
 @layer base {
   :root {
     --background: #f5f9f8;
@@ -78,4 +80,16 @@ body {
 *:focus-visible {
   outline: 2px solid rgba(16, 185, 129, 0.5);
   outline-offset: 2px;
+}
+
+:root {
+  --highlight: oklch(0.852 0.199 91.936);
+}
+
+.dark {
+  --highlight: oklch(0.852 0.199 91.936);
+}
+
+@theme inline {
+  --color-highlight: var(--highlight);
 }

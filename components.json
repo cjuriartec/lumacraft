@@ -10,9 +10,13 @@
     "cssVariables": true,
     "prefix": ""
   },
+  "iconLibrary": "lucide",
   "aliases": {
     "components": "@/shared/presentation/components",
     "utils": "@/shared/lib/utils",
     "ui": "@/shared/presentation/components/ui"
+  },
+  "registries": {
+    "@plate": "https://platejs.org/r/{name}.json"
   }
 }
