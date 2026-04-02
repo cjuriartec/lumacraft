@@ -26,7 +26,7 @@ export default function WorkspaceProvider({
   children: React.ReactNode
   workspaceRepository?: IWorkspaceRepository
 }) {
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const { supabase } = useSupabase()
   const [workspaces, setWorkspaces] = useState<Workspace[]>([])
   const [currentWorkspace, setCurrentWorkspace] = useState<Workspace | null>(null)
@@ -42,6 +42,12 @@ export default function WorkspaceProvider({
     let active = true
 
     const fetchWorkspaces = async () => {
+      // Si la autenticación sigue cargando, mantenemos también nuestras banderas en true
+      if (authLoading) {
+        if (active) setLoading(true)
+        return
+      }
+
       if (!user) {
         if (active) {
           setWorkspaces([])
@@ -51,9 +57,7 @@ export default function WorkspaceProvider({
         return
       }
 
-      if (active) {
-        setLoading(true)
-      }
+      if (active) setLoading(true)
 
       const res = await getWorkspacesUseCase.execute(user.id)
       if (!active) return
@@ -80,7 +84,7 @@ export default function WorkspaceProvider({
     return () => {
       active = false
     }
-  }, [user, getWorkspacesUseCase])
+  }, [user, authLoading, getWorkspacesUseCase])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -88,10 +92,10 @@ export default function WorkspaceProvider({
 
     if (currentWorkspace?.id && typeof storage?.setItem === 'function') {
       storage.setItem(CURRENT_WORKSPACE_STORAGE_KEY, currentWorkspace.id)
-    } else if (!currentWorkspace?.id && typeof storage?.removeItem === 'function') {
+    } else if (storage && workspaces.length === 0 && !loading) {
       storage.removeItem(CURRENT_WORKSPACE_STORAGE_KEY)
     }
-  }, [currentWorkspace])
+  }, [currentWorkspace, workspaces.length, loading])
 
   return (
     <Context.Provider value={{ workspaces, currentWorkspace, setCurrentWorkspace, loading }}>

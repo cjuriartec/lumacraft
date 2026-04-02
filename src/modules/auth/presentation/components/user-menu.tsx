@@ -1,7 +1,6 @@
 'use client'
 
 import { useAuth } from '../providers/auth-provider'
-import { useWorkspace } from '@/modules/workspace/presentation/providers/workspace-provider'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,7 +19,6 @@ import { useTheme } from 'next-themes'
 
 export default function UserMenu() {
   const { user, signOut } = useAuth()
-  const { currentWorkspace } = useWorkspace()
   const { setTheme, theme } = useTheme()
 
   if (!user) return null
@@ -28,8 +26,6 @@ export default function UserMenu() {
   const initials = user.fullName
     ? user.fullName.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
     : user.email.value[0].toUpperCase()
-
-  const workspaceName = currentWorkspace?.name || 'Mi Workspace'
 
   return (
     <DropdownMenu>
@@ -45,12 +41,6 @@ export default function UserMenu() {
             <p className="text-[13px] font-semibold leading-none text-foreground truncate max-w-[130px]">
               {user.fullName || 'Usuario'}
             </p>
-            <div className="flex items-center gap-1.5">
-              <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_var(--color-primary)]" />
-              <p className="text-[10px] font-medium tracking-[0.05em] leading-none text-foreground/50 truncate max-w-[100px]">
-                {workspaceName}
-              </p>
-            </div>
           </div>
         </button>
       </DropdownMenuTrigger>
@@ -76,14 +66,7 @@ export default function UserMenu() {
           </div>
         </DropdownMenuLabel>
 
-        <div className="px-3 pb-2 pt-1">
-          <div className="rounded-lg p-2.5 flex items-center gap-2.5 bg-primary/5 border-primary/10 border">
-            <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_var(--color-primary)]" />
-            <span className="text-[12px] font-semibold text-primary">{workspaceName}</span>
-          </div>
-        </div>
-
-        <DropdownMenuSeparator className="bg-foreground/5 my-1" />
+        <DropdownMenuSeparator className="bg-foreground/5 my-1 mt-2" />
 
         <DropdownMenuItem className="rounded-lg gap-2.5 cursor-pointer text-sm py-2 px-2.5 transition-colors duration-150 text-foreground/75 hover:bg-foreground/5 hover:text-foreground">
           <UserIcon size={14} />

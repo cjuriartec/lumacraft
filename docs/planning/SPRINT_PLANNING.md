@@ -46,10 +46,11 @@ Este documento proyecta la ejecución de las Historias de Usuario (detalladas en
 
 ### **Sprint 4: Seguridad Zero-Trust y Contexto IA** 🔄 *En Progreso*
 *Objetivo: El sistema debe acoplar los permisos implícitos y resolver relaciones para la IA.*
+* **US-4.01 (5 SP)**: Gestión de Roles y Miembros del Workspace (Settings).
 * **US-4.02 (5 SP)**: Ocultar UI y asegurar accesos (RLS en PostgreSQL) basados en permisos CRUD de colecciones.
 * **US-4.03 (5 SP)**: Lógica de override y acceso de lectura implícito en tablas dependientes (RLS).
 * **US-3.03 (8 SP)**: Construir el servicio de "Eager Loading" para armar árboles JSON profundos.
-* **Total Estimado**: 18 SP.
+* **Total Estimado**: 23 SP.
 
 ### **Sprint 5: Template Engine Builder (Beta)**
 *Objetivo: Implementar el lienzo de Craft.js/Plate para armar documentos interactivos.*

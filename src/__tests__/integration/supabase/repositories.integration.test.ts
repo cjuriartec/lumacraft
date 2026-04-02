@@ -261,6 +261,7 @@ describeIfLocalSupabase('Supabase repositories integration', () => {
         id: crypto.randomUUID(),
         collectionId: projects.value.id,
         accountId,
+        createdBy: owner.id,
         data: { name: 'Project Alpha' },
       })
     )
@@ -269,6 +270,7 @@ describeIfLocalSupabase('Supabase repositories integration', () => {
         id: crypto.randomUUID(),
         collectionId: clients.value.id,
         accountId,
+        createdBy: owner.id,
         data: { name: 'Client A' },
       })
     )

@@ -1,11 +1,11 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, act } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { makeField, makeRecord, resetFactories } from '@/__tests__/factories/domain-factories'
 import { CollectionDetailPage } from '@/modules/collection/presentation/pages/collection-detail-page'
 
 const fieldsState = vi.hoisted(() => ({
-  fields: [] as ReturnType<typeof makeField>[],
+  fields: [] as any[],
   loading: false,
   createField: vi.fn(),
   updateField: vi.fn(),
@@ -13,7 +13,7 @@ const fieldsState = vi.hoisted(() => ({
 }))
 
 const recordsState = vi.hoisted(() => ({
-  records: [] as ReturnType<typeof makeRecord>[],
+  records: [] as any[],
   total: 0,
   loading: false,
   pagination: {
@@ -33,6 +33,7 @@ const recordsState = vi.hoisted(() => ({
   setSearch: vi.fn(),
   setSearchFields: vi.fn(),
   setFilters: vi.fn(),
+  setPagination: vi.fn(),
 }))
 
 const collectionsState = vi.hoisted(() => ({
@@ -42,6 +43,17 @@ const collectionsState = vi.hoisted(() => ({
   updateCollection: vi.fn(),
   deleteCollection: vi.fn(),
   refresh: vi.fn(),
+}))
+
+const gridPersistenceState = vi.hoisted(() => ({
+  loadStoredFilters: vi.fn(async () => null),
+  persistFilters: vi.fn(),
+}))
+
+const permissionsState = vi.hoisted(() => ({
+  can: vi.fn(() => true),
+  isOwner: true,
+  isSuperAdmin: false,
 }))
 
 vi.mock('@/modules/collection/presentation/hooks/use-fields', () => ({
@@ -56,8 +68,20 @@ vi.mock('@/modules/collection/presentation/hooks/use-collections', () => ({
   useCollections: () => collectionsState,
 }))
 
+vi.mock('@/modules/collection/presentation/hooks/use-grid-persistence', () => ({
+  useGridPersistence: () => gridPersistenceState,
+}))
+
+vi.mock('@/shared/presentation/providers/breadcrumb-provider', () => ({
+  useBreadcrumbs: vi.fn(),
+}))
+
+vi.mock('@/modules/authorization/presentation/providers/permission-provider', () => ({
+  usePermissions: () => permissionsState,
+}))
+
 vi.mock('@/modules/collection/presentation/components/field-manager', () => ({
-  FieldManager: () => <div>field-manager</div>,
+  FieldManager: () => <div data-testid="field-manager">field-manager</div>,
 }))
 
 vi.mock('@/modules/collection/presentation/components/data-grid', () => ({
@@ -66,13 +90,8 @@ vi.mock('@/modules/collection/presentation/components/data-grid', () => ({
     onAddRecord,
     onEdit,
     onDelete,
-  }: {
-    records: ReturnType<typeof makeRecord>[]
-    onAddRecord?: () => void
-    onEdit: (record: ReturnType<typeof makeRecord>) => void
-    onDelete: (id: string) => void
-  }) => (
-    <div>
+  }: any) => (
+    <div data-testid="data-grid">
       <span>data-grid</span>
       {onAddRecord ? (
         <button type="button" onClick={onAddRecord}>
@@ -98,13 +117,9 @@ vi.mock('@/modules/collection/presentation/components/record-form-dialog', () =>
     open,
     record,
     onSubmit,
-  }: {
-    open: boolean
-    record?: ReturnType<typeof makeRecord>
-    onSubmit: (data: Record<string, unknown>) => Promise<unknown>
-  }) =>
+  }: any) =>
     open ? (
-      <div>
+      <div data-testid="record-form-dialog">
         <span>{record ? `editing:${record.id}` : 'editing:new'}</span>
         <button type="button" onClick={() => void onSubmit({ title: 'Submitted' })}>
           submit-dialog
@@ -116,47 +131,74 @@ vi.mock('@/modules/collection/presentation/components/record-form-dialog', () =>
 describe('CollectionDetailPage', () => {
   beforeEach(() => {
     resetFactories()
-    fieldsState.fields = [makeField({ collectionId: 'collection-1', name: 'title' })]
+    vi.clearAllMocks()
+    fieldsState.fields = [makeField({ id: 'field-1', collectionId: 'collection-1', name: 'title', fieldType: 'TEXT' })]
     fieldsState.loading = false
     recordsState.records = [makeRecord({ id: 'record-1', collectionId: 'collection-1', data: { title: 'Alpha' } })]
     recordsState.total = 1
     recordsState.loading = false
-    recordsState.createRecord.mockReset()
-    recordsState.updateRecord.mockReset()
-    recordsState.deleteRecord.mockReset()
-    collectionsState.collections = []
-    collectionsState.updateCollection.mockReset()
+    recordsState.createRecord.mockReset().mockResolvedValue({ ok: true })
+    recordsState.updateRecord.mockReset().mockResolvedValue({ ok: true })
+    recordsState.deleteRecord.mockReset().mockResolvedValue({ ok: true })
+    collectionsState.collections = [{ id: 'collection-1', name: 'Projects', toJSON: () => ({ id: 'collection-1' }) }]
+    gridPersistenceState.loadStoredFilters.mockResolvedValue(null)
   })
 
-  it('renders the loading state while fields and records are syncing', () => {
+  it('renders the loading state while fields are syncing', async () => {
     fieldsState.loading = true
-    recordsState.records = []
-    recordsState.loading = true
-
+    
     render(<CollectionDetailPage collectionId="collection-1" collectionName="Projects" />)
-
-    expect(screen.getByText('Sincronizando datos...')).toBeInTheDocument()
+    
+    // Page will initially wait for hydration (isHydrated starts false)
+    // Then it should show loading fields
+    await waitFor(() => {
+        expect(screen.getByText('Sincronizando esquema...')).toBeInTheDocument()
+    })
   })
 
-  it('creates a record from the dialog opened by the new record button', () => {
+  it('creates a record from the dialog opened by the new record button', async () => {
     render(<CollectionDetailPage collectionId="collection-1" collectionName="Projects" />)
+
+    // Wait for hydration
+    await waitFor(() => {
+      expect(screen.getByTestId('data-grid')).toBeInTheDocument()
+    })
 
     fireEvent.click(screen.getByText('add-record'))
+    
+    await waitFor(() => {
+        expect(screen.getByText('editing:new')).toBeInTheDocument()
+    })
+    
     fireEvent.click(screen.getByText('submit-dialog'))
 
-    expect(screen.getByText('editing:new')).toBeInTheDocument()
-    expect(recordsState.createRecord).toHaveBeenCalledWith({ title: 'Submitted' })
+    await waitFor(() => {
+        expect(recordsState.createRecord).toHaveBeenCalledWith({ title: 'Submitted' })
+    })
   })
 
-  it('edits and deletes records via the data grid callbacks', () => {
+  it('edits and deletes records via the data grid callbacks', async () => {
     render(<CollectionDetailPage collectionId="collection-1" collectionName="Projects" />)
 
-    fireEvent.click(screen.getByText('edit-record'))
-    fireEvent.click(screen.getByText('submit-dialog'))
-    fireEvent.click(screen.getByText('delete-record'))
+    await waitFor(() => {
+      expect(screen.getByTestId('data-grid')).toBeInTheDocument()
+    })
 
-    expect(screen.getByText('editing:record-1')).toBeInTheDocument()
-    expect(recordsState.updateRecord).toHaveBeenCalledWith('record-1', { title: 'Submitted' })
-    expect(recordsState.deleteRecord).toHaveBeenCalledWith('record-1')
+    fireEvent.click(screen.getByText('edit-record'))
+    
+    await waitFor(() => {
+      expect(screen.getByText('editing:record-1')).toBeInTheDocument()
+    })
+    
+    fireEvent.click(screen.getByText('submit-dialog'))
+    
+    await waitFor(() => {
+      expect(recordsState.updateRecord).toHaveBeenCalledWith('record-1', { title: 'Submitted' })
+    })
+
+    fireEvent.click(screen.getByText('delete-record'))
+    await waitFor(() => {
+      expect(recordsState.deleteRecord).toHaveBeenCalledWith('record-1')
+    })
   })
 })

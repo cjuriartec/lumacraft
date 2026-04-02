@@ -5,9 +5,26 @@ import { CreateCollectionDialog } from '../components/create-collection-dialog'
 import { useBreadcrumbs } from '@/shared/presentation/providers/breadcrumb-provider'
 import { Database, Trash2, ExternalLink, Settings2, Clock, Plus } from 'lucide-react'
 import Link from 'next/link'
+import { useWorkspace } from '@/modules/workspace/presentation/providers/workspace-provider'
+import { useAuth } from '@/modules/auth/presentation/providers/auth-provider'
+import { useMembers } from '@/modules/workspace/presentation/hooks/use-members'
+import { useRoles } from '@/modules/workspace/presentation/hooks/use-roles'
 
 export default function CollectionsPage() {
   const { collections, loading, deleteCollection, refresh } = useCollections()
+  
+  // Calculate if the user has permissions to create/modify collections
+  const { currentWorkspace } = useWorkspace()
+  const { user } = useAuth()
+  const { members } = useMembers(currentWorkspace?.id)
+  const { roles } = useRoles(currentWorkspace?.id)
+  
+  const currentUserMember = members.find(m => m.userId === user?.id)
+  const currentUserIsAdmin = (
+    currentWorkspace?.ownerId === user?.id ||
+    roles.find(r => r.id === currentUserMember?.roleId)?.isSuperadmin === true
+  )
+
   useBreadcrumbs([{ label: 'Colecciones' }])
 
   if (loading) {
@@ -43,7 +60,7 @@ export default function CollectionsPage() {
               : 'Gestiona tus tablas dinámicas de datos.'}
           </p>
         </div>
-        <CreateCollectionDialog onSuccess={refresh} />
+        {currentUserIsAdmin && <CreateCollectionDialog onSuccess={refresh} />}
       </div>
 
       {collections.length === 0 ? (
@@ -59,7 +76,7 @@ export default function CollectionsPage() {
             Crea tu primera colección para comenzar a estructurar datos que
             alimentarán tus documentos e IA.
           </p>
-          <CreateCollectionDialog onSuccess={refresh} />
+          {currentUserIsAdmin && <CreateCollectionDialog onSuccess={refresh} />}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -72,31 +89,33 @@ export default function CollectionsPage() {
                 <div className="w-10 h-10 rounded-lg flex items-center justify-center transition-transform duration-200 group-hover:scale-105 bg-primary/10 text-primary">
                   <Database size={18} />
                 </div>
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-                  <button
-                    aria-label={`Eliminar colección ${collection.displayName || collection.name}`}
-                    className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors duration-150 text-foreground/60 hover:text-red-400 hover:bg-red-400/10"
-                    onClick={() => deleteCollection(collection.id)}
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                  <CreateCollectionDialog
-                    collectionToEdit={{
-                      id: collection.id,
-                      name: collection.name,
-                      displayName: collection.displayName || '',
-                      description: collection.description || '',
-                    }}
-                    onSuccess={refresh}
-                  >
+                {currentUserIsAdmin && (
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
                     <button
-                      aria-label={`Configurar colección ${collection.displayName || collection.name}`}
-                      className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors duration-150 text-foreground/60 hover:text-primary hover:bg-primary/10"
+                      aria-label={`Eliminar colección ${collection.displayName || collection.name}`}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors duration-150 text-foreground/60 hover:text-red-400 hover:bg-red-400/10"
+                      onClick={() => deleteCollection(collection.id)}
                     >
-                      <Settings2 size={14} />
+                      <Trash2 size={14} />
                     </button>
-                  </CreateCollectionDialog>
-                </div>
+                    <CreateCollectionDialog
+                      collectionToEdit={{
+                        id: collection.id,
+                        name: collection.name,
+                        displayName: collection.displayName || '',
+                        description: collection.description || '',
+                      }}
+                      onSuccess={refresh}
+                    >
+                      <button
+                        aria-label={`Configurar colección ${collection.displayName || collection.name}`}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors duration-150 text-foreground/60 hover:text-primary hover:bg-primary/10"
+                      >
+                        <Settings2 size={14} />
+                      </button>
+                    </CreateCollectionDialog>
+                  </div>
+                )}
               </div>
 
               <h3 className="text-[14px] font-semibold mb-1 transition-colors duration-150 group-hover:text-primary text-foreground">
@@ -127,16 +146,18 @@ export default function CollectionsPage() {
           ))}
 
           {/* Add new card */}
-          <CreateCollectionDialog onSuccess={refresh}>
-            <div className="rounded-xl p-5 flex flex-col items-center justify-center gap-2.5 cursor-pointer transition-all duration-200 hover:-translate-y-0.5 min-h-[180px] bg-transparent hover:bg-surface/50 dark:hover:bg-surface-hover/30">
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-primary/10 text-primary/50">
-                <Plus size={18} />
+          {currentUserIsAdmin && (
+            <CreateCollectionDialog onSuccess={refresh}>
+              <div className="rounded-xl p-5 flex flex-col items-center justify-center gap-2.5 cursor-pointer transition-all duration-200 hover:-translate-y-0.5 min-h-[180px] bg-transparent hover:bg-surface/50 dark:hover:bg-surface-hover/30">
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-primary/10 text-primary/50">
+                  <Plus size={18} />
+                </div>
+                <p className="text-[13px] font-light text-foreground/60">
+                  Nueva colección
+                </p>
               </div>
-              <p className="text-[13px] font-light text-foreground/60">
-                Nueva colección
-              </p>
-            </div>
-          </CreateCollectionDialog>
+            </CreateCollectionDialog>
+          )}
         </div>
       )}
     </div>

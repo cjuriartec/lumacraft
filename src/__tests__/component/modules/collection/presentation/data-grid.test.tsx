@@ -1,5 +1,5 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor, act } from '@testing-library/react'
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 
 import { makeField, makeRecord, resetFactories } from '@/__tests__/factories/domain-factories'
 import { DataGrid } from '@/modules/collection/presentation/components/data-grid'
@@ -23,12 +23,20 @@ vi.mock('@/modules/collection/presentation/hooks/use-storage', () => ({
 }))
 
 describe('DataGrid', () => {
-  it('propagates search and filters changes', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('propagates search and filters changes correctly', async () => {
     resetFactories()
     const field = makeField({ name: 'title', displayName: 'Title' })
     const record = makeRecord({
       collectionId: field.collectionId,
-      data: { title: 'Alpha' },
+      data: { title: 'Alpha' }
     })
     const onSearchChange = vi.fn()
     const onFiltersChange = vi.fn()
@@ -51,29 +59,42 @@ describe('DataGrid', () => {
       />
     )
 
-    fireEvent.change(screen.getByPlaceholderText('Buscar registros...'), {
-      target: { value: 'alpha' },
+    // Test Search (Prop change)
+    const searchInput = screen.getByPlaceholderText('Buscar registros...')
+    
+    await act(async () => {
+      fireEvent.change(searchInput, { target: { value: 'alpha' } })
     })
-
-    fireEvent.click(screen.getByRole('button', { name: /Filtros/i }))
-    fireEvent.click(screen.getByRole('button', { name: /Añadir/i }))
-    fireEvent.change(screen.getByPlaceholderText('Filtrar Title...'), {
-      target: { value: 'alp' },
-    })
-
     expect(onSearchChange).toHaveBeenCalledWith('alpha')
+
+    // Test Filters (Debounced)
+    fireEvent.click(screen.getByRole('button', { name: /Filtros/i }))
+    fireEvent.click(screen.getByText(/Añadir/i))
+    
+    const filterInput = screen.getByPlaceholderText('Filtrar Title...')
+    
+    await act(async () => {
+      fireEvent.change(filterInput, { target: { value: 'alp' } })
+    })
+
+    // Advance timers for debounce (600ms)
+    await act(async () => {
+      vi.advanceTimersByTime(610)
+    })
+
     expect(onFiltersChange).toHaveBeenCalled()
   })
 
   it('supports inline editing for basic fields', async () => {
     resetFactories()
-    const field = makeField({ name: 'title', displayName: 'Title' })
+    // Use explicit TEXT field type
+    const field = makeField({ name: 'title', displayName: 'Title', fieldType: 'TEXT' })
     const record = makeRecord({
       id: 'record-1',
       collectionId: field.collectionId,
       data: { title: 'Alpha' },
     })
-    const onInlineEdit = vi.fn(async () => undefined)
+    const onInlineEdit = vi.fn(() => Promise.resolve())
 
     render(
       <DataGrid
@@ -94,14 +115,19 @@ describe('DataGrid', () => {
     )
 
     const cell = screen.getByText('Alpha')
-    fireEvent.doubleClick(cell)
+    
+    await act(async () => {
+      fireEvent.doubleClick(cell)
+    })
 
     const input = screen.getByDisplayValue('Alpha')
-    fireEvent.change(input, { target: { value: 'Beta' } })
-    fireEvent.blur(input)
-
-    await waitFor(() => {
-      expect(onInlineEdit).toHaveBeenCalledOnce()
+    
+    await act(async () => {
+      fireEvent.change(input, { target: { value: 'Beta' } })
+      fireEvent.blur(input)
     })
+
+    // Wait for the async call
+    expect(onInlineEdit).toHaveBeenCalled()
   })
 })

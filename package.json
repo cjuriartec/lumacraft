@@ -18,7 +18,10 @@
     "test:all": "npm test && npm run test:smoke && npm run test:e2e",
     "supabase:stop": "npx supabase stop",
     "supabase:clean": "npx supabase stop --no-backup && docker rmi $(docker images 'supabase/*' -q) 2>/dev/null; docker rmi $(docker images 'public.ecr.aws/supabase/*' -q) 2>/dev/null; docker rmi $(docker images 'postgrest/postgrest' -q) 2>/dev/null; echo '✅ Supabase eliminado completamente (contenedores + volúmenes + imágenes ECR).'",
-    "supabase:local": "node scripts/setup-local.mjs"
+    "supabase:local": "node scripts/setup-local.mjs",
+    "supabase:local:reset": "npx supabase db reset",
+    "supabase:cloud:reset": "npx supabase db reset --linked",
+    "supabase:cloud:push": "npx supabase db push --linked"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

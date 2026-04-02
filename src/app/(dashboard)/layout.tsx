@@ -1,10 +1,11 @@
 'use client'
 
-import { LayoutDashboard, Database, FileText, Settings, Share2, PanelLeft, ChevronRight } from 'lucide-react'
+import { LayoutDashboard, Database, FileText, Settings, Share2, PanelLeft, ChevronRight, Shield, Users } from 'lucide-react'
 import UserMenu from '@/modules/auth/presentation/components/user-menu'
 import AuthGuard from '@/modules/auth/presentation/components/auth-guard'
 import { WorkspaceSwitcher } from '@/modules/workspace/presentation/components/workspace-switcher'
 import { BreadcrumbProvider, useBreadcrumbItems, BreadcrumbItem } from '@/shared/presentation/providers/breadcrumb-provider'
+import { PermissionProvider, usePermissions } from '@/modules/authorization/presentation/providers/permission-provider'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
@@ -19,7 +20,8 @@ export default function DashboardLayout({
   return (
     <AuthGuard>
       <BreadcrumbProvider>
-        <div className="flex h-screen overflow-hidden bg-background text-foreground">
+        <PermissionProvider>
+          <div className="flex h-screen overflow-hidden bg-background text-foreground">
 
           {/* Mobile overlay */}
           {sidebarOpen && (
@@ -40,20 +42,7 @@ export default function DashboardLayout({
             </div>
 
             {/* Nav */}
-            <nav className="flex-1 overflow-y-auto px-3 space-y-0.5">
-              <p className="text-[10px] font-semibold uppercase tracking-widest px-3 mb-3 mt-1 text-foreground/60">
-                Principal
-              </p>
-              <NavLink href="/" icon={<LayoutDashboard size={16} />} label="Inicio" />
-              <NavLink href="/collections" icon={<Database size={16} />} label="Colecciones" />
-              <NavLink href="/templates" icon={<FileText size={16} />} label="Documentos" />
-              <NavLink href="/relations" icon={<Share2 size={16} />} label="Relaciones" />
-            </nav>
-
-            {/* Bottom */}
-            <div className="p-3 pb-5">
-              <NavLink href="/settings" icon={<Settings size={16} />} label="Configuración" />
-            </div>
+            <SidebarNav setSidebarOpen={setSidebarOpen} />
           </aside>
 
           {/* Main Content */}
@@ -81,6 +70,7 @@ export default function DashboardLayout({
             </main>
           </div>
         </div>
+        </PermissionProvider>
       </BreadcrumbProvider>
     </AuthGuard>
   )
@@ -145,13 +135,14 @@ function Breadcrumb() {
   )
 }
 
-function NavLink({ href, icon, label }: { href: string; icon: React.ReactNode; label: string }) {
+function NavLink({ href, icon, label, onClick }: { href: string; icon: React.ReactNode; label: string; onClick?: () => void }) {
   const pathname = usePathname()
   const active = pathname === href || (href !== '/' && pathname.startsWith(href))
 
   return (
     <Link
       href={href}
+      onClick={onClick}
       className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13.5px] font-medium transition-all duration-150 ${active ? 'text-primary bg-primary/10' : 'text-foreground/70 hover:text-foreground hover:bg-surface'}`}
     >
       <span className={active ? 'text-primary' : 'text-inherit opacity-70'}>
@@ -165,3 +156,34 @@ function NavLink({ href, icon, label }: { href: string; icon: React.ReactNode; l
   )
 }
 
+function SidebarNav({ setSidebarOpen }: { setSidebarOpen: (o: boolean) => void }) {
+  const { isOwner, isSuperAdmin } = usePermissions()
+
+  return (
+    <>
+      <nav className="flex-1 overflow-y-auto px-3 space-y-0.5">
+        <p className="text-[10px] font-semibold uppercase tracking-widest px-3 mb-3 mt-1 text-foreground/60">
+          Principal
+        </p>
+        <NavLink href="/" icon={<LayoutDashboard size={16} />} label="Inicio" onClick={() => setSidebarOpen(false)} />
+        <NavLink href="/collections" icon={<Database size={16} />} label="Colecciones" onClick={() => setSidebarOpen(false)} />
+        <NavLink href="/templates" icon={<FileText size={16} />} label="Documentos" onClick={() => setSidebarOpen(false)} />
+        <NavLink href="/relations" icon={<Share2 size={16} />} label="Relaciones" onClick={() => setSidebarOpen(false)} />
+        
+        {(isOwner || isSuperAdmin) && (
+          <>
+            <p className="text-[10px] font-semibold uppercase tracking-widest px-3 mb-3 mt-6 text-foreground/60">
+              Seguridad
+            </p>
+            <NavLink href="/settings/roles" icon={<Users size={16} />} label="Roles y Miembros" onClick={() => setSidebarOpen(false)} />
+            <NavLink href="/settings/permissions" icon={<Shield size={16} />} label="Permisos" onClick={() => setSidebarOpen(false)} />
+          </>
+        )}
+      </nav>
+
+      <div className="p-3 pb-5">
+        <NavLink href="/settings" icon={<Settings size={16} />} label="Configuración" onClick={() => setSidebarOpen(false)} />
+      </div>
+    </>
+  )
+}

@@ -47,6 +47,9 @@ interface DataGridProps {
   onDelete: (id: string) => void
   onAddRecord?: () => void
   initialFilterValues?: Record<string, string>
+  canCreate?: boolean
+  canUpdate?: boolean
+  canDelete?: boolean
 }
 
 type FileMetadata = {
@@ -241,6 +244,9 @@ export function DataGrid({
   onDelete,
   onAddRecord,
   initialFilterValues,
+  canCreate = true,
+  canUpdate = true,
+  canDelete = true,
 }: DataGridProps) {
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null)
   const [downloadingFiles, setDownloadingFiles] = useState<Record<string, boolean>>({})
@@ -706,7 +712,7 @@ export function DataGrid({
               <span className="sm:hidden">Exp</span>
             </Button>
 
-            {onAddRecord && (
+            {onAddRecord && canCreate && (
               <Button
                 size="sm"
                 className="h-10 bg-primary text-background hover:bg-primary/90 shadow-sm transition-all hover:-translate-y-0.5 active:translate-y-0 px-4"
@@ -761,7 +767,9 @@ export function DataGrid({
                     </TableCell>
                   ))}
                   <TableCell className="text-right py-4 px-4">
+                    {(canUpdate || canDelete) && (
                     <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {canUpdate && (
                       <Button
                         variant="ghost"
                         size="icon"
@@ -771,6 +779,8 @@ export function DataGrid({
                       >
                         <Edit2 size={14} />
                       </Button>
+                      )}
+                      {canDelete && (
                       <Button
                         variant="ghost"
                         size="icon"
@@ -780,7 +790,9 @@ export function DataGrid({
                       >
                         <Trash2 size={14} />
                       </Button>
+                      )}
                     </div>
+                    )}
                   </TableCell>
                 </TableRow>
               ))

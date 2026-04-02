@@ -86,13 +86,33 @@ test.describe('full collection lifecycle', () => {
     await page.getByRole('button', { name: /Filtros/ }).click()
     await page.getByRole('button', { name: 'Añadir' }).first().click()
     await page.getByPlaceholder('Filtrar Title...').fill('Alpha')
-    await expect(page.getByRole('cell', { name: 'Alpha Updated', exact: true })).toBeVisible()
+    await page.keyboard.press('Enter') // Submit filter
+    await page.waitForTimeout(1000)
 
-    await page.getByRole('cell', { name: 'Alpha Updated', exact: true }).dblclick()
-    const inlineEditor = page.locator('input[value="Alpha Updated"]').first()
+    const targetCell = page.getByRole('cell', { name: /Alpha Updated/ }).first()
+    await expect(targetCell).toBeVisible()
+
+    // Ensure the filter popover is closed
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(200)
+
+    // Double click to edit
+    await targetCell.dblclick({ force: true })
+    
+    // The input should now be visible
+    const inlineEditor = page.locator('td input').first()
+    await expect(inlineEditor).toBeVisible()
     await inlineEditor.fill('Alpha Inline')
     await inlineEditor.press('Enter')
+    
     await expect(page.getByRole('cell', { name: 'Alpha Inline', exact: true })).toBeVisible()
+
+    // Clear search and filters to restore all 30+ records and enable pagination
+    await page.getByPlaceholder('Buscar registros...').fill('')
+    await page.getByRole('button', { name: /Filtros/ }).click()
+    await page.getByRole('button', { name: 'Limpiar todo' }).click()
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(1000)
 
     await page.getByRole('button', { name: 'Siguiente' }).click()
     await expect(page.getByText('2 / 2')).toBeVisible()

@@ -21,6 +21,7 @@ import { LayoutGrid, ListFilter } from 'lucide-react'
 import { DataRecord } from '../../domain/entities/record.entity'
 import { Field } from '../../domain/entities/field.entity'
 import { ColumnFilter } from '../../domain/types/pagination.types'
+import { usePermissions } from '@/modules/authorization/presentation/providers/permission-provider'
 
 interface CollectionDetailPageProps {
   collectionId: string
@@ -32,6 +33,11 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
     { label: 'Colecciones', href: '/collections' },
     { label: collectionName },
   ])
+  const { can, isOwner, isSuperAdmin } = usePermissions()
+  const canCreate = can(collectionId, 'create')
+  const canUpdate = can(collectionId, 'update')
+  const canDelete = can(collectionId, 'delete')
+  const canManageSchema = isOwner || isSuperAdmin
   const { fields, loading: loadingFields, createField, updateField, deleteField } = useFields(collectionId)
   const {
     records,
@@ -145,10 +151,12 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
             <LayoutGrid size={16} className="mr-2" />
             Datos {total > 0 && <span className="ml-2 text-[10px] opacity-40 font-mono">({total})</span>}
           </TabsTrigger>
-          <TabsTrigger value="fields" className="flex items-center">
-            <ListFilter size={16} className="mr-2" />
-            Esquema {fields.length > 0 && <span className="ml-2 text-[10px] opacity-40 font-mono">({fields.length})</span>}
-          </TabsTrigger>
+          {canManageSchema && (
+            <TabsTrigger value="fields" className="flex items-center">
+              <ListFilter size={16} className="mr-2" />
+              Esquema {fields.length > 0 && <span className="ml-2 text-[10px] opacity-40 font-mono">({fields.length})</span>}
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="data" className="mt-0 outline-none">
@@ -178,6 +186,9 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
                   onEdit={handleEditRecord}
                   onDelete={deleteRecord}
                   onAddRecord={handleCreateRecord}
+                  canCreate={canCreate}
+                  canUpdate={canUpdate}
+                  canDelete={canDelete}
                 />
               </div>
             </div>

@@ -9,9 +9,12 @@ import {
 } from '@/shared/presentation/components/ui/dropdown-menu'
 import { ChevronDown, Check, Layers, UserPlus } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
+import { useState } from 'react'
+import { InviteMemberModal } from './invite-member-modal'
 
 export function WorkspaceSwitcher() {
   const { workspaces, currentWorkspace, setCurrentWorkspace, loading } = useWorkspace()
+  const [inviteModalOpen, setInviteModalOpen] = useState(false)
 
   if (loading || workspaces.length === 0) {
     return (
@@ -76,12 +79,19 @@ export function WorkspaceSwitcher() {
         })}
 
         <div className="mt-1.5 pt-1.5 border-t border-border/10">
-          <DropdownMenuItem className="flex items-center gap-2.5 px-3 py-2.5 cursor-not-allowed opacity-50 rounded-lg text-xs font-medium">
+          <DropdownMenuItem
+            className="flex items-center gap-2.5 px-3 py-2.5 cursor-pointer rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-surface-hover/30"
+            onSelect={(e) => {
+              e.preventDefault() // prevent closing dropdown instantly
+              setInviteModalOpen(true)
+            }}
+          >
             <UserPlus size={14} className="text-muted" />
             Invitar equipo
           </DropdownMenuItem>
         </div>
       </DropdownMenuContent>
+      <InviteMemberModal open={inviteModalOpen} onOpenChange={setInviteModalOpen} />
     </DropdownMenu>
   )
 }
