@@ -35,6 +35,11 @@ import { Badge } from '@/shared/presentation/components/ui/badge'
 import { Label } from '@/shared/presentation/components/ui/label'
 import { cn } from '@/shared/lib/utils'
 import { InviteMemberModal } from './invite-member-modal'
+import {
+  Avatar,
+  AvatarImage,
+  AvatarFallback,
+} from '@/shared/presentation/components/ui/avatar'
 
 export function MemberManager() {
   const { user: currentUser } = useAuth()
@@ -109,9 +114,17 @@ export function MemberManager() {
                 <TableRow key={member.id} className="group hover:bg-surface-hover/30 transition-colors border-b border-border/5 last:border-0">
                   <TableCell className="py-4 px-6">
                     <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                        {isMe ? <User size={14} /> : <Mail size={14} />}
-                      </div>
+                      <Avatar className="h-8 w-8 rounded-full border border-border/10">
+                        {member.userAvatarUrl && (
+                          <AvatarImage 
+                            src={member.userAvatarUrl} 
+                            alt={member.userName || 'Usuario'} 
+                          />
+                        )}
+                        <AvatarFallback className="bg-primary/10 text-primary text-[10px]">
+                          {member.userName ? member.userName.substring(0, 2).toUpperCase() : (isMe ? <User size={12} /> : <Mail size={12} />)}
+                        </AvatarFallback>
+                      </Avatar>
                       <div className="flex flex-col">
                         <span className="text-sm font-semibold text-foreground truncate max-w-[150px]">
                           {member.userName || 'Usuario Invitado'}

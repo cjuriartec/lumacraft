@@ -23,7 +23,6 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/shared/presentation/components/ui/dialog'
-import { Badge } from '@/shared/presentation/components/ui/badge'
 import { Label } from '@/shared/presentation/components/ui/label'
 import { cn } from '@/shared/lib/utils'
 
@@ -109,11 +108,7 @@ export function RoleManager() {
                 <TableCell className="py-4">
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-sm text-foreground">{role.name}</span>
-                    {role.isSuperadmin && (
-                      <Badge variant="secondary" className="text-[9px] h-4 uppercase tracking-wider bg-primary/10 text-primary border-primary/20">
-                        Admin
-                      </Badge>
-                    )}
+                    {role.isSuperadmin && <Shield size={12} className="text-primary fill-primary/10" />}
                   </div>
                 </TableCell>
                 <TableCell className="py-4 text-xs font-light text-muted-foreground leading-relaxed max-w-md truncate">

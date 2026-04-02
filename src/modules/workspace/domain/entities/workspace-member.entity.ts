@@ -7,6 +7,7 @@ interface WorkspaceMemberProps {
   roleId: string
   userName?: string
   userEmail?: string
+  userAvatarUrl?: string
   joinedAt?: Date
 }
 
@@ -38,6 +39,10 @@ export class WorkspaceMember extends BaseEntity {
     return this.props.userEmail
   }
 
+  get userAvatarUrl(): string | undefined {
+    return this.props.userAvatarUrl
+  }
+
   public toJSON() {
     return {
       id: this.id,
@@ -46,6 +51,7 @@ export class WorkspaceMember extends BaseEntity {
       roleId: this.roleId,
       userName: this.userName,
       userEmail: this.userEmail,
+      userAvatarUrl: this.userAvatarUrl,
       joinedAt: this.createdAt,
     }
   }

@@ -106,6 +106,9 @@ export function makeWorkspaceMember(
     workspaceId: string
     userId: string
     roleId: string
+    userName: string
+    userEmail: string
+    userAvatarUrl: string
     joinedAt: Date
   }> = {}
 ) {
@@ -116,6 +119,9 @@ export function makeWorkspaceMember(
     workspaceId: overrides.workspaceId ?? `workspace-${String(order).padStart(4, '0')}`,
     userId: overrides.userId ?? `user-${String(order).padStart(4, '0')}`,
     roleId: overrides.roleId ?? `role-${String(order).padStart(4, '0')}`,
+    userName: overrides.userName,
+    userEmail: overrides.userEmail,
+    userAvatarUrl: overrides.userAvatarUrl,
     joinedAt: overrides.joinedAt ?? dateFor(order),
   })
 }

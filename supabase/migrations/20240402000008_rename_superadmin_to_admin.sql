@@ -4,7 +4,7 @@
 
 -- 1. Rename existing roles
 UPDATE public.roles 
-SET name = 'Admin' 
+SET name = 'Administrador' 
 WHERE name = 'Superadmin' AND is_superadmin = true;
 
 -- 2. Update the trigger to assign 'Admin' directly going forward
@@ -29,7 +29,7 @@ BEGIN
 
     -- Use 'Admin' instead of 'Superadmin'
     INSERT INTO public.roles (account_id, name, is_superadmin)
-    VALUES (new_account_id, 'Admin', true)
+    VALUES (new_account_id, 'Administrador', true)
     RETURNING id INTO new_role_id;
 
     INSERT INTO public.account_members (account_id, user_id, role_id)

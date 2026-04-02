@@ -96,6 +96,7 @@ export class SupabaseWorkspaceMemberRepository extends BaseRepository implements
       roleId: data.role_id,
       userName: data.user_name,
       userEmail: data.user_email,
+      userAvatarUrl: data.user_avatar_url,
       joinedAt: new Date(data.joined_at),
     })
   }

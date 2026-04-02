@@ -92,7 +92,7 @@ export default function WorkspaceProvider({
 
     if (currentWorkspace?.id && typeof storage?.setItem === 'function') {
       storage.setItem(CURRENT_WORKSPACE_STORAGE_KEY, currentWorkspace.id)
-    } else if (storage && workspaces.length === 0 && !loading) {
+    } else if (storage && workspaces.length === 0 && !loading && typeof storage?.removeItem === 'function') {
       storage.removeItem(CURRENT_WORKSPACE_STORAGE_KEY)
     }
   }, [currentWorkspace, workspaces.length, loading])

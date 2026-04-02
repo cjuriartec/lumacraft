@@ -22,12 +22,14 @@ describe('Workspace entity', () => {
 })
 
 describe('WorkspaceMember entity', () => {
-  it('maps joinedAt to createdAt in the JSON representation', () => {
+  it('maps joinedAt to createdAt in the JSON representation and includes user info', () => {
     resetFactories()
     const member = makeWorkspaceMember({
       workspaceId: 'workspace-1',
       userId: 'user-1',
       roleId: 'role-1',
+      userName: 'John Doe',
+      userAvatarUrl: 'https://avatar.com/john.png'
     })
 
     expect(member.toJSON()).toEqual({
@@ -35,6 +37,9 @@ describe('WorkspaceMember entity', () => {
       workspaceId: 'workspace-1',
       userId: 'user-1',
       roleId: 'role-1',
+      userName: 'John Doe',
+      userEmail: undefined,
+      userAvatarUrl: 'https://avatar.com/john.png',
       joinedAt: member.createdAt,
     })
   })
