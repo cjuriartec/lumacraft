@@ -1,6 +1,15 @@
 "use client";
 
-import { Check, Laptop, LogOut, Moon, Settings, Sun, User as UserIcon } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  Laptop,
+  LogOut,
+  Moon,
+  Settings,
+  Sun,
+  User as UserIcon,
+} from "lucide-react";
 import { useTheme } from "next-themes";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/presentation/components/ui/avatar";
@@ -8,7 +17,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuPortal,
   DropdownMenuSeparator,
   DropdownMenuSub,
@@ -37,104 +45,117 @@ export default function UserMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="flex items-center gap-2 px-2 py-1.5 rounded-lg transition-all duration-150 outline-none text-foreground/70 hover:bg-foreground/5">
-          <Avatar className="h-7 w-7">
-            <AvatarImage src={user.avatarUrl} alt={user.fullName} />
-            <AvatarFallback className="text-[11px] font-bold bg-primary/10 text-primary">
+        <button className="group flex items-center gap-1.5 p-1 rounded-full transition-all duration-200 outline-none hover:bg-surface-hover/80 border border-transparent hover:border-border/10">
+          <Avatar className="h-8 w-8 border border-border/10 shadow-sm">
+            <AvatarImage src={user.avatarUrl} alt={user.fullName} className="object-cover" />
+            <AvatarFallback className="text-[11px] font-bold bg-surface text-muted border border-border/10">
               {initials}
             </AvatarFallback>
           </Avatar>
-          <div className="hidden md:flex flex-col text-left justify-center pl-1 gap-1">
-            <p className="text-[13px] font-semibold leading-none text-foreground truncate max-w-[130px]">
-              {user.fullName || "Usuario"}
-            </p>
-          </div>
+          <ChevronDown
+            size={12}
+            className="text-muted/30 group-hover:text-muted transition-colors mr-1"
+          />
         </button>
       </DropdownMenuTrigger>
 
       <DropdownMenuContent
         align="end"
-        className="w-52 mt-2 rounded-xl p-1.5 bg-sidebar border-border/10 shadow-2xl"
+        sideOffset={8}
+        className="w-[240px] rounded-2xl p-1.5 bg-surface border-border/50 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200"
       >
-        <DropdownMenuLabel className="font-normal p-3 pb-2 flex items-center gap-3">
-          <Avatar className="h-9 w-9">
-            <AvatarImage src={user.avatarUrl} alt={user.fullName} />
-            <AvatarFallback className="text-[12px] font-bold bg-primary/10 text-primary">
-              {initials}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex flex-col space-y-0.5 min-w-0">
-            <p className="text-sm font-semibold leading-none truncate text-foreground">
-              {user.fullName || "Usuario"}
-            </p>
-            <p className="text-[11px] leading-none truncate text-foreground/50">
-              {user.email.value}
-            </p>
+        <div className="px-3 py-4 mb-1">
+          <div className="flex items-center gap-3">
+            <Avatar className="h-10 w-10 border border-border/10 shadow-sm">
+              <AvatarImage src={user.avatarUrl} alt={user.fullName} className="object-cover" />
+              <AvatarFallback className="text-xs font-bold bg-background text-primary">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex flex-col space-y-0.5 min-w-0">
+              <p className="text-sm font-bold leading-normal truncate text-foreground tracking-tight">
+                {user.fullName || "Usuario"}
+              </p>
+              <p className="text-[11px] font-medium leading-normal truncate text-muted/70">
+                {user.email.value}
+              </p>
+            </div>
           </div>
-        </DropdownMenuLabel>
+        </div>
 
-        <DropdownMenuSeparator className="bg-foreground/5 my-1 mt-2" />
+        <DropdownMenuSeparator className="bg-border/20 mx-[-6px]" />
 
-        <DropdownMenuItem className="rounded-lg gap-2.5 cursor-pointer text-sm py-2 px-2.5 transition-colors duration-150 text-foreground/75 hover:bg-foreground/5 hover:text-foreground">
-          <UserIcon size={14} />
-          Mi Perfil
-        </DropdownMenuItem>
-        <DropdownMenuItem className="rounded-lg gap-2.5 cursor-pointer text-sm py-2 px-2.5 transition-colors duration-150 text-foreground/75 hover:bg-foreground/5 hover:text-foreground">
-          <Settings size={14} />
-          Ajustes
-        </DropdownMenuItem>
+        <div className="p-1 space-y-0.5">
+          <DropdownMenuItem className="flex items-center rounded-lg gap-3 cursor-pointer text-[13px] font-semibold py-2.5 px-3 transition-all duration-150 text-foreground/70 hover:bg-surface-hover hover:text-foreground focus:bg-surface-hover focus:text-foreground">
+            <div className="bg-foreground/5 p-1.5 rounded-md group-hover:bg-foreground/10 transition-colors">
+              <UserIcon size={14} className="text-foreground/60" />
+            </div>
+            Mi Perfil
+          </DropdownMenuItem>
 
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger className="rounded-lg gap-2.5 cursor-pointer text-sm py-2 px-2.5 transition-colors duration-150 text-foreground/75 hover:bg-foreground/5 hover:text-foreground focus:bg-foreground/5">
-            <Sun
-              size={14}
-              className="rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0"
-            />
-            <Moon
-              size={14}
-              className="absolute rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100"
-            />
-            Apariencia
-          </DropdownMenuSubTrigger>
-          <DropdownMenuPortal>
-            <DropdownMenuSubContent className="bg-sidebar border-border/10">
-              <DropdownMenuItem
-                onClick={() => setTheme("light")}
-                className={`text-xs gap-2 ${theme === "light" ? "bg-primary/10 text-primary focus:bg-primary/10 focus:text-primary" : "text-foreground/75 hover:text-foreground focus:text-foreground hover:bg-foreground/5 focus:bg-foreground/5"}`}
+          <DropdownMenuItem className="flex items-center rounded-lg gap-3 cursor-pointer text-[13px] font-semibold py-2.5 px-3 transition-all duration-150 text-foreground/70 hover:bg-surface-hover hover:text-foreground focus:bg-surface-hover focus:text-foreground">
+            <div className="bg-foreground/5 p-1.5 rounded-md">
+              <Settings size={14} className="text-foreground/60" />
+            </div>
+            Ajustes
+          </DropdownMenuItem>
+
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger className="flex items-center rounded-lg gap-3 cursor-pointer text-[13px] font-semibold py-2.5 px-3 transition-all duration-150 text-foreground/70 hover:bg-surface-hover hover:text-foreground focus:bg-surface-hover focus:text-foreground">
+              <div className="bg-foreground/5 h-7 w-7 rounded-md relative flex items-center justify-center shrink-0 overflow-hidden text-foreground/60">
+                <Sun
+                  size={14}
+                  className="rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0 "
+                />
+                <Moon
+                  size={14}
+                  className="absolute rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100"
+                />
+              </div>
+              <span className="flex-1">Apariencia</span>
+            </DropdownMenuSubTrigger>
+            <DropdownMenuPortal>
+              <DropdownMenuSubContent
+                sideOffset={8}
+                className="bg-surface border-border/50 rounded-xl p-1.5 min-w-[130px] animate-in fade-in slide-in-from-right-1 duration-200"
               >
-                <Sun size={14} />
-                Claro
-                {theme === "light" && <Check size={14} className="ml-auto" />}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => setTheme("dark")}
-                className={`text-xs gap-2 ${theme === "dark" ? "bg-primary/10 text-primary focus:bg-primary/10 focus:text-primary" : "text-foreground/75 hover:text-foreground focus:text-foreground hover:bg-foreground/5 focus:bg-foreground/5"}`}
-              >
-                <Moon size={14} />
-                Oscuro
-                {theme === "dark" && <Check size={14} className="ml-auto" />}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => setTheme("system")}
-                className={`text-xs gap-2 ${theme === "system" ? "bg-primary/10 text-primary focus:bg-primary/10 focus:text-primary" : "text-foreground/75 hover:text-foreground focus:text-foreground hover:bg-foreground/5 focus:bg-foreground/5"}`}
-              >
-                <Laptop size={14} />
-                Sistema
-                {theme === "system" && <Check size={14} className="ml-auto" />}
-              </DropdownMenuItem>
-            </DropdownMenuSubContent>
-          </DropdownMenuPortal>
-        </DropdownMenuSub>
+                {[
+                  { id: "light", label: "Claro", icon: Sun },
+                  { id: "dark", label: "Oscuro", icon: Moon },
+                  { id: "system", label: "Sistema", icon: Laptop },
+                ].map(({ id, label, icon: Icon }) => (
+                  <DropdownMenuItem
+                    key={id}
+                    onClick={() => setTheme(id)}
+                    className={`flex items-center rounded-lg gap-2.5 text-xs font-semibold py-2 px-2.5 transition-all duration-150 ${
+                      theme === id
+                        ? "bg-primary/10 text-primary"
+                        : "text-foreground/65 hover:bg-surface-hover hover:text-foreground"
+                    }`}
+                  >
+                    <Icon size={14} />
+                    {label}
+                    {theme === id && <Check size={12} className="ml-auto" />}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuPortal>
+          </DropdownMenuSub>
+        </div>
 
-        <DropdownMenuSeparator className="bg-foreground/5 my-1" />
+        <DropdownMenuSeparator className="bg-border/20 mx-[-6px]" />
 
-        <DropdownMenuItem
-          onClick={() => signOut()}
-          className="rounded-lg gap-2.5 cursor-pointer text-sm py-2 px-2.5 transition-colors duration-150 text-red-500 hover:bg-red-500/10 hover:text-red-600 focus:bg-red-500/10 focus:text-red-500"
-        >
-          <LogOut size={14} />
-          Cerrar Sesión
-        </DropdownMenuItem>
+        <div className="p-1">
+          <DropdownMenuItem
+            onClick={() => signOut()}
+            className="flex items-center rounded-lg gap-3 cursor-pointer text-[13px] font-bold py-2.5 px-3 transition-all duration-200 text-red-500/80 hover:bg-red-500/10 hover:text-red-500 focus:bg-red-500/10 focus:text-red-500 group"
+          >
+            <div className="bg-red-500/5 p-1.5 rounded-md group-hover:bg-red-500/10 transition-colors">
+              <LogOut size={14} />
+            </div>
+            Cerrar Sesión
+          </DropdownMenuItem>
+        </div>
       </DropdownMenuContent>
     </DropdownMenu>
   );

@@ -55,16 +55,18 @@ export class SupabaseAuthService implements IAuthProvider {
     const emailRes = Email.create(user.email!);
     if (!emailRes.ok) return fail(emailRes.error);
 
-    return ok(
-      new User({
-        id: user.id,
-        email: emailRes.value,
-        fullName: user.user_metadata.full_name,
-        avatarUrl: user.user_metadata.avatar_url,
-        createdAt: new Date(user.created_at),
-        updatedAt: new Date(user.updated_at || user.created_at),
-      }),
-    );
+    const userRes = User.create({
+      id: user.id,
+      email: emailRes.value,
+      fullName: user.user_metadata.full_name || user.user_metadata.name || undefined,
+      avatarUrl: user.user_metadata.avatar_url,
+      createdAt: new Date(user.created_at),
+      updatedAt: new Date(user.updated_at || user.created_at),
+    });
+
+    if (!userRes.ok) return fail(userRes.error);
+
+    return ok(userRes.value);
   }
 
   public onAuthStateChange(callback: (user: User | null) => void): () => void {
@@ -78,14 +80,17 @@ export class SupabaseAuthService implements IAuthProvider {
 
       const emailRes = Email.create(session.user.email!);
       if (emailRes.ok) {
-        callback(
-          new User({
-            id: session.user.id,
-            email: emailRes.value,
-            fullName: session.user.user_metadata.full_name,
-            avatarUrl: session.user.user_metadata.avatar_url,
-          }),
-        );
+        const userRes = User.create({
+          id: session.user.id,
+          email: emailRes.value,
+          fullName:
+            session.user.user_metadata.full_name || session.user.user_metadata.name || undefined,
+          avatarUrl: session.user.user_metadata.avatar_url,
+        });
+
+        if (userRes.ok) {
+          callback(userRes.value);
+        }
       }
     });
 
