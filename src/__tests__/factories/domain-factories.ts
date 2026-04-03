@@ -5,6 +5,8 @@ import { Field } from "@/modules/collection/domain/entities/field.entity";
 import { DataRecord } from "@/modules/collection/domain/entities/record.entity";
 import { FieldConfig } from "@/modules/collection/domain/value-objects/field-config.vo";
 import { FieldType, FieldTypeValue } from "@/modules/collection/domain/value-objects/field-type.vo";
+import { Template } from "@/modules/template/domain/entities/template.entity";
+import { TemplateBlocks } from "@/modules/template/domain/types/template-blocks";
 import { Workspace } from "@/modules/workspace/domain/entities/workspace.entity";
 import { WorkspaceMember } from "@/modules/workspace/domain/entities/workspace-member.entity";
 
@@ -246,4 +248,48 @@ export function makeRecord(
     createdAt: overrides.createdAt ?? dateFor(order),
     updatedAt: overrides.updatedAt ?? dateFor(order),
   });
+}
+
+export function makeTemplate(
+  overrides: Partial<{
+    id: string;
+    accountId: string;
+    name: string;
+    description: string;
+    collectionId: string | null;
+    blocks: TemplateBlocks;
+    version: number;
+    createdBy: string;
+    createdAt: Date;
+    updatedAt: Date;
+  }> = {},
+) {
+  const order = nextSequence();
+
+  const result = Template.create({
+    id: overrides.id ?? `template-${String(order).padStart(4, "0")}`,
+    accountId: overrides.accountId ?? `workspace-${String(order).padStart(4, "0")}`,
+    name: overrides.name ?? `Template ${order}`,
+    description: overrides.description ?? `Template description ${order}`,
+    collectionId:
+      "collectionId" in overrides
+        ? (overrides.collectionId ?? null)
+        : `collection-${String(order).padStart(4, "0")}`,
+    blocks: overrides.blocks ?? [
+      {
+        type: "p",
+        children: [{ text: `Template ${order} content` }],
+      },
+    ],
+    version: overrides.version ?? 1,
+    createdBy: overrides.createdBy ?? `user-${String(order).padStart(4, "0")}`,
+    createdAt: overrides.createdAt ?? dateFor(order),
+    updatedAt: overrides.updatedAt ?? dateFor(order),
+  });
+
+  if (!result.ok) {
+    throw result.error;
+  }
+
+  return result.value;
 }

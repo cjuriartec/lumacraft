@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import * as React from "react";
 
 import { useCollections } from "@/modules/collection/presentation/hooks/use-collections";
+import type { Result } from "@/shared/domain/result";
 import { Button } from "@/shared/presentation/components/ui/button";
 import {
   Dialog,
@@ -24,14 +25,25 @@ import {
 } from "@/shared/presentation/components/ui/select";
 import { Textarea } from "@/shared/presentation/components/ui/textarea";
 
-import { Template } from "../../domain/entities/template.entity";
-import { useTemplates } from "../hooks/use-templates";
+import type { Template } from "../../domain/entities/template.entity";
+
+interface CreateTemplateParams {
+  name: string;
+  description?: string;
+  collectionId?: string | null;
+}
+
+interface UpdateTemplateParams extends CreateTemplateParams {
+  id: string;
+}
 
 interface TemplateCreateDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   templateToEdit?: Template | null;
   onSuccess?: () => void;
+  onCreateTemplate: (params: CreateTemplateParams) => Promise<Result<Template>>;
+  onUpdateTemplate: (params: UpdateTemplateParams) => Promise<Result<Template>>;
 }
 
 export function TemplateCreateDialog({
@@ -39,10 +51,11 @@ export function TemplateCreateDialog({
   onOpenChange,
   templateToEdit,
   onSuccess,
+  onCreateTemplate,
+  onUpdateTemplate,
 }: TemplateCreateDialogProps) {
   const router = useRouter();
   const { collections, loading: collectionsLoading } = useCollections();
-  const { createTemplate, updateTemplate } = useTemplates();
   const [name, setName] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [collectionId, setCollectionId] = React.useState<string>("");
@@ -64,12 +77,12 @@ export function TemplateCreateDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !collectionId) return;
+    if (!name || (!isEditing && !collectionId)) return;
 
     setLoading(true);
 
     if (isEditing) {
-      const res = await updateTemplate({
+      const res = await onUpdateTemplate({
         id: templateToEdit.id,
         name,
         description,
@@ -81,7 +94,7 @@ export function TemplateCreateDialog({
         onSuccess?.();
       }
     } else {
-      const res = await createTemplate({
+      const res = await onCreateTemplate({
         name,
         description,
         collectionId,
@@ -192,7 +205,7 @@ export function TemplateCreateDialog({
             </Button>
             <Button
               type="submit"
-              disabled={loading || !name || !collectionId}
+              disabled={loading || !name || (!isEditing && !collectionId)}
               className="rounded-xl font-bold bg-primary hover:bg-primary-hover shadow-lg shadow-primary/10 transition-all hover:scale-[1.02] active:scale-[0.98]"
             >
               {loading ? "Guardando..." : isEditing ? "Guardar Cambios" : "Crear y Abrir Editor"}

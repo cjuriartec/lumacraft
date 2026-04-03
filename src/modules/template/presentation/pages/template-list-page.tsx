@@ -9,13 +9,14 @@ import { Button } from "@/shared/presentation/components/ui/button";
 import { Input } from "@/shared/presentation/components/ui/input";
 import { useBreadcrumbs } from "@/shared/presentation/providers/breadcrumb-provider";
 
-import { Template } from "../../domain/entities/template.entity";
+import type { Template } from "../../domain/entities/template.entity";
 import { TemplateCreateDialog } from "../components/template-create-dialog";
 import { useTemplates } from "../hooks/use-templates";
 
 export default function TemplateListPage() {
   useBreadcrumbs([{ label: "Documentos" }]);
-  const { templates, loading, deleteTemplate, refresh } = useTemplates();
+  const { templates, loading, createTemplate, updateTemplate, deleteTemplate, refresh } =
+    useTemplates();
   const { collections } = useCollections();
   const [searchTerm, setSearchTerm] = React.useState("");
   const [createDialogOpen, setCreateDialogOpen] = React.useState(false);
@@ -158,6 +159,8 @@ export default function TemplateListPage() {
         onOpenChange={handleOpenChange}
         templateToEdit={editingTemplate}
         onSuccess={refresh}
+        onCreateTemplate={createTemplate}
+        onUpdateTemplate={updateTemplate}
       />
     </div>
   );

@@ -1,16 +1,15 @@
 "use client";
 
+import type { Descendant, TElement } from "platejs";
 import { createPlatePlugin, type PlateElementProps } from "platejs/react";
 
 export const VARIABLE_TYPE = "variable";
 
-export interface VariableElementNode {
-  type: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  children: any[];
+export interface VariableElementNode extends TElement {
+  type: typeof VARIABLE_TYPE;
+  children: Descendant[];
   fieldPath: string;
   collectionId: string;
-  [key: string]: unknown;
 }
 
 export const VariablePlugin = createPlatePlugin({

@@ -23,7 +23,6 @@ import {
   Strikethrough,
 } from "lucide-react";
 import Link from "next/link";
-import { TElement } from "platejs";
 import { Plate, usePlateEditor } from "platejs/react";
 import * as React from "react";
 
@@ -55,9 +54,14 @@ import { TooltipProvider } from "@/shared/presentation/components/ui/tooltip";
 import { TurnIntoToolbarButton } from "@/shared/presentation/components/ui/turn-into-toolbar-button";
 import { useBreadcrumbs } from "@/shared/presentation/providers/breadcrumb-provider";
 
+import type { VariableElementNode } from "../components/variable-block";
 import { VARIABLE_TYPE, VariableElement, VariablePlugin } from "../components/variable-block";
 import { VariableSelector } from "../components/variable-selector";
 import { useTemplateEditor } from "../hooks/use-template-editor";
+import {
+  plateValueToTemplateBlocks,
+  templateBlocksToPlateValue,
+} from "../lib/template-blocks.adapter";
 
 interface TemplateEditorPageProps {
   templateId: string;
@@ -99,11 +103,14 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
     const c = collections.find((col) => col.id === template.collectionId);
     return c ? c.displayName || c.name : "Colección";
   }, [template, collections]);
+  const plateValue = React.useMemo(
+    () => templateBlocksToPlateValue(template?.blocks),
+    [template?.blocks],
+  );
 
   const editor = usePlateEditor({
     id: templateId,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    value: (template?.blocks as any) || [],
+    value: plateValue,
     plugins: [
       ...ExtendedNodesKit,
       VariablePlugin.configure({
@@ -120,14 +127,19 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
       },
     },
   });
+
   // Synchronize editor value when template data arrives
   const isFirstLoad = React.useRef(true);
   React.useEffect(() => {
-    if (template?.blocks && isFirstLoad.current) {
+    isFirstLoad.current = true;
+  }, [templateId]);
+
+  React.useEffect(() => {
+    if (template && isFirstLoad.current) {
       isFirstLoad.current = false;
-      editor.tf.setValue(template.blocks as unknown as TElement[]);
+      editor.tf.setValue(plateValue);
     }
-  }, [template?.blocks, editor]);
+  }, [template, editor, plateValue]);
 
   if (loading) {
     return (
@@ -150,7 +162,10 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
   }
 
   return (
-    <Plate editor={editor} onChange={({ value }) => handleBlocksChange(value)}>
+    <Plate
+      editor={editor}
+      onChange={({ value }) => handleBlocksChange(plateValueToTemplateBlocks(value))}
+    >
       <TooltipProvider>
         <div className="flex h-full flex-col">
           {/* Editor Header Bar */}
@@ -281,20 +296,25 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
 
                 <ToolbarGroup>
                   <VariableSelector
-                    collectionId={template.collectionId!}
+                    collectionId={template.collectionId}
+                    disabled={!template.collectionId}
                     onSelect={(node) => {
-                      editor.tf.insertNodes([
-                        {
-                          type: VARIABLE_TYPE,
-                          fieldPath: node.path,
-                          collectionId: node.collectionId,
-                          children: [{ text: "" }],
-                        },
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      ] as any);
+                      const variableNode: VariableElementNode = {
+                        type: VARIABLE_TYPE,
+                        fieldPath: node.path,
+                        collectionId: node.collectionId,
+                        children: [{ text: "" }],
+                      };
+
+                      editor.tf.insertNodes([variableNode]);
                       editor.tf.focus();
                     }}
                   />
+                  {!template.collectionId && (
+                    <span className="text-xs text-muted-foreground">
+                      Vincula una colección para insertar variables.
+                    </span>
+                  )}
                 </ToolbarGroup>
               </FixedToolbar>
             </div>

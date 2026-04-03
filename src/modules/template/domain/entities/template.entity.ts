@@ -1,6 +1,8 @@
 import { BaseEntity } from "@/shared/domain/base-entity";
-import { fail, ok, Result } from "@/shared/domain/result";
+import { DomainError, fail, ok, Result } from "@/shared/domain/result";
 import { DisplayName } from "@/shared/domain/value-objects/display-name.vo";
+
+import { isTemplateBlocks, TemplateBlocks } from "../types/template-blocks";
 
 interface TemplateProps {
   id: string;
@@ -8,7 +10,7 @@ interface TemplateProps {
   name: DisplayName;
   description?: string;
   collectionId?: string | null;
-  blocks: unknown[]; // Plate.js Value (JSON blocks)
+  blocks: TemplateBlocks;
   version: number;
   createdBy?: string;
   createdAt?: Date;
@@ -39,7 +41,7 @@ export class Template extends BaseEntity {
     return this.props.collectionId;
   }
 
-  get blocks(): unknown[] {
+  get blocks(): TemplateBlocks {
     return this.props.blocks;
   }
 
@@ -57,7 +59,7 @@ export class Template extends BaseEntity {
     name: string;
     description?: string;
     collectionId?: string | null;
-    blocks: unknown[];
+    blocks: TemplateBlocks;
     version?: number;
     createdBy?: string;
     createdAt?: Date;
@@ -66,12 +68,16 @@ export class Template extends BaseEntity {
     const nameResult = DisplayName.create(props.name, "Name");
     if (!nameResult.ok) return fail(nameResult.error);
 
+    if (!isTemplateBlocks(props.blocks)) {
+      return fail(new DomainError("Template blocks must be a valid JSON array", "INVALID_BLOCKS"));
+    }
+
     return ok(
       new Template({
         ...props,
         name: nameResult.value,
         version: props.version ?? 1,
-        blocks: props.blocks || [],
+        blocks: props.blocks,
       }),
     );
   }

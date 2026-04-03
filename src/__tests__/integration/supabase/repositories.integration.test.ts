@@ -1,6 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { makeCollection, makeField, makeRecord } from "@/__tests__/factories/domain-factories";
+import {
+  makeCollection,
+  makeField,
+  makeRecord,
+  makeTemplate,
+} from "@/__tests__/factories/domain-factories";
 import {
   addMemberToAccount,
   canRunLocalSupabaseTests,
@@ -13,6 +18,8 @@ import { SupabaseCollectionRepository } from "@/modules/collection/infrastructur
 import { SupabaseFieldRepository } from "@/modules/collection/infrastructure/repositories/supabase-field.repository";
 import { SupabaseRecordRepository } from "@/modules/collection/infrastructure/repositories/supabase-record.repository";
 import { SupabaseRelationRepository } from "@/modules/collection/infrastructure/repositories/supabase-relation.repository";
+import { Template } from "@/modules/template/domain/entities/template.entity";
+import { SupabaseTemplateRepository } from "@/modules/template/infrastructure/repositories/supabase-template.repository";
 
 const describeIfLocalSupabase = canRunLocalSupabaseTests ? describe : describe.skip;
 
@@ -80,6 +87,82 @@ describeIfLocalSupabase("Supabase repositories integration", () => {
       expect(outsiderVisible.value).toEqual([]);
     }
     expect(outsiderCreate.ok).toBe(false);
+  });
+
+  it("enforces template RLS and optimistic version conflicts", async () => {
+    const ownerTemplates = new SupabaseTemplateRepository(owner.client);
+    const memberTemplates = new SupabaseTemplateRepository(member.client);
+    const outsiderTemplates = new SupabaseTemplateRepository(outsider.client);
+
+    const created = await ownerTemplates.create(
+      makeTemplate({
+        id: crypto.randomUUID(),
+        accountId,
+        name: `template_${crypto.randomUUID().slice(0, 6)}`,
+        collectionId: null,
+        blocks: [{ type: "p", children: [{ text: "Documento base" }] }],
+      }),
+    );
+
+    expect(created.ok).toBe(true);
+    if (!created.ok) {
+      throw created.error;
+    }
+
+    const listedByMember = await memberTemplates.findByAccountId(accountId);
+    const listedByOutsider = await outsiderTemplates.findByAccountId(accountId);
+    const outsiderCreate = await outsiderTemplates.create(
+      makeTemplate({
+        id: crypto.randomUUID(),
+        accountId,
+        name: `forbidden_template_${crypto.randomUUID().slice(0, 6)}`,
+        collectionId: null,
+      }),
+    );
+
+    expect(listedByMember.ok).toBe(true);
+    if (listedByMember.ok) {
+      expect(listedByMember.value.some((template) => template.id === created.value.id)).toBe(true);
+    }
+    expect(listedByOutsider.ok).toBe(true);
+    if (listedByOutsider.ok) {
+      expect(listedByOutsider.value).toEqual([]);
+    }
+    expect(outsiderCreate.ok).toBe(false);
+
+    const nextTemplateResult = Template.create({
+      id: created.value.id,
+      accountId,
+      name: `${created.value.name} v2`,
+      description: created.value.description,
+      collectionId: created.value.collectionId,
+      blocks: created.value.blocks,
+      version: created.value.version + 1,
+      createdBy: created.value.createdBy,
+      createdAt: created.value.createdAt,
+      updatedAt: created.value.updatedAt,
+    });
+
+    if (!nextTemplateResult.ok) {
+      throw nextTemplateResult.error;
+    }
+
+    const firstUpdate = await ownerTemplates.update(
+      nextTemplateResult.value,
+      created.value.version,
+    );
+    const staleUpdate = await ownerTemplates.update(
+      nextTemplateResult.value,
+      created.value.version,
+    );
+
+    expect(firstUpdate.ok).toBe(true);
+    expect(staleUpdate.ok).toBe(false);
+    if (!staleUpdate.ok) {
+      expect((staleUpdate.error as Error & { code?: string }).code).toBe(
+        "TEMPLATE_VERSION_CONFLICT",
+      );
+    }
   });
 
   it("supports fields CRUD and ordering while keeping outsiders out", async () => {

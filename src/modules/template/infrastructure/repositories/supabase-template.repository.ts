@@ -5,6 +5,40 @@ import { BaseRepository } from "@/shared/infrastructure/base-repository";
 
 import { Template } from "../../domain/entities/template.entity";
 import { ITemplateRepository } from "../../domain/ports/template-repository.port";
+import { isTemplateBlocks, TemplateBlocks } from "../../domain/types/template-blocks";
+
+interface TemplateRow {
+  id: string;
+  account_id: string;
+  name: string;
+  description: string | null;
+  collection_id: string | null;
+  blocks: unknown;
+  version: number | null;
+  created_by: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+interface TemplateInsertRow {
+  id: string;
+  account_id: string;
+  name: string;
+  description: string | null;
+  collection_id: string | null;
+  blocks: TemplateBlocks;
+  version: number;
+  created_by: string | null;
+}
+
+interface TemplateUpdateRow {
+  name: string;
+  description: string | null;
+  collection_id: string | null;
+  blocks: TemplateBlocks;
+  version: number;
+  updated_at: string;
+}
 
 export class SupabaseTemplateRepository extends BaseRepository implements ITemplateRepository {
   constructor(supabase: SupabaseClient) {
@@ -19,7 +53,7 @@ export class SupabaseTemplateRepository extends BaseRepository implements ITempl
       return fail(new DomainError(error.message, "DB_ERROR"));
     }
 
-    return ok(this.toEntity(data));
+    return this.toEntityResult(data as TemplateRow);
   }
 
   public async findByAccountId(accountId: string): Promise<Result<Template[]>> {
@@ -29,51 +63,45 @@ export class SupabaseTemplateRepository extends BaseRepository implements ITempl
       return fail(new DomainError(error.message, "DB_ERROR"));
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return ok(data.map((item: Record<string, any>) => this.toEntity(item)));
+    const templates: Template[] = [];
+
+    for (const item of (data ?? []) as TemplateRow[]) {
+      const entityRes = this.toEntityResult(item);
+      if (!entityRes.ok) return fail(entityRes.error);
+      templates.push(entityRes.value);
+    }
+
+    return ok(templates);
   }
 
   public async create(template: Template): Promise<Result<Template>> {
-    const { data, error } = await this.table
-      .insert({
-        id: template.id,
-        account_id: template.accountId,
-        name: template.name,
-        description: template.description,
-        collection_id: template.collectionId,
-        blocks: template.blocks,
-        version: template.version,
-        created_by: template.createdBy,
-      })
-      .select()
-      .single();
+    const { data, error } = await this.table.insert(this.toInsertRow(template)).select().single();
 
     if (error) {
       return fail(new DomainError(error.message, "DB_ERROR"));
     }
 
-    return ok(this.toEntity(data));
+    return this.toEntityResult(data as TemplateRow);
   }
 
-  public async update(template: Template): Promise<Result<Template>> {
+  public async update(template: Template, expectedVersion: number): Promise<Result<Template>> {
     const { data, error } = await this.table
-      .update({
-        name: template.name,
-        description: template.description,
-        collection_id: template.collectionId,
-        blocks: template.blocks,
-        version: template.version,
-        updated_at: new Date().toISOString(),
-      })
+      .update(this.toUpdateRow(template))
       .eq("id", template.id)
+      .eq("account_id", template.accountId)
+      .eq("version", expectedVersion)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
       return fail(new DomainError(error.message, "DB_ERROR"));
     }
 
-    return ok(this.toEntity(data));
+    if (!data) {
+      return fail(new DomainError("Template version conflict", "TEMPLATE_VERSION_CONFLICT"));
+    }
+
+    return this.toEntityResult(data as TemplateRow);
   }
 
   public async delete(id: string): Promise<Result<void>> {
@@ -86,28 +114,57 @@ export class SupabaseTemplateRepository extends BaseRepository implements ITempl
     return ok(undefined);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private toEntity(data: Record<string, any>): Template {
+  private toEntityResult(data: TemplateRow): Result<Template> {
+    if (!isTemplateBlocks(data.blocks)) {
+      return fail(new DomainError("Invalid template blocks payload", "DATA_INTEGRITY_ERROR"));
+    }
+
     const result = Template.create({
       id: data.id,
       accountId: data.account_id,
       name: data.name,
-      description: data.description || undefined,
-      collectionId: data.collection_id || undefined,
-      blocks: data.blocks || [],
-      version: data.version,
-      createdBy: data.created_by,
-      createdAt: new Date(data.created_at),
-      updatedAt: new Date(data.updated_at),
+      description: data.description ?? undefined,
+      collectionId: data.collection_id ?? null,
+      blocks: data.blocks,
+      version: data.version ?? 1,
+      createdBy: data.created_by ?? undefined,
+      createdAt: data.created_at ? new Date(data.created_at) : undefined,
+      updatedAt: data.updated_at ? new Date(data.updated_at) : undefined,
     });
 
     if (!result.ok) {
-      throw new DomainError(
-        `Failed to hydrate Template entity: ${result.error.message}`,
-        "DATA_INTEGRITY_ERROR",
+      return fail(
+        new DomainError(
+          `Failed to hydrate Template entity: ${result.error.message}`,
+          "DATA_INTEGRITY_ERROR",
+        ),
       );
     }
 
-    return result.value;
+    return ok(result.value);
+  }
+
+  private toInsertRow(template: Template): TemplateInsertRow {
+    return {
+      id: template.id,
+      account_id: template.accountId,
+      name: template.name,
+      description: template.description ?? null,
+      collection_id: template.collectionId ?? null,
+      blocks: template.blocks,
+      version: template.version,
+      created_by: template.createdBy ?? null,
+    };
+  }
+
+  private toUpdateRow(template: Template): TemplateUpdateRow {
+    return {
+      name: template.name,
+      description: template.description ?? null,
+      collection_id: template.collectionId ?? null,
+      blocks: template.blocks,
+      version: template.version,
+      updated_at: new Date().toISOString(),
+    };
   }
 }

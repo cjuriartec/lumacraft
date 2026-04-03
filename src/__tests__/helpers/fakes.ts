@@ -15,9 +15,11 @@ import {
   SyncFieldRelationsRequest,
   ValidateCardinalityRequest,
 } from "@/modules/collection/domain/types/relation.types";
+import { Template } from "@/modules/template/domain/entities/template.entity";
+import { ITemplateRepository } from "@/modules/template/domain/ports/template-repository.port";
 import { Workspace } from "@/modules/workspace/domain/entities/workspace.entity";
 import { IWorkspaceRepository } from "@/modules/workspace/domain/ports/workspace-repository.port";
-import { DomainError, ok, Result } from "@/shared/domain/result";
+import { DomainError, fail, ok, Result } from "@/shared/domain/result";
 
 function compareValues(left: unknown, right: unknown) {
   if (left === right) return 0;
@@ -109,6 +111,54 @@ export class InMemoryCollectionRepository implements ICollectionRepository {
   public delete = vi.fn(async (id: string) => {
     if (this.deleteResult) return this.deleteResult;
     this.items = this.items.filter((collection) => collection.id !== id);
+    return ok(undefined);
+  });
+}
+
+export class InMemoryTemplateRepository implements ITemplateRepository {
+  constructor(public items: Template[] = []) {}
+
+  public findByIdResult?: Result<Template | null>;
+  public findByAccountIdResult?: Result<Template[]>;
+  public createResult?: Result<Template>;
+  public updateResult?: Result<Template>;
+  public deleteResult?: Result<void>;
+
+  public findById = vi.fn(async (id: string) => {
+    return this.findByIdResult ?? ok(this.items.find((template) => template.id === id) ?? null);
+  });
+
+  public findByAccountId = vi.fn(async (accountId: string) => {
+    return (
+      this.findByAccountIdResult ?? ok(this.items.filter((item) => item.accountId === accountId))
+    );
+  });
+
+  public create = vi.fn(async (template: Template) => {
+    if (this.createResult) return this.createResult;
+    this.items.push(template);
+    return ok(template);
+  });
+
+  public update = vi.fn(async (template: Template, expectedVersion: number) => {
+    if (this.updateResult) return this.updateResult;
+
+    const existing = this.items.find((item) => item.id === template.id);
+    if (!existing) {
+      return fail(new DomainError("Template not found", "NOT_FOUND"));
+    }
+
+    if (existing.version !== expectedVersion) {
+      return fail(new DomainError("Template version conflict", "TEMPLATE_VERSION_CONFLICT"));
+    }
+
+    this.items = this.items.map((item) => (item.id === template.id ? template : item));
+    return ok(template);
+  });
+
+  public delete = vi.fn(async (id: string) => {
+    if (this.deleteResult) return this.deleteResult;
+    this.items = this.items.filter((template) => template.id !== id);
     return ok(undefined);
   });
 }

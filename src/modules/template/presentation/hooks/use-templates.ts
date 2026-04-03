@@ -3,10 +3,27 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useWorkspace } from "@/modules/workspace/presentation/providers/workspace-provider";
+import type { Result } from "@/shared/domain/result";
+import { DomainError, fail } from "@/shared/domain/result";
 import { useSupabase } from "@/shared/presentation/providers/supabase-provider";
 
 import { TemplateUseCaseFactory } from "../../application/template-use-case.factory";
-import { Template } from "../../domain/entities/template.entity";
+import type { Template } from "../../domain/entities/template.entity";
+import type { TemplateBlocks } from "../../domain/types/template-blocks";
+
+interface CreateTemplateParams {
+  name: string;
+  description?: string;
+  collectionId?: string | null;
+}
+
+interface UpdateTemplateParams {
+  id: string;
+  name: string;
+  description?: string;
+  collectionId?: string | null;
+  blocks?: TemplateBlocks;
+}
 
 export function useTemplates() {
   const { currentWorkspace } = useWorkspace();
@@ -36,6 +53,7 @@ export function useTemplates() {
 
   useEffect(() => {
     let ignore = false;
+
     const load = async () => {
       if (!currentWorkspace) {
         if (!ignore) {
@@ -44,58 +62,69 @@ export function useTemplates() {
         }
         return;
       }
+
       setLoading(true);
       const res = await listUseCase.execute(currentWorkspace.id);
       if (!ignore) {
-        if (res.ok) setTemplates(res.value);
+        if (res.ok) {
+          setTemplates(res.value);
+        }
         setLoading(false);
       }
     };
-    load();
+
+    void load();
+
     return () => {
       ignore = true;
     };
   }, [currentWorkspace, listUseCase]);
 
-  const createTemplate = async (params: {
-    name: string;
-    description?: string;
-    collectionId?: string | null;
-  }) => {
-    if (!currentWorkspace) return;
+  const createTemplate = async (params: CreateTemplateParams): Promise<Result<Template>> => {
+    if (!currentWorkspace) {
+      return fail(new DomainError("No workspace selected", "NO_WORKSPACE_SELECTED"));
+    }
+
     const res = await createUseCase.execute({
       accountId: currentWorkspace.id,
       ...params,
     });
+
     if (res.ok) {
       await fetchTemplates();
     }
+
     return res;
   };
 
-  const deleteTemplate = async (id: string) => {
+  const deleteTemplate = async (id: string): Promise<Result<void>> => {
+    if (!currentWorkspace) {
+      return fail(new DomainError("No workspace selected", "NO_WORKSPACE_SELECTED"));
+    }
+
     const res = await deleteUseCase.execute(id);
+
     if (res.ok) {
       await fetchTemplates();
     }
+
     return res;
   };
 
-  const updateTemplate = async (params: {
-    id: string;
-    name: string;
-    description?: string;
-    collectionId?: string | null;
-    blocks?: unknown[];
-  }) => {
-    if (!currentWorkspace) return;
+  const updateTemplate = async (params: UpdateTemplateParams): Promise<Result<Template>> => {
+    if (!currentWorkspace) {
+      return fail(new DomainError("No workspace selected", "NO_WORKSPACE_SELECTED"));
+    }
+
     const res = await updateUseCase.execute({
       accountId: currentWorkspace.id,
       ...params,
     });
+
     if (res.ok) {
       await fetchTemplates();
     }
+
     return res;
   };
 

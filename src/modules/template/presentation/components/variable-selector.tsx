@@ -24,9 +24,10 @@ import { ScrollArea } from "@/shared/presentation/components/ui/scroll-area";
 import { useVariableFields, VariableNode } from "../hooks/use-variable-fields";
 
 interface VariableSelectorProps {
-  collectionId: string;
+  collectionId?: string | null;
   onSelect: (node: VariableNode) => void;
   trigger?: React.ReactNode;
+  disabled?: boolean;
 }
 
 const filterNodes = (nodes: VariableNode[], query: string): VariableNode[] => {
@@ -47,10 +48,16 @@ const filterNodes = (nodes: VariableNode[], query: string): VariableNode[] => {
   }, []);
 };
 
-export function VariableSelector({ collectionId, onSelect, trigger }: VariableSelectorProps) {
+export function VariableSelector({
+  collectionId,
+  onSelect,
+  trigger,
+  disabled,
+}: VariableSelectorProps) {
   const { nodes, loading } = useVariableFields(collectionId);
   const [searchTerm, setSearchTerm] = React.useState("");
   const [open, setOpen] = React.useState(false);
+  const isDisabled = disabled || !collectionId;
 
   const filteredNodes = React.useMemo(() => {
     if (!searchTerm) return nodes;
@@ -58,12 +65,20 @@ export function VariableSelector({ collectionId, onSelect, trigger }: VariableSe
   }, [nodes, searchTerm]);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (isDisabled) return;
+        setOpen(nextOpen);
+      }}
+    >
       <PopoverTrigger asChild>
         {trigger || (
           <Button
             variant="ghost"
             size="sm"
+            disabled={isDisabled}
+            title={isDisabled ? "Vincula una colección para insertar variables" : undefined}
             className={cn(
               "h-8 gap-1.5 px-2 text-muted-foreground transition-all duration-300 hover:bg-foreground/5 hover:text-foreground",
               open && "bg-foreground/5 text-foreground",

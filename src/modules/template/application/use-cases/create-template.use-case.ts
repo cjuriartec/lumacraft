@@ -2,6 +2,7 @@ import { Result } from "@/shared/domain/result";
 
 import { Template } from "../../domain/entities/template.entity";
 import { ITemplateRepository } from "../../domain/ports/template-repository.port";
+import type { TemplateBlocks } from "../../domain/types/template-blocks";
 
 export class CreateTemplateUseCase {
   constructor(private readonly repository: ITemplateRepository) {}
@@ -11,7 +12,7 @@ export class CreateTemplateUseCase {
     name: string;
     description?: string;
     collectionId?: string | null;
-    blocks?: unknown[];
+    blocks?: TemplateBlocks;
     createdBy?: string;
   }): Promise<Result<Template>> {
     const result = Template.create({
