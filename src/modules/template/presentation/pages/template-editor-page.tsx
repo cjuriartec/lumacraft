@@ -8,7 +8,7 @@ import {
   StrikethroughPlugin,
   UnderlinePlugin,
 } from "@platejs/basic-nodes/react";
-import { FontColorPlugin } from "@platejs/basic-styles/react";
+import { FontBackgroundColorPlugin, FontColorPlugin } from "@platejs/basic-styles/react";
 import { ResizableProvider } from "@platejs/resizable";
 import { BlockSelectionPlugin } from "@platejs/selection/react";
 import {
@@ -19,6 +19,7 @@ import {
   Code,
   Database,
   Highlighter,
+  PaintBucket,
   RotateCw,
   Strikethrough,
 } from "lucide-react";
@@ -40,6 +41,10 @@ import {
   RedoToolbarButton,
   UndoToolbarButton,
 } from "@/shared/presentation/components/ui/history-toolbar-button";
+import {
+  IndentToolbarButton,
+  OutdentToolbarButton,
+} from "@/shared/presentation/components/ui/indent-toolbar-button";
 import { LineHeightToolbarButton } from "@/shared/presentation/components/ui/line-height-toolbar-button";
 import { LinkToolbarButton } from "@/shared/presentation/components/ui/link-toolbar-button";
 import {
@@ -276,11 +281,19 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
                 <ToolbarGroup>
                   <FontSizeToolbarButton />
                   <FontColorToolbarButton nodeType={FontColorPlugin.key} tooltip="Color de texto" />
+                  <FontColorToolbarButton
+                    nodeType={FontBackgroundColorPlugin.key}
+                    tooltip="Color de fondo"
+                  >
+                    <PaintBucket size={16} />
+                  </FontColorToolbarButton>
                 </ToolbarGroup>
 
                 <ToolbarGroup>
                   <AlignToolbarButton />
                   <LineHeightToolbarButton />
+                  <OutdentToolbarButton />
+                  <IndentToolbarButton />
                 </ToolbarGroup>
 
                 <ToolbarGroup>

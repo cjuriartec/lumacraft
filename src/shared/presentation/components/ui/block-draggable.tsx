@@ -141,7 +141,7 @@ function Draggable(props: PlateElementProps) {
               <Button
                 ref={handleRef}
                 variant="ghost"
-                className="absolute left-0 h-6 w-full p-0"
+                className="absolute -left-2 h-6 w-full p-0"
                 style={{ top: `${dragButtonTop + 3}px` }}
                 data-plate-prevent-deselect
               >
@@ -192,7 +192,7 @@ function Gutter({ children, className, ...props }: React.ComponentProps<"div">) 
       {...props}
       className={cn(
         "slate-gutterLeft",
-        "-translate-x-full absolute top-0 z-50 flex h-full cursor-text hover:opacity-100 sm:opacity-0",
+        "-left-3 -translate-x-full absolute top-0 z-50 flex h-full cursor-text hover:opacity-100 sm:opacity-0",
         getPluginByType(editor, element.type)?.node.isContainer
           ? "group-hover/container:opacity-100"
           : "group-hover:opacity-100",
@@ -248,8 +248,7 @@ const DragHandle = React.memo(function DragHandle({
 
             // Process selection nodes to include list children
             const blocks = expandListItemsWithChildren(editor, selectionNodes).map(
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              ([node]: any) => node,
+              ([node]) => node as TElement,
             );
 
             if (blockSelection.length === 0) {
@@ -263,10 +262,9 @@ const DragHandle = React.memo(function DragHandle({
             previewRef.current?.classList.add("opacity-0");
             editor.setOption(DndPlugin, "multiplePreviewRef", previewRef);
 
-            editor.getApi(BlockSelectionPlugin)?.blockSelection?.set(
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              blocks.map((block: any) => block.id as string),
-            );
+            editor
+              .getApi(BlockSelectionPlugin)
+              ?.blockSelection?.set(blocks.map((block) => block.id as string));
           }}
           onMouseEnter={() => {
             if (isDragging) return;
@@ -285,13 +283,11 @@ const DragHandle = React.memo(function DragHandle({
             // Process selection to include list children
             const processedBlocks = expandListItemsWithChildren(editor, selectedBlocks);
 
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const ids = processedBlocks.map((block: any) => block[0].id as string);
+            const ids = processedBlocks.map(([block]) => block.id as string);
 
             if (ids.length > 1 && ids.includes(element.id as string)) {
               const previewTop = calculatePreviewTop(editor, {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                blocks: processedBlocks.map((block: any) => block[0]),
+                blocks: processedBlocks.map(([block]) => block as TElement),
                 element,
               });
               setPreviewTop(previewTop);

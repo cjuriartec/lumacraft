@@ -4,10 +4,6 @@ import type { DropdownMenuProps } from "@radix-ui/react-dropdown-menu";
 import { DropdownMenuItemIndicator } from "@radix-ui/react-dropdown-menu";
 import {
   CheckIcon,
-  ChevronRightIcon,
-  Code2,
-  Columns3Icon,
-  FileCodeIcon,
   Heading1Icon,
   Heading2Icon,
   Heading3Icon,
@@ -17,8 +13,6 @@ import {
   ListIcon,
   ListOrderedIcon,
   PilcrowIcon,
-  QuoteIcon,
-  SquareIcon,
 } from "lucide-react";
 import type { TElement } from "platejs";
 import { KEYS } from "platejs";
@@ -89,41 +83,6 @@ export const turnIntoItems = [
     keywords: ["ordered", "ol", "1"],
     label: "Numbered list",
     value: KEYS.ol,
-  },
-  {
-    icon: <SquareIcon />,
-    keywords: ["checklist", "task", "checkbox", "[]"],
-    label: "To-do list",
-    value: KEYS.listTodo,
-  },
-  {
-    icon: <ChevronRightIcon />,
-    keywords: ["collapsible", "expandable"],
-    label: "Toggle list",
-    value: KEYS.toggle,
-  },
-  {
-    icon: <FileCodeIcon />,
-    keywords: ["```"],
-    label: "Code",
-    value: KEYS.codeBlock,
-  },
-  {
-    icon: <Code2 />,
-    keywords: ["code-drawing", "diagram", "plantuml", "graphviz", "flowchart", "mermaid"],
-    label: "Code Drawing",
-    value: KEYS.codeDrawing,
-  },
-  {
-    icon: <QuoteIcon />,
-    keywords: ["citation", "blockquote", ">"],
-    label: "Quote",
-    value: KEYS.blockquote,
-  },
-  {
-    icon: <Columns3Icon />,
-    label: "3 columns",
-    value: "action_three_columns",
   },
 ];
 

@@ -8,7 +8,7 @@ import {
   LineHeightPlugin,
   TextAlignPlugin,
 } from "@platejs/basic-styles/react";
-import { CodeBlockPlugin } from "@platejs/code-block/react";
+import { IndentPlugin } from "@platejs/indent/react";
 import { LinkPlugin } from "@platejs/link/react";
 import { ListPlugin } from "@platejs/list/react";
 import { ImagePlugin, MediaEmbedPlugin, PlaceholderPlugin } from "@platejs/media/react";
@@ -18,6 +18,7 @@ import {
   TablePlugin,
   TableRowPlugin,
 } from "@platejs/table/react";
+import { KEYS } from "platejs";
 
 import { ImageElement } from "@/shared/presentation/components/ui/image-element";
 import { LinkElement } from "@/shared/presentation/components/ui/link-element";
@@ -46,6 +47,14 @@ export const ExtendedNodesKit = [
       targetPlugins: ["p", "h1", "h2", "h3", "blockquote"],
     },
   }),
+  IndentPlugin.configure({
+    inject: {
+      targetPlugins: [...KEYS.heading, KEYS.p, KEYS.blockquote, KEYS.img],
+    },
+    options: {
+      offset: 24,
+    },
+  }),
   LinkPlugin.withComponent(LinkElement),
   ImagePlugin.withComponent(ImageElement),
   MediaEmbedPlugin,
@@ -57,8 +66,11 @@ export const ExtendedNodesKit = [
   TableRowPlugin.withComponent(TableRowElement),
   TableCellPlugin.withComponent(TableCellElement),
   TableCellHeaderPlugin.withComponent(TableCellHeaderElement),
-  ListPlugin,
-  CodeBlockPlugin,
+  ListPlugin.configure({
+    inject: {
+      targetPlugins: [...KEYS.heading, KEYS.p, KEYS.blockquote, KEYS.img],
+    },
+  }),
   PlaceholderPlugin.withComponent(MediaPlaceholderElement),
   BasicBlocksPlugin,
   BasicMarksPlugin,

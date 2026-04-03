@@ -117,6 +117,11 @@ vi.mock("@/shared/presentation/components/ui/history-toolbar-button", () => ({
   RedoToolbarButton: () => <button type="button">redo</button>,
 }));
 
+vi.mock("@/shared/presentation/components/ui/indent-toolbar-button", () => ({
+  IndentToolbarButton: () => <button type="button">indent</button>,
+  OutdentToolbarButton: () => <button type="button">outdent</button>,
+}));
+
 vi.mock("@/shared/presentation/components/ui/line-height-toolbar-button", () => ({
   LineHeightToolbarButton: () => <button type="button">line-height</button>,
 }));
@@ -183,5 +188,8 @@ describe("TemplateEditorPage", () => {
 
     expect(screen.getByTestId("variable-selector")).toBeDisabled();
     expect(screen.getByText("Vincula una colección para insertar variables.")).toBeInTheDocument();
+    expect(screen.getByText("indent")).toBeInTheDocument();
+    expect(screen.getByText("outdent")).toBeInTheDocument();
+    expect(screen.getAllByText("font-color")).toHaveLength(2);
   });
 });

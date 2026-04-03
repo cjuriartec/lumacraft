@@ -25,11 +25,11 @@ import { Button, buttonVariants } from "@/shared/presentation/components/ui/butt
 import { Separator } from "@/shared/presentation/components/ui/separator";
 
 const popoverVariants = cva(
-  "z-50 w-auto rounded-xl border border-border/50 bg-surface p-1 shadow-xl backdrop-blur-sm outline-none",
+  "z-50 w-auto overflow-hidden rounded-xl border border-border/50 bg-surface p-1 shadow-xl backdrop-blur-sm outline-none",
 );
 
 const inputVariants = cva(
-  "flex h-9 w-full rounded-lg border-none bg-transparent px-3 py-1 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0",
+  "flex h-full w-full rounded-md border-0 bg-transparent px-2 py-1 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0",
 );
 
 export function LinkFloatingToolbar() {
@@ -79,7 +79,7 @@ export function LinkFloatingToolbar() {
 
   const urlInput = (
     <div className="flex w-[330px] flex-col gap-0.5 p-1" {...inputProps}>
-      <div className="flex items-center bg-background/50 rounded-lg border border-border/30 px-2 h-9 has-focus:border-primary/30 transition-colors">
+      <div className="flex gap-2 h-9 items-center overflow-hidden rounded-lg bg-surface-hover/30 px-2 transition-all focus-within:bg-surface-hover/50">
         <div className="flex items-center text-muted-foreground shrink-0 mr-1">
           <Link size={14} />
         </div>
@@ -92,7 +92,7 @@ export function LinkFloatingToolbar() {
 
       <Separator className="my-1 border-border/20" />
 
-      <div className="flex items-center bg-background/50 rounded-lg border border-border/30 px-2 h-9 has-focus:border-primary/30 transition-colors">
+      <div className="flex gap-2 h-9 items-center overflow-hidden rounded-lg bg-surface-hover/30 px-2 transition-all focus-within:bg-surface-hover/50">
         <div className="flex items-center text-muted-foreground shrink-0 mr-1">
           <Text size={14} />
         </div>
