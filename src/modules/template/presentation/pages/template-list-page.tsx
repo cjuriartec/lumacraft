@@ -1,17 +1,11 @@
 "use client";
 
-import { Clock, ExternalLink, FileText, MoreVertical, Plus, Search, Trash2 } from "lucide-react";
+import { Clock, ExternalLink, FileText, Plus, Search, Settings2, Trash2 } from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
 
 import { useCollections } from "@/modules/collection/presentation/hooks/use-collections";
 import { Button } from "@/shared/presentation/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/shared/presentation/components/ui/dropdown-menu";
 import { Input } from "@/shared/presentation/components/ui/input";
 import { useBreadcrumbs } from "@/shared/presentation/providers/breadcrumb-provider";
 
@@ -21,10 +15,11 @@ import { useTemplates } from "../hooks/use-templates";
 
 export default function TemplateListPage() {
   useBreadcrumbs([{ label: "Documentos" }]);
-  const { templates, loading, deleteTemplate } = useTemplates();
+  const { templates, loading, deleteTemplate, refresh } = useTemplates();
   const { collections } = useCollections();
   const [searchTerm, setSearchTerm] = React.useState("");
   const [createDialogOpen, setCreateDialogOpen] = React.useState(false);
+  const [editingTemplate, setEditingTemplate] = React.useState<Template | null>(null);
 
   const filteredTemplates = templates.filter((t) =>
     t.name.toLowerCase().includes(searchTerm.toLowerCase()),
@@ -36,13 +31,23 @@ export default function TemplateListPage() {
     return c ? c.displayName || c.name : "Colección";
   };
 
+  const handleEdit = (template: Template) => {
+    setEditingTemplate(template);
+    setCreateDialogOpen(true);
+  };
+
+  const handleOpenChange = (open: boolean) => {
+    setCreateDialogOpen(open);
+    if (!open) setEditingTemplate(null);
+  };
+
   return (
     <div className="p-8 max-w-5xl mx-auto">
       {/* Header */}
       <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
           <div className="flex items-center gap-2 mb-3">
-            <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-primary bg-primary/10 px-2 py-0.5 rounded-md">
+            <span className="text-[11px] font-bold uppercase tracking-[0.12em] bg-primary/10 px-2 py-0.5 rounded-md text-primary/70">
               Template Engine
             </span>
           </div>
@@ -54,7 +59,10 @@ export default function TemplateListPage() {
           </p>
         </div>
         <Button
-          onClick={() => setCreateDialogOpen(true)}
+          onClick={() => {
+            setEditingTemplate(null);
+            setCreateDialogOpen(true);
+          }}
           className="gap-2 h-11 px-6 rounded-xl font-semibold shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
         >
           <Plus size={18} />
@@ -86,39 +94,71 @@ export default function TemplateListPage() {
 
       {/* Template Grid */}
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (
             <div
               key={i}
-              className="h-44 rounded-2xl bg-surface animate-pulse border border-border/50"
+              className="h-44 rounded-xl bg-surface animate-pulse border border-border/50"
             />
           ))}
         </div>
       ) : filteredTemplates.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 bg-surface/30 rounded-3xl border border-dashed border-border/60">
-          <FileText size={48} className="text-muted-foreground/20 mb-4" />
-          <p className="text-foreground/60 font-medium">No se encontraron plantillas</p>
-          <p className="text-sm text-muted-foreground mt-1 mb-6">
-            Crea tu primer documento para empezar.
+        <div className="flex flex-col items-center justify-center py-24 rounded-2xl text-center bg-surface">
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-5 bg-primary/10">
+            <FileText size={28} className="text-primary/50" />
+          </div>
+          <h3 className="text-xl font-bold mb-2 text-foreground tracking-[-0.01em]">
+            Sin documentos todavía
+          </h3>
+          <p className="text-sm font-light max-w-sm mb-8 text-foreground/70 leading-[1.7]">
+            Crea tu primer template para comenzar a diseñar documentos dinámicos basados en tus
+            datos.
           </p>
-          <Button variant="outline" onClick={() => setCreateDialogOpen(true)}>
+          <Button
+            onClick={() => {
+              setEditingTemplate(null);
+              setCreateDialogOpen(true);
+            }}
+            className="gap-2"
+          >
+            <Plus size={18} />
             Crear Plantilla
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredTemplates.map((template) => (
             <TemplateCard
               key={template.id}
               template={template}
               collectionName={getCollectionName(template.collectionId)}
               onDelete={() => deleteTemplate(template.id)}
+              onEdit={() => handleEdit(template)}
             />
           ))}
+
+          {/* Add new card */}
+          <div
+            onClick={() => {
+              setEditingTemplate(null);
+              setCreateDialogOpen(true);
+            }}
+            className="rounded-xl p-5 flex flex-col items-center justify-center gap-2.5 cursor-pointer transition-all duration-200 hover:-translate-y-0.5 min-h-[180px] bg-transparent hover:bg-surface/50 dark:hover:bg-surface-hover/30 border border-dashed border-border/60"
+          >
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-primary/10 text-primary/50">
+              <Plus size={18} />
+            </div>
+            <p className="text-[13px] font-light text-foreground/60">Nuevo documento</p>
+          </div>
         </div>
       )}
 
-      <TemplateCreateDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
+      <TemplateCreateDialog
+        open={createDialogOpen}
+        onOpenChange={handleOpenChange}
+        templateToEdit={editingTemplate}
+        onSuccess={refresh}
+      />
     </div>
   );
 }
@@ -127,61 +167,79 @@ function TemplateCard({
   template,
   collectionName,
   onDelete,
+  onEdit,
 }: {
   template: Template;
   collectionName: string;
   onDelete: () => void;
+  onEdit: () => void;
 }) {
   return (
-    <div className="group relative bg-surface border border-border/50 rounded-2xl p-5 hover:bg-surface-hover/30 hover:-translate-y-0.5 transition-all duration-200 dark:ring-1 dark:ring-white/5">
-      <div className="flex justify-between items-start mb-4">
-        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-          <FileText size={20} />
+    <div className="group rounded-xl p-5 transition-all duration-200 hover:-translate-y-0.5 bg-surface dark:bg-surface-hover dark:ring-1 dark:ring-white/5 border border-border/50">
+      <div className="flex items-start justify-between mb-4">
+        <div className="w-10 h-10 rounded-lg flex items-center justify-center transition-transform duration-200 group-hover:scale-105 bg-primary/10 text-primary/70">
+          <FileText size={18} />
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              <MoreVertical size={16} />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-40">
-            <Link href={`/templates/${template.id}`}>
-              <DropdownMenuItem className="gap-2 cursor-pointer">
-                <ExternalLink size={14} /> Editar
-              </DropdownMenuItem>
-            </Link>
-            <DropdownMenuItem
-              className="gap-2 text-destructive focus:text-destructive cursor-pointer"
-              onClick={onDelete}
-            >
-              <Trash2 size={14} /> Eliminar
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+          <button
+            aria-label={`Eliminar template ${template.name}`}
+            className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors duration-150 text-foreground/60 hover:text-red-400 hover:bg-red-400/10"
+            onClick={(e) => {
+              e.preventDefault();
+              onDelete();
+            }}
+          >
+            <Trash2 size={14} />
+          </button>
+          <button
+            aria-label={`Configurar template ${template.name}`}
+            className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors duration-150 text-foreground/60 hover:text-primary hover:bg-primary/10"
+            onClick={(e) => {
+              e.preventDefault();
+              onEdit();
+            }}
+          >
+            <Settings2 size={14} />
+          </button>
+        </div>
       </div>
 
-      <Link href={`/templates/${template.id}`} className="block select-none">
-        <h3 className="font-semibold text-foreground mb-1 group-hover:text-primary transition-colors truncate">
-          {template.name}
-        </h3>
-        <p className="text-xs text-muted-foreground/70 mb-4 line-clamp-2 min-h-8">
-          {template.description || "Sin descripción"}
-        </p>
+      <h3 className="text-[14px] font-semibold mb-1 transition-colors duration-150 group-hover:text-primary text-foreground truncate">
+        {template.name}
+      </h3>
 
-        <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-border/30 mt-auto">
-          <span className="text-[10px] uppercase tracking-wider font-bold text-foreground/50 bg-foreground/5 px-2 py-0.5 rounded">
-            {collectionName}
-          </span>
-          <span className="text-[10px] flex items-center gap-1 text-muted-foreground">
-            <Clock size={10} />
-            {new Date(template.updatedAt).toLocaleDateString()}
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-primary/70 bg-primary/5 px-2 py-0.5 rounded border border-primary/10">
+          {collectionName}
+        </span>
+      </div>
+
+      <p className="text-[13px] font-light line-clamp-2 mb-5 leading-relaxed text-foreground/70 min-h-[2.6rem]">
+        {template.description || "Sin descripción."}
+      </p>
+
+      <div className="flex items-center justify-between pt-4 border-t border-border">
+        <div className="flex items-center gap-1.5 text-[11px] font-medium text-foreground/60 uppercase tracking-[0.05em]">
+          <Clock size={11} />
+          <span>
+            {new Date(template.updatedAt).toLocaleDateString("es", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            })}
           </span>
         </div>
-      </Link>
+        <Link
+          href={`/templates/${template.id}`}
+          className="flex items-center gap-1 text-[12px] font-bold transition-all duration-150 group/btn text-primary hover:gap-1.5"
+        >
+          Editar
+          <ExternalLink
+            size={12}
+            className="opacity-70 group-hover/btn:opacity-100 transition-opacity"
+          />
+        </Link>
+      </div>
     </div>
   );
 }

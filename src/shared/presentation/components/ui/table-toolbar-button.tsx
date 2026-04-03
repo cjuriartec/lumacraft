@@ -53,7 +53,7 @@ export function TableToolbarButton(props: DropdownMenuProps) {
       <DropdownMenuContent className="flex w-[180px] min-w-0 flex-col" align="start">
         <DropdownMenuGroup>
           <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="gap-2 data-[disabled]:pointer-events-none data-[disabled]:opacity-50">
+            <DropdownMenuSubTrigger className="gap-2 data-disabled:pointer-events-none data-disabled:opacity-50">
               <Grid3x3Icon className="size-4" />
               <span>Table</span>
             </DropdownMenuSubTrigger>
@@ -64,7 +64,7 @@ export function TableToolbarButton(props: DropdownMenuProps) {
 
           <DropdownMenuSub>
             <DropdownMenuSubTrigger
-              className="gap-2 data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+              className="gap-2 data-disabled:pointer-events-none data-disabled:opacity-50"
               disabled={!tableSelected}
             >
               <div className="size-4" />
@@ -98,7 +98,7 @@ export function TableToolbarButton(props: DropdownMenuProps) {
 
           <DropdownMenuSub>
             <DropdownMenuSubTrigger
-              className="gap-2 data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+              className="gap-2 data-disabled:pointer-events-none data-disabled:opacity-50"
               disabled={!tableSelected}
             >
               <div className="size-4" />
@@ -143,7 +143,7 @@ export function TableToolbarButton(props: DropdownMenuProps) {
 
           <DropdownMenuSub>
             <DropdownMenuSubTrigger
-              className="gap-2 data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+              className="gap-2 data-disabled:pointer-events-none data-disabled:opacity-50"
               disabled={!tableSelected}
             >
               <div className="size-4" />
@@ -235,14 +235,14 @@ function TablePicker() {
       }}
       role="button"
     >
-      <div className="grid size-[130px] grid-cols-8 gap-0.5 p-1">
+      <div className="grid size-[140px] grid-cols-8 gap-1 p-2 bg-surface/50 rounded-md">
         {tablePicker.grid.map((rows, rowIndex) =>
           rows.map((value, columIndex) => (
             <div
               key={`(${rowIndex},${columIndex})`}
               className={cn(
-                "col-span-1 size-3 border border-solid bg-secondary",
-                !!value && "border-current",
+                "col-span-1 size-[14px] rounded-[2px] border border-border/40 bg-muted/10 transition-all duration-75",
+                !!value && "bg-primary border-primary/60 shadow-[0_0_8px_rgba(16,185,129,0.2)]",
               )}
               onMouseMove={() => {
                 onCellMove(rowIndex, columIndex);
@@ -252,8 +252,9 @@ function TablePicker() {
         )}
       </div>
 
-      <div className="text-center text-current text-xs">
-        {tablePicker.size.rowCount} x {tablePicker.size.colCount}
+      <div className="py-2 text-center text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground border-t border-border/30 bg-muted/5">
+        {tablePicker.size.rowCount} <span className="mx-1 text-primary/60">×</span>{" "}
+        {tablePicker.size.colCount}
       </div>
     </div>
   );

@@ -4,47 +4,50 @@
 
 @layer base {
   :root {
-    --background: #f5f9f8;
-    --foreground: #1a1e26;
+    --background: #f8f9fa;
+    --foreground: #09090b;
     --primary: #10b981;
     --primary-hover: #059669;
     --surface: #ffffff;
-    --surface-hover: #ffffff;
-    --muted: rgba(26, 30, 38, 0.45);
-    --border: rgba(26, 30, 38, 0.05);
+    --surface-hover: #fafafa;
+    --muted: #71717a;
+    --muted-foreground: #71717a;
+    --border: #e2e8f0;
     --sidebar-bg: #ffffff;
-    --popover: var(--surface-hover);
-    --popover-foreground: var(--foreground);
-    --accent: rgba(26, 30, 38, 0.05);
-    --accent-foreground: var(--foreground);
-    --input: var(--border);
-    --ring: var(--primary);
-    --card: var(--surface);
-    --card-foreground: var(--foreground);
+    --popover: #ffffff;
+    --popover-foreground: #09090b;
+    --accent: #f1f5f9;
+    --accent-foreground: #0f172a;
+    --input: #e2e8f0;
+    --ring: #10b981;
+    --card: #ffffff;
+    --card-foreground: #09090b;
     --destructive: #ef4444;
-    --destructive-foreground: #f8fafc;
+    --destructive-foreground: #fafafa;
+    --radius: 0.75rem;
   }
 
   .dark {
-    --background: #0f1312;
-    --foreground: #e8f0ec;
+    --background: #09090b;
+    --foreground: #f8fafc;
     --primary: #10b981;
     --primary-hover: #059669;
-    --surface: #060908;
-    --surface-hover: #181d1b;
-    --muted: rgba(232, 240, 236, 0.45);
-    --border: rgba(232, 240, 236, 0.04);
-    --sidebar-bg: #060908;
-    --popover: var(--surface-hover);
-    --popover-foreground: var(--foreground);
-    --accent: rgba(232, 240, 236, 0.04);
-    --accent-foreground: var(--foreground);
-    --input: var(--border);
-    --ring: var(--primary);
-    --card: var(--surface);
-    --card-foreground: var(--foreground);
-    --destructive: #7f1d1d;
-    --destructive-foreground: #f8fafc;
+    --surface: #111111;
+    --surface-hover: #1a1a1a;
+    --muted: #94a3b8;
+    --muted-foreground: #94a3b8;
+    --border: #1e293b;
+    --sidebar-bg: #09090b;
+    --popover: #111111;
+    --popover-foreground: #f8fafc;
+    --accent: #1e293b;
+    --accent-foreground: #f8fafc;
+    --input: #1e293b;
+    --ring: #10b981;
+    --card: #111111;
+    --card-foreground: #f8fafc;
+    --destructive: #ef4444;
+    --destructive-foreground: #fafafa;
   }
 }
 

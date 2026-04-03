@@ -9,6 +9,7 @@ import {
   UnderlinePlugin,
 } from "@platejs/basic-nodes/react";
 import { FontColorPlugin } from "@platejs/basic-styles/react";
+import { ResizableProvider } from "@platejs/resizable";
 import { BlockSelectionPlugin } from "@platejs/selection/react";
 import {
   AlertCircle,
@@ -40,7 +41,7 @@ import {
   RedoToolbarButton,
   UndoToolbarButton,
 } from "@/shared/presentation/components/ui/history-toolbar-button";
-import { IndentToolbarButton } from "@/shared/presentation/components/ui/indent-toolbar-button";
+import { LineHeightToolbarButton } from "@/shared/presentation/components/ui/line-height-toolbar-button";
 import { LinkToolbarButton } from "@/shared/presentation/components/ui/link-toolbar-button";
 import {
   BulletedListToolbarButton,
@@ -264,12 +265,12 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
 
                 <ToolbarGroup>
                   <AlignToolbarButton />
+                  <LineHeightToolbarButton />
                 </ToolbarGroup>
 
                 <ToolbarGroup>
                   <BulletedListToolbarButton />
                   <NumberedListToolbarButton />
-                  <IndentToolbarButton />
                 </ToolbarGroup>
 
                 <ToolbarGroup>
@@ -300,15 +301,17 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
           </div>
 
           {/* Editor Content */}
-          <div className="flex-1 overflow-y-auto px-6 py-10">
-            <div className="mx-auto max-w-7xl">
-              <EditorContainer>
-                <Editor
-                  placeholder="Comienza a escribir tu documento..."
-                  variant="demo"
-                  className="min-h-[500px]"
-                />
-              </EditorContainer>
+          <div className="flex-1 overflow-y-auto bg-background/40 px-6 py-10">
+            <div className="mx-auto max-w-5xl space-y-6">
+              <ResizableProvider>
+                <EditorContainer>
+                  <Editor
+                    placeholder="Comienza a escribir tu documento..."
+                    variant="demo"
+                    className="min-h-[800px]"
+                  />
+                </EditorContainer>
+              </ResizableProvider>
             </div>
           </div>
         </div>
