@@ -70,7 +70,6 @@ export function VariableSelector({ collectionId, onSelect, trigger }: VariableSe
             )}
           >
             <Braces size={14} className="text-primary/70" />
-            <span className="text-xs font-medium">Variables</span>
           </Button>
         )}
       </PopoverTrigger>
@@ -78,10 +77,10 @@ export function VariableSelector({ collectionId, onSelect, trigger }: VariableSe
         className="w-80 overflow-hidden border-none bg-surface/95 p-0 shadow-xl backdrop-blur-md"
         align="start"
       >
-        <div className="flex items-center px-4 py-3">
+        <div className="flex items-center px-4 py-3 gap-1">
           <Search className="mr-2 h-4 w-4 shrink-0 text-muted/50" />
           <input
-            className="flex h-8 w-full rounded-md bg-transparent text-sm outline-none placeholder:text-muted/40 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex px-2 h-8 w-full rounded-md bg-transparent text-sm outline-none placeholder:text-muted/40 disabled:cursor-not-allowed disabled:opacity-50"
             placeholder="Buscar campos..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}

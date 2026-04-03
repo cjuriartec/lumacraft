@@ -9,9 +9,12 @@ export function FixedToolbar(props: React.ComponentProps<typeof Toolbar>) {
     <Toolbar
       {...props}
       className={cn(
-        "scrollbar-hide sticky top-0 left-0 z-50 w-full justify-between overflow-x-auto p-1 backdrop-blur-sm",
+        "sticky top-0 left-0 z-50 w-full justify-between overflow-x-auto p-1 backdrop-blur-sm",
         props.className,
       )}
+      style={{
+        scrollbarWidth: "none",
+      }}
     />
   );
 }

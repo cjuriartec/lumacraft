@@ -1,22 +1,57 @@
 "use client";
 
-import { BoldPlugin, ItalicPlugin, UnderlinePlugin } from "@platejs/basic-nodes/react";
+import {
+  BoldPlugin,
+  CodePlugin,
+  HighlightPlugin,
+  ItalicPlugin,
+  StrikethroughPlugin,
+  UnderlinePlugin,
+} from "@platejs/basic-nodes/react";
+import { FontColorPlugin } from "@platejs/basic-styles/react";
 import { BlockSelectionPlugin } from "@platejs/selection/react";
-import { AlertCircle, ArrowLeft, CheckCircle2, Cloud, Database, RotateCw } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowLeft,
+  CheckCircle2,
+  Cloud,
+  Code,
+  Database,
+  Highlighter,
+  RotateCw,
+  Strikethrough,
+} from "lucide-react";
 import Link from "next/link";
+import { TElement } from "platejs";
 import { Plate, usePlateEditor } from "platejs/react";
 import * as React from "react";
 
 import { useCollections } from "@/modules/collection/presentation/hooks/use-collections";
 import { getShortcutText } from "@/shared/lib/utils";
-import { BasicNodesKit } from "@/shared/presentation/components/editor/plugins/basic-nodes-kit";
 import { DndKit } from "@/shared/presentation/components/editor/plugins/dnd-kit";
+import { ExtendedNodesKit } from "@/shared/presentation/components/editor/plugins/extended-nodes-kit";
+import { AlignToolbarButton } from "@/shared/presentation/components/ui/align-toolbar-button";
 import { Button } from "@/shared/presentation/components/ui/button";
 import { Editor, EditorContainer } from "@/shared/presentation/components/ui/editor";
 import { FixedToolbar } from "@/shared/presentation/components/ui/fixed-toolbar";
+import { FontColorToolbarButton } from "@/shared/presentation/components/ui/font-color-toolbar-button";
+import { FontSizeToolbarButton } from "@/shared/presentation/components/ui/font-size-toolbar-button";
+import {
+  RedoToolbarButton,
+  UndoToolbarButton,
+} from "@/shared/presentation/components/ui/history-toolbar-button";
+import { IndentToolbarButton } from "@/shared/presentation/components/ui/indent-toolbar-button";
+import { LinkToolbarButton } from "@/shared/presentation/components/ui/link-toolbar-button";
+import {
+  BulletedListToolbarButton,
+  NumberedListToolbarButton,
+} from "@/shared/presentation/components/ui/list-toolbar-button";
 import { MarkToolbarButton } from "@/shared/presentation/components/ui/mark-toolbar-button";
+import { MediaToolbarButton } from "@/shared/presentation/components/ui/media-toolbar-button";
+import { TableToolbarButton } from "@/shared/presentation/components/ui/table-toolbar-button";
 import { ToolbarGroup } from "@/shared/presentation/components/ui/toolbar";
 import { TooltipProvider } from "@/shared/presentation/components/ui/tooltip";
+import { TurnIntoToolbarButton } from "@/shared/presentation/components/ui/turn-into-toolbar-button";
 import { useBreadcrumbs } from "@/shared/presentation/providers/breadcrumb-provider";
 
 import { VARIABLE_TYPE, VariableElement, VariablePlugin } from "../components/variable-block";
@@ -69,7 +104,7 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     value: (template?.blocks as any) || [],
     plugins: [
-      ...BasicNodesKit,
+      ...ExtendedNodesKit,
       VariablePlugin.configure({
         options: {
           collectionId: template?.collectionId || undefined,
@@ -84,6 +119,14 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
       },
     },
   });
+  // Synchronize editor value when template data arrives
+  const isFirstLoad = React.useRef(true);
+  React.useEffect(() => {
+    if (template?.blocks && isFirstLoad.current) {
+      isFirstLoad.current = false;
+      editor.tf.setValue(template.blocks as unknown as TElement[]);
+    }
+  }, [template?.blocks, editor]);
 
   if (loading) {
     return (
@@ -163,9 +206,18 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
           </div>
 
           {/* Plate Toolbar */}
-          <div className="no-scrollbar sticky top-[57px] z-10 overflow-x-auto">
-            <div className="mx-auto max-w-5xl rounded-lg bg-surface-hover/90 px-6 backdrop-blur-sm">
+          <div className="sticky top-[57px] z-10 overflow-x-auto px-4">
+            <div className="mx-auto max-w-7xl rounded-lg bg-surface/90 px-6 backdrop-blur-sm">
               <FixedToolbar className="bg-transparent backdrop-blur-none shadow-none">
+                <ToolbarGroup>
+                  <UndoToolbarButton />
+                  <RedoToolbarButton />
+                </ToolbarGroup>
+
+                <ToolbarGroup>
+                  <TurnIntoToolbarButton />
+                </ToolbarGroup>
+
                 <ToolbarGroup>
                   <MarkToolbarButton
                     nodeType={BoldPlugin.key}
@@ -185,23 +237,61 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
                   >
                     <span className="underline">U</span>
                   </MarkToolbarButton>
+                  <MarkToolbarButton
+                    nodeType={StrikethroughPlugin.key}
+                    tooltip={`Tachado (${getShortcutText()}S)`}
+                  >
+                    <Strikethrough size={16} />
+                  </MarkToolbarButton>
+                  <MarkToolbarButton
+                    nodeType={CodePlugin.key}
+                    tooltip={`Código (${getShortcutText()}E)`}
+                  >
+                    <Code size={16} />
+                  </MarkToolbarButton>
+                  <MarkToolbarButton
+                    nodeType={HighlightPlugin.key}
+                    tooltip={`Resaltar (${getShortcutText()}H)`}
+                  >
+                    <Highlighter size={16} />
+                  </MarkToolbarButton>
+                </ToolbarGroup>
+
+                <ToolbarGroup>
+                  <FontSizeToolbarButton />
+                  <FontColorToolbarButton nodeType={FontColorPlugin.key} tooltip="Color de texto" />
+                </ToolbarGroup>
+
+                <ToolbarGroup>
+                  <AlignToolbarButton />
+                </ToolbarGroup>
+
+                <ToolbarGroup>
+                  <BulletedListToolbarButton />
+                  <NumberedListToolbarButton />
+                  <IndentToolbarButton />
+                </ToolbarGroup>
+
+                <ToolbarGroup>
+                  <LinkToolbarButton />
+                  <TableToolbarButton />
+                  <MediaToolbarButton nodeType="img" />
                 </ToolbarGroup>
 
                 <ToolbarGroup>
                   <VariableSelector
                     collectionId={template.collectionId!}
                     onSelect={(node) => {
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      (editor as any).insertNodes([
+                      editor.tf.insertNodes([
                         {
                           type: VARIABLE_TYPE,
                           fieldPath: node.path,
                           collectionId: node.collectionId,
                           children: [{ text: "" }],
                         },
-                      ]);
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      (editor as any).focus();
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      ] as any);
+                      editor.tf.focus();
                     }}
                   />
                 </ToolbarGroup>
@@ -211,7 +301,7 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
 
           {/* Editor Content */}
           <div className="flex-1 overflow-y-auto px-6 py-10">
-            <div className="mx-auto max-w-4xl">
+            <div className="mx-auto max-w-7xl">
               <EditorContainer>
                 <Editor
                   placeholder="Comienza a escribir tu documento..."

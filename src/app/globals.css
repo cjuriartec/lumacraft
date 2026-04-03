@@ -13,6 +13,16 @@
     --muted: rgba(26, 30, 38, 0.45);
     --border: rgba(26, 30, 38, 0.05);
     --sidebar-bg: #ffffff;
+    --popover: var(--surface-hover);
+    --popover-foreground: var(--foreground);
+    --accent: rgba(26, 30, 38, 0.05);
+    --accent-foreground: var(--foreground);
+    --input: var(--border);
+    --ring: var(--primary);
+    --card: var(--surface);
+    --card-foreground: var(--foreground);
+    --destructive: #ef4444;
+    --destructive-foreground: #f8fafc;
   }
 
   .dark {
@@ -25,6 +35,16 @@
     --muted: rgba(232, 240, 236, 0.45);
     --border: rgba(232, 240, 236, 0.04);
     --sidebar-bg: #060908;
+    --popover: var(--surface-hover);
+    --popover-foreground: var(--foreground);
+    --accent: rgba(232, 240, 236, 0.04);
+    --accent-foreground: var(--foreground);
+    --input: var(--border);
+    --ring: var(--primary);
+    --card: var(--surface);
+    --card-foreground: var(--foreground);
+    --destructive: #7f1d1d;
+    --destructive-foreground: #f8fafc;
   }
 }
 
@@ -38,6 +58,16 @@
   --color-muted: var(--muted);
   --color-border: var(--border);
   --color-sidebar: var(--sidebar-bg);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --font-sans: var(--font-poppins), "Poppins", sans-serif;
 }
 
