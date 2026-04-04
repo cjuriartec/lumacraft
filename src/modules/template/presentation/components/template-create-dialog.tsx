@@ -41,6 +41,8 @@ interface TemplateCreateDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   templateToEdit?: Template | null;
+  forcedCollectionId?: string;
+  forcedCollectionLabel?: string;
   onSuccess?: () => void;
   onCreateTemplate: (params: CreateTemplateParams) => Promise<Result<Template>>;
   onUpdateTemplate: (params: UpdateTemplateParams) => Promise<Result<Template>>;
@@ -50,6 +52,8 @@ export function TemplateCreateDialog({
   open,
   onOpenChange,
   templateToEdit,
+  forcedCollectionId,
+  forcedCollectionLabel,
   onSuccess,
   onCreateTemplate,
   onUpdateTemplate,
@@ -71,13 +75,14 @@ export function TemplateCreateDialog({
     } else if (!templateToEdit && open) {
       setName("");
       setDescription("");
-      setCollectionId("");
+      setCollectionId(forcedCollectionId || "");
     }
-  }, [templateToEdit, open]);
+  }, [templateToEdit, open, forcedCollectionId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || (!isEditing && !collectionId)) return;
+    const selectedCollectionId = forcedCollectionId || collectionId;
+    if (!name || (!isEditing && !selectedCollectionId)) return;
 
     setLoading(true);
 
@@ -86,7 +91,7 @@ export function TemplateCreateDialog({
         id: templateToEdit.id,
         name,
         description,
-        collectionId,
+        collectionId: selectedCollectionId,
       });
       setLoading(false);
       if (res?.ok) {
@@ -97,12 +102,16 @@ export function TemplateCreateDialog({
       const res = await onCreateTemplate({
         name,
         description,
-        collectionId,
+        collectionId: selectedCollectionId,
       });
       setLoading(false);
       if (res?.ok) {
         onOpenChange(false);
-        router.push(`/templates/${res.value.id}`);
+        if (selectedCollectionId) {
+          router.push(`/collections/${selectedCollectionId}/templates/${res.value.id}`);
+        } else {
+          router.push(`/templates/${res.value.id}`);
+        }
       }
     }
   };
@@ -115,8 +124,8 @@ export function TemplateCreateDialog({
             <DialogTitle>{isEditing ? "Editar Template" : "Nuevo Template"}</DialogTitle>
             <DialogDescription>
               {isEditing
-                ? "Modifica la información básica del documento."
-                : "Crea una nueva plantilla de documento vinculada a una colección."}
+                ? "Modifica la información básica de la plantilla."
+                : "Crea una nueva plantilla vinculada a una colección."}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-6">
@@ -125,7 +134,7 @@ export function TemplateCreateDialog({
                 htmlFor="name"
                 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground ml-1"
               >
-                Nombre del documento
+                Nombre de la plantilla
               </Label>
               <Input
                 id="name"
@@ -152,7 +161,7 @@ export function TemplateCreateDialog({
                 rows={3}
               />
             </div>
-            {!isEditing && (
+            {!isEditing && !forcedCollectionId && (
               <div className="grid gap-2">
                 <Label
                   htmlFor="collection"
@@ -183,12 +192,22 @@ export function TemplateCreateDialog({
                 </Select>
               </div>
             )}
+            {!isEditing && forcedCollectionId && (
+              <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/10 rounded-xl">
+                <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                <span className="text-[10px] font-bold uppercase tracking-widest text-primary/70">
+                  COLECCIÓN: {forcedCollectionLabel || "Actual"}
+                </span>
+              </div>
+            )}
             {isEditing && (
               <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/10 rounded-xl">
                 <div className="w-1.5 h-1.5 rounded-full bg-primary" />
                 <span className="text-[10px] font-bold uppercase tracking-widest text-primary/70">
                   VINCULADO A:{" "}
-                  {collections.find((c) => c.id === collectionId)?.displayName || "N/A"}
+                  {forcedCollectionLabel ||
+                    collections.find((c) => c.id === collectionId)?.displayName ||
+                    "N/A"}
                 </span>
               </div>
             )}
@@ -205,7 +224,7 @@ export function TemplateCreateDialog({
             </Button>
             <Button
               type="submit"
-              disabled={loading || !name || (!isEditing && !collectionId)}
+              disabled={loading || !name || (!isEditing && !(forcedCollectionId || collectionId))}
               className="rounded-xl font-bold bg-primary hover:bg-primary-hover shadow-lg shadow-primary/10 transition-all hover:scale-[1.02] active:scale-[0.98]"
             >
               {loading ? "Guardando..." : isEditing ? "Guardar Cambios" : "Crear y Abrir Editor"}

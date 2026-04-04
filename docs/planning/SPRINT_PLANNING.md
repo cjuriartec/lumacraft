@@ -49,31 +49,32 @@ _Objetivo: Conectar entidades, completar los tipos de campo y mejorar la experie
 
 ---
 
-## 🔒 Iteración 2: Seguridad y Editor de Plantillas (Sprints 4-5) 🔄 _En Progreso_
+## 🔒 Iteración 2: Seguridad y Editor de Plantillas (Sprints 4-5) ✅ _Completado_
 
-### **Sprint 4: Seguridad Zero-Trust y Contexto IA** 🔄 _En Progreso_
+### **Sprint 4: Seguridad Zero-Trust y Contexto IA** ✅ _Completado_
 
 _Objetivo: El sistema debe acoplar los permisos implícitos y resolver relaciones para la IA._
 
-- **US-4.01 (5 SP)**: Gestión de Roles y Miembros del Workspace (Settings).
-- **US-4.02 (5 SP)**: Ocultar UI y asegurar accesos (RLS en PostgreSQL) basados en permisos CRUD de colecciones.
-- **US-4.03 (5 SP)**: Lógica de override y acceso de lectura implícito en tablas dependientes (RLS).
-- **US-3.03 (8 SP)**: Construir el servicio de "Eager Loading" para armar árboles JSON profundos.
+- **US-4.01 (5 SP)**: Gestión de Roles y Miembros del Workspace (Settings). ✅
+- **US-4.02 (5 SP)**: Ocultar UI y asegurar accesos (RLS en PostgreSQL) basados en permisos CRUD de colecciones. ✅
+- **US-4.03 (5 SP)**: Lógica de override y acceso de lectura implícito en tablas dependientes (RLS). ✅
+- **US-3.03 (8 SP)**: Construir el servicio de "Eager Loading" para armar árboles JSON profundos. ✅
 - **Total Estimado**: 23 SP.
 
-### **Sprint 5: Template Engine Builder (Beta)**
+### **Sprint 5: Template Engine Builder (Beta)** ✅ _Completado_
 
 _Objetivo: Implementar el lienzo de Plate para armar documentos interactivos._
 
-- **US-5.01 (13 SP)**: Lienzo Drag & Drop con serialización de bloques al backend.
-- **US-5.02 (5 SP)**: Bloques de Variables inyectando datos directamente del Eager Loading (Sprint 4).
-- **Total Estimado**: 18 SP.
+- **US-5.01 (13 SP)**: Lienzo Drag & Drop con serialización de bloques al backend. ✅
+- **US-5.02 (5 SP)**: Bloques de Variables inyectando datos directamente del Eager Loading (Sprint 4). ✅
+- **UX/Architectural (3 SP)**: Integración de Plantillas en Colecciones y Modo Revisor/Editor. ✅
+- **Total Estimado**: 21 SP.
 
 ---
 
 ## 🤖 Iteración 3: La Capa de IA y Refinamiento (Sprints 6-7)
 
-### **Sprint 6: Lógica Avanzada y Bloque IA**
+### **Sprint 6: Lógica Avanzada y Bloque IA** 🔄 _En Progreso_
 
 _Objetivo: Finalizar la generación de documentos e integrar Gemini._
 

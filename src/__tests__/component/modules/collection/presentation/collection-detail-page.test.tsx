@@ -58,6 +58,12 @@ const permissionsState = vi.hoisted(() => ({
   isSuperAdmin: false,
 }));
 
+const navigationState = vi.hoisted(() => ({
+  replace: vi.fn(),
+  pathname: "/collections/collection-1",
+  searchParams: new URLSearchParams(),
+}));
+
 vi.mock("@/modules/collection/presentation/hooks/use-fields", () => ({
   useFields: () => fieldsState,
 }));
@@ -80,6 +86,12 @@ vi.mock("@/shared/presentation/providers/breadcrumb-provider", () => ({
 
 vi.mock("@/modules/authorization/presentation/providers/permission-provider", () => ({
   usePermissions: () => permissionsState,
+}));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ replace: navigationState.replace }),
+  usePathname: () => navigationState.pathname,
+  useSearchParams: () => navigationState.searchParams,
 }));
 
 vi.mock("@/modules/collection/presentation/components/field-manager", () => ({
@@ -139,6 +151,11 @@ vi.mock("@/modules/collection/presentation/components/record-form-dialog", () =>
     ) : null,
 }));
 
+vi.mock("@/modules/template/presentation/pages/template-list-page", () => ({
+  __esModule: true,
+  default: () => <div data-testid="template-list-page">template-list-page</div>,
+}));
+
 describe("CollectionDetailPage", () => {
   beforeEach(() => {
     resetFactories();
@@ -159,6 +176,8 @@ describe("CollectionDetailPage", () => {
       { id: "collection-1", name: "Projects", toJSON: () => ({ id: "collection-1" }) },
     ];
     gridPersistenceState.loadStoredFilters.mockResolvedValue(null);
+    navigationState.replace.mockReset();
+    navigationState.searchParams = new URLSearchParams();
   });
 
   it("renders the loading state while fields are syncing", async () => {

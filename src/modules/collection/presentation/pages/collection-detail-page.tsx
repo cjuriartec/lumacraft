@@ -1,9 +1,11 @@
 "use client";
 
-import { LayoutGrid, ListFilter } from "lucide-react";
+import { FileText, LayoutGrid, ListFilter } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { usePermissions } from "@/modules/authorization/presentation/providers/permission-provider";
+import TemplateListPage from "@/modules/template/presentation/pages/template-list-page";
 import {
   Select,
   SelectContent,
@@ -30,8 +32,19 @@ interface CollectionDetailPageProps {
   collectionName: string;
 }
 
+type CollectionTab = "data" | "fields" | "templates";
+
+function resolveTab(raw: string | null, canManageSchema: boolean): CollectionTab {
+  if (raw === "templates") return "templates";
+  if (raw === "fields" && canManageSchema) return "fields";
+  return "data";
+}
+
 export function CollectionDetailPage({ collectionId, collectionName }: CollectionDetailPageProps) {
   useBreadcrumbs([{ label: "Colecciones", href: "/collections" }, { label: collectionName }]);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { can, isOwner, isSuperAdmin } = usePermissions();
   const canCreate = can(collectionId, "create");
   const canUpdate = can(collectionId, "update");
@@ -67,6 +80,9 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
   const [editingRecord, setEditingRecord] = useState<DataRecord | undefined>(undefined);
   const [initialFilterValues, setInitialFilterValues] = useState<Record<string, string>>({});
   const [isHydrated, setIsHydrated] = useState(false);
+  const [activeTab, setActiveTab] = useState<CollectionTab>(
+    resolveTab(searchParams.get("tab"), canManageSchema),
+  );
 
   useEffect(() => {
     async function hydrate() {
@@ -83,6 +99,10 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
     }
     void hydrate();
   }, [loadStoredFilters, setPagination]);
+
+  useEffect(() => {
+    setActiveTab(resolveTab(searchParams.get("tab"), canManageSchema));
+  }, [searchParams, canManageSchema]);
 
   // Automatically sync searchFields with searchable field names
   useEffect(() => {
@@ -137,6 +157,21 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
 
   if (!isHydrated) return null;
 
+  const handleTabChange = (value: string) => {
+    const nextTab = resolveTab(value, canManageSchema);
+    setActiveTab(nextTab);
+
+    const nextParams = new URLSearchParams(searchParams.toString());
+    if (nextTab === "data") {
+      nextParams.delete("tab");
+    } else {
+      nextParams.set("tab", nextTab);
+    }
+
+    const query = nextParams.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-20">
       <div className="flex flex-col gap-1 mb-8 px-2">
@@ -152,7 +187,7 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
         </p>
       </div>
 
-      <Tabs defaultValue="data" className="w-full" variant="line">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full" variant="line">
         <TabsList className="mb-8">
           <TabsTrigger value="data" className="flex items-center">
             <LayoutGrid size={16} className="mr-2" />
@@ -168,6 +203,10 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
               )}
             </TabsTrigger>
           )}
+          <TabsTrigger value="templates" className="flex items-center">
+            <FileText size={16} className="mr-2" />
+            Plantillas
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="data" className="mt-0 outline-none">
@@ -257,6 +296,17 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
               />
             </div>
           </div>
+        </TabsContent>
+
+        <TabsContent value="templates" className="mt-0 focus-visible:outline-none pb-12">
+          <TemplateListPage
+            embedded
+            collectionId={collectionId}
+            collectionName={collectionName}
+            canCreate={canCreate}
+            canUpdate={canUpdate}
+            canDelete={canDelete}
+          />
         </TabsContent>
       </Tabs>
 

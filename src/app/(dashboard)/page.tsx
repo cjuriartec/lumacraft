@@ -31,7 +31,7 @@ export default function DashboardPage() {
         <StatCard title="Colecciones" value="0" icon={<Database size={18} />} trend="Esta semana" />
         <StatCard title="Registros Totales" value="0" icon={<TrendingUp size={18} />} trend="Hoy" />
         <StatCard
-          title="Documentos Generados"
+          title="Plantillas Activas"
           value="0"
           icon={<FileText size={18} />}
           trend="Este mes"
@@ -52,11 +52,11 @@ export default function DashboardPage() {
             badge="Motor de Datos"
           />
           <QuickAction
-            href="/templates"
+            href="/collections"
             icon={<FileText size={20} />}
-            title="Crear Plantilla"
-            description="Diseña documentos inteligentes que se generan automáticamente con tus datos."
-            badge="IA"
+            title="Gestionar Plantillas"
+            description="Las plantillas viven dentro de cada colección para mantener el flujo de datos organizado."
+            badge="Plantillas"
           />
         </div>
       </div>

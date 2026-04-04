@@ -97,7 +97,7 @@ describe("TemplateListPage", () => {
   it("renders empty state when there are no templates", () => {
     render(<TemplateListPage />);
 
-    expect(screen.getByText("Sin documentos todavía")).toBeInTheDocument();
+    expect(screen.getByText("Sin plantillas todavía")).toBeInTheDocument();
   });
 
   it("delegates deletion to useTemplates", () => {
@@ -114,7 +114,7 @@ describe("TemplateListPage", () => {
   it("uses injected create handler from the page hook", async () => {
     render(<TemplateListPage />);
 
-    fireEvent.click(screen.getByText("Nuevo Template"));
+    fireEvent.click(screen.getByText("Nueva Plantilla"));
     fireEvent.click(screen.getByText("submit-create"));
 
     await waitFor(() => {

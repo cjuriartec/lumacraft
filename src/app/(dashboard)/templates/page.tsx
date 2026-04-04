@@ -1,10 +1,10 @@
-import TemplateListPage from "@/modules/template/presentation/pages/template-list-page";
+import { redirect } from "next/navigation";
 
 export const metadata = {
-  title: "Documentos | Lumacraft",
-  description: "Gestiona tus plantillas de documentos inteligentes.",
+  title: "Plantillas | Lumacraft",
+  description: "Las plantillas ahora viven dentro de cada colección.",
 };
 
 export default function TemplatesPage() {
-  return <TemplateListPage />;
+  redirect("/collections");
 }

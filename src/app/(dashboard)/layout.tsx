@@ -3,7 +3,6 @@
 import {
   ChevronRight,
   Database,
-  FileText,
   LayoutDashboard,
   PanelLeft,
   Settings,
@@ -95,7 +94,7 @@ function Breadcrumb() {
   // Fallback: derive from pathname when no context items are registered
   const fallbackLabels: Record<string, string> = {
     collections: "Colecciones",
-    templates: "Documentos",
+    templates: "Plantillas",
     relations: "Relaciones",
     settings: "Configuración",
   };
@@ -193,12 +192,6 @@ function SidebarNav({ setSidebarOpen }: { setSidebarOpen: (o: boolean) => void }
           href="/collections"
           icon={<Database size={16} />}
           label="Colecciones"
-          onClick={() => setSidebarOpen(false)}
-        />
-        <NavLink
-          href="/templates"
-          icon={<FileText size={16} />}
-          label="Documentos"
           onClick={() => setSidebarOpen(false)}
         />
         <NavLink
