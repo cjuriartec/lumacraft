@@ -72,4 +72,17 @@ describe("FieldConfig value object", () => {
 
     expect(result.ok).toBe(false);
   });
+
+  it("accepts image config and rejects non-image mime types", () => {
+    const valid = FieldConfig.create("IMAGE", {
+      allowedMimeTypes: ["image/png", "image/jpeg"],
+      maxSizeBytes: 5 * 1024 * 1024,
+    });
+    const invalid = FieldConfig.create("IMAGE", {
+      allowedMimeTypes: ["application/pdf"],
+    });
+
+    expect(valid.ok).toBe(true);
+    expect(invalid.ok).toBe(false);
+  });
 });

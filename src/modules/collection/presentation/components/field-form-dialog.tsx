@@ -92,7 +92,17 @@ const fieldSchema = z.object({
     .regex(/^[a-z0-9_]+$/, "Solo minúsculas, números y guiones bajos"),
   displayName: z.string().min(2, "El nombre visible debe tener al menos 2 caracteres"),
   description: z.string().optional(),
-  fieldType: z.enum(["TEXT", "NUMBER", "BOOLEAN", "DATE", "ENUM", "RELATION", "FILE", "LOCATION"]),
+  fieldType: z.enum([
+    "TEXT",
+    "NUMBER",
+    "BOOLEAN",
+    "DATE",
+    "ENUM",
+    "RELATION",
+    "FILE",
+    "IMAGE",
+    "LOCATION",
+  ]),
   isRequired: z.boolean().default(false).optional(),
   isUnique: z.boolean().default(false).optional(),
   defaultValue: z.string().optional(),
@@ -332,6 +342,7 @@ export function FieldFormDialog({
                       <SelectItem value="ENUM">Lista (enum)</SelectItem>
                       <SelectItem value="RELATION">Relación</SelectItem>
                       <SelectItem value="FILE">Archivo</SelectItem>
+                      <SelectItem value="IMAGE">Imagen</SelectItem>
                       <SelectItem value="LOCATION">Ubicación</SelectItem>
                     </SelectContent>
                   </Select>
@@ -501,8 +512,8 @@ export function FieldFormDialog({
                 </FormSection>
               )}
 
-              {selectedType === "FILE" && (
-                <FormSection title="Archivo">
+              {(selectedType === "FILE" || selectedType === "IMAGE") && (
+                <FormSection title={selectedType === "IMAGE" ? "Imagen" : "Archivo"}>
                   <div className="space-y-2">
                     <Label
                       htmlFor="maxSizeBytes"
@@ -553,10 +564,11 @@ export function FieldFormDialog({
                         mimeTypes
                           .filter(
                             (m) =>
-                              !mimeSearch ||
-                              m.label.toLowerCase().includes(mimeSearch) ||
-                              m.value.toLowerCase().includes(mimeSearch) ||
-                              !!m.extension?.toLowerCase().includes(mimeSearch),
+                              (selectedType !== "IMAGE" || m.value.startsWith("image/")) &&
+                              (!mimeSearch ||
+                                m.label.toLowerCase().includes(mimeSearch) ||
+                                m.value.toLowerCase().includes(mimeSearch) ||
+                                !!m.extension?.toLowerCase().includes(mimeSearch)),
                           )
                           .map((mime) => {
                             const isSelected = (config.allowedMimeTypes || []).includes(mime.value);
@@ -605,10 +617,11 @@ export function FieldFormDialog({
                       {mimeTypes.length > 0 &&
                         mimeTypes.filter(
                           (m) =>
-                            !mimeSearch ||
-                            m.label.toLowerCase().includes(mimeSearch) ||
-                            m.value.toLowerCase().includes(mimeSearch) ||
-                            !!m.extension?.toLowerCase().includes(mimeSearch),
+                            (selectedType !== "IMAGE" || m.value.startsWith("image/")) &&
+                            (!mimeSearch ||
+                              m.label.toLowerCase().includes(mimeSearch) ||
+                              m.value.toLowerCase().includes(mimeSearch) ||
+                              !!m.extension?.toLowerCase().includes(mimeSearch)),
                         ).length === 0 && (
                           <div className="py-4 text-center text-[11px] text-muted">Vacío</div>
                         )}
@@ -731,7 +744,7 @@ export function FieldFormDialog({
               )}
 
               <FormSection title="Comportamiento Adicional" className="border-none">
-                {!["RELATION", "FILE", "LOCATION"].includes(selectedType) && (
+                {!["RELATION", "FILE", "IMAGE", "LOCATION"].includes(selectedType) && (
                   <div className="space-y-2">
                     <Label
                       htmlFor="defaultValue"

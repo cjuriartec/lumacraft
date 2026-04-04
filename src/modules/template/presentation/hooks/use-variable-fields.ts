@@ -3,12 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { CollectionUseCaseFactory } from "@/modules/collection/application/collection-use-case.factory";
+import type { FieldTypeValue } from "@/modules/collection/domain/value-objects/field-type.vo";
 import { useSupabase } from "@/shared/presentation/providers/supabase-provider";
 
 export interface VariableNode {
   path: string; // "proyecto.nombre"
   displayName: string; // "Nombre del Proyecto"
-  fieldType: string; // "TEXT", "NUMBER", etc.
+  fieldType: FieldTypeValue;
   collectionId: string; // UUID de la colección de origen
   children?: VariableNode[]; // Sub-campos para RELATION
 }

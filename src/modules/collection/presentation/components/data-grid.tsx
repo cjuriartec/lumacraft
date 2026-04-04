@@ -610,6 +610,38 @@ export function DataGrid({
             )}
           </button>
         );
+      case "IMAGE": {
+        const image = value as FileMetadata;
+        const isDownloading = downloadingFiles[image.path];
+        return (
+          <button
+            onClick={() => !isDownloading && handleDownloadFile(image)}
+            disabled={isDownloading}
+            className={cn(
+              "flex items-center gap-1.5 group text-left transition-opacity",
+              isDownloading ? "opacity-50 cursor-wait" : "hover:opacity-80",
+            )}
+          >
+            <span className="text-[10px] text-primary/70">IMG</span>
+            <span
+              className={cn(
+                "text-xs font-medium truncate max-w-[140px] underline decoration-border/40 hover:decoration-primary transition-all",
+                isDownloading ? "text-primary decoration-primary" : "text-foreground/80",
+              )}
+            >
+              {image.name || "Imagen"}
+            </span>
+            {isDownloading ? (
+              <Loader2 size={10} className="animate-spin text-primary shrink-0" />
+            ) : (
+              <Download
+                size={10}
+                className="text-muted opacity-40 group-hover:opacity-100 group-hover:text-primary transition-all shrink-0"
+              />
+            )}
+          </button>
+        );
+      }
       case "LOCATION": {
         const loc = value as { lat: number; lng: number };
         return (

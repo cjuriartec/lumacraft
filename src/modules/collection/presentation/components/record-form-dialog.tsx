@@ -54,6 +54,10 @@ type FileMetadata = {
 
 const FILE_BUCKET = "record_files";
 
+function isFileLikeFieldType(fieldType: Field["fieldType"]["value"]): boolean {
+  return fieldType === "FILE" || fieldType === "IMAGE";
+}
+
 export function RecordFormDialog({
   open,
   onOpenChange,
@@ -103,7 +107,7 @@ export function RecordFormDialog({
         validator = relationFieldAllowsMany(field)
           ? z.array(z.string().uuid()).optional()
           : z.string().uuid().optional();
-      } else if (field.fieldType.value === "FILE") {
+      } else if (isFileLikeFieldType(field.fieldType.value)) {
         validator = z.unknown().optional();
       } else {
         const config = field.config?.value as
@@ -226,7 +230,7 @@ export function RecordFormDialog({
     const nextValues = { ...values };
 
     for (const field of fields) {
-      if (field.fieldType.value !== "FILE") continue;
+      if (!isFileLikeFieldType(field.fieldType.value)) continue;
 
       const selectedFile = pendingFiles[field.name];
       if (!selectedFile) continue;
@@ -244,6 +248,10 @@ export function RecordFormDialog({
             `Tipo de archivo no permitido para el campo "${field.displayName || field.name}". Permitidos: ${config.allowedMimeTypes.join(", ")}`,
           );
         }
+      }
+
+      if (field.fieldType.value === "IMAGE" && !selectedFile.type.startsWith("image/")) {
+        throw new Error(`El campo "${field.displayName || field.name}" solo acepta imágenes.`);
       }
 
       // Validate Size
@@ -500,8 +508,10 @@ export function RecordFormDialog({
         return renderRelationInput(field);
 
       case "FILE":
+      case "IMAGE":
         const fileValue = form.watch(name) as FileMetadata | undefined;
         const pending = pendingFiles[name];
+        const isImageField = fieldType.value === "IMAGE";
         return (
           <div className="group relative">
             <label
@@ -526,7 +536,9 @@ export function RecordFormDialog({
                 </div>
                 <div className="flex flex-col min-w-0">
                   <span className="text-[11px] font-bold uppercase tracking-wide text-foreground/80 truncate">
-                    {pending?.name || fileValue?.name || "Seleccionar Archivo"}
+                    {pending?.name ||
+                      fileValue?.name ||
+                      (isImageField ? "Seleccionar Imagen" : "Seleccionar Archivo")}
                   </span>
                   {pending || fileValue ? (
                     <span className="text-[9px] text-muted-foreground font-mono">
@@ -567,6 +579,7 @@ export function RecordFormDialog({
               id={`${name}-file`}
               type="file"
               className="hidden"
+              accept={isImageField ? "image/*" : undefined}
               onChange={(event) => {
                 const selected = event.target.files?.[0] ?? null;
                 setPendingFiles((prev) => ({ ...prev, [name]: selected }));

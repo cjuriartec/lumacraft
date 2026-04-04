@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { fail, ok, Result } from "@/shared/domain/result";
+import { DomainError, fail, ok, Result } from "@/shared/domain/result";
 
 import { FieldTypeValue } from "./field-type.vo";
 
@@ -49,6 +49,11 @@ const fileConfigSchema = z.object({
   maxSizeBytes: z.number().int().positive().optional(),
 });
 
+const imageConfigSchema = z.object({
+  allowedMimeTypes: z.array(z.string().startsWith("image/")).optional(),
+  maxSizeBytes: z.number().int().positive().optional(),
+});
+
 const locationConfigSchema = z.object({
   minLat: z.number().min(-90).max(90).optional(),
   maxLat: z.number().min(-90).max(90).optional(),
@@ -56,16 +61,8 @@ const locationConfigSchema = z.object({
   maxLng: z.number().min(-180).max(180).optional(),
 });
 
-const configSchemas: Record<FieldTypeValue, z.ZodType> = {
-  TEXT: textConfigSchema,
-  NUMBER: numberConfigSchema,
-  ENUM: enumConfigSchema,
-  DATE: dateConfigSchema,
-  BOOLEAN: booleanConfigSchema,
-  RELATION: relationConfigSchema,
-  FILE: fileConfigSchema,
-  LOCATION: locationConfigSchema,
-};
+// All schemas are defined above, we now use a switch in FieldConfig.create
+// for better reliability across different execution environments.
 
 export type TextConfig = z.infer<typeof textConfigSchema>;
 export type NumberConfig = z.infer<typeof numberConfigSchema>;
@@ -76,6 +73,7 @@ export type RelationTypeValue = z.infer<typeof relationTypeSchema>;
 export type OnDeleteValue = z.infer<typeof onDeleteSchema>;
 export type RelationConfig = z.infer<typeof relationConfigSchema>;
 export type FileConfig = z.infer<typeof fileConfigSchema>;
+export type ImageConfig = z.infer<typeof imageConfigSchema>;
 export type LocationConfig = z.infer<typeof locationConfigSchema>;
 export type FieldConfigValue =
   | TextConfig
@@ -85,6 +83,7 @@ export type FieldConfigValue =
   | BooleanConfig
   | RelationConfig
   | FileConfig
+  | ImageConfig
   | LocationConfig;
 
 export class FieldConfig {
@@ -94,7 +93,47 @@ export class FieldConfig {
   ) {}
 
   static create(fieldType: FieldTypeValue, raw: Record<string, unknown>): Result<FieldConfig> {
-    const schema = configSchemas[fieldType];
+    let schema: z.ZodType;
+    switch (fieldType) {
+      case "TEXT":
+        schema = textConfigSchema;
+        break;
+      case "NUMBER":
+        schema = numberConfigSchema;
+        break;
+      case "ENUM":
+        schema = enumConfigSchema;
+        break;
+      case "DATE":
+        schema = dateConfigSchema;
+        break;
+      case "BOOLEAN":
+        schema = booleanConfigSchema;
+        break;
+      case "RELATION":
+        schema = relationConfigSchema;
+        break;
+      case "FILE":
+        schema = fileConfigSchema;
+        break;
+      case "IMAGE":
+        schema = imageConfigSchema;
+        break;
+      case "LOCATION":
+        schema = locationConfigSchema;
+        break;
+      default:
+        return fail(
+          new DomainError(`Unsupported field type for config: ${fieldType}`, "INVALID_FIELD_TYPE"),
+        );
+    }
+
+    if (!schema) {
+      return fail(
+        new DomainError(`Schema for ${fieldType} was not properly initialized.`, "INTERNAL_ERROR"),
+      );
+    }
+
     const result = schema.safeParse(raw);
 
     if (!result.success) {

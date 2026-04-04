@@ -1,0 +1,1 @@
+ALTER TYPE field_type_enum ADD VALUE IF NOT EXISTS 'IMAGE';

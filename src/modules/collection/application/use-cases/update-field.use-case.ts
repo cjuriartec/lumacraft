@@ -1,4 +1,4 @@
-import { fail, Result } from "@/shared/domain/result";
+import { DomainError, fail, Result } from "@/shared/domain/result";
 
 import { Field } from "../../domain/entities/field.entity";
 import { IFieldRepository } from "../../domain/ports/field-repository.port";
@@ -26,7 +26,17 @@ export class UpdateFieldUseCase {
     const fieldTypeRes = FieldType.create(request.fieldType);
     if (!fieldTypeRes.ok) return fail(fieldTypeRes.error);
 
-    const fieldConfigRes = FieldConfig.create(fieldTypeRes.value.value, request.config || {});
+    let fieldConfigRes: Result<FieldConfig>;
+    try {
+      fieldConfigRes = FieldConfig.create(fieldTypeRes.value.value, request.config || {});
+    } catch (error) {
+      return fail(
+        new DomainError(
+          `Unexpected field config error for ${fieldTypeRes.value.value}: ${(error as Error).message}`,
+          "INVALID_FIELD_CONFIG",
+        ),
+      );
+    }
     if (!fieldConfigRes.ok) return fail(fieldConfigRes.error);
 
     const result = Field.create({

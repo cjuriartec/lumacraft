@@ -21,7 +21,14 @@ export class SupabaseFieldRepository extends BaseRepository implements IFieldRep
 
     if (error) return fail(new DomainError(error.message, "DB_ERROR"));
 
-    return ok(data.map((item: Record<string, unknown>) => this.toEntity(item)));
+    const entities: Field[] = [];
+    for (const item of data as Record<string, unknown>[]) {
+      const entityRes = this.toEntity(item);
+      if (!entityRes.ok) return fail(entityRes.error);
+      entities.push(entityRes.value);
+    }
+
+    return ok(entities);
   }
 
   public async findById(id: string): Promise<Result<Field | null>> {
@@ -32,7 +39,10 @@ export class SupabaseFieldRepository extends BaseRepository implements IFieldRep
       return fail(new DomainError(error.message, "DB_ERROR"));
     }
 
-    return ok(this.toEntity(data));
+    const entityRes = this.toEntity(data as Record<string, unknown>);
+    if (!entityRes.ok) return fail(entityRes.error);
+
+    return ok(entityRes.value);
   }
 
   public async create(field: Field): Promise<Result<Field>> {
@@ -41,7 +51,10 @@ export class SupabaseFieldRepository extends BaseRepository implements IFieldRep
 
     if (error) return fail(new DomainError(error.message, "DB_ERROR"));
 
-    return ok(this.toEntity(data));
+    const entityRes = this.toEntity(data as Record<string, unknown>);
+    if (!entityRes.ok) return fail(entityRes.error);
+
+    return ok(entityRes.value);
   }
 
   public async update(field: Field): Promise<Result<Field>> {
@@ -54,7 +67,10 @@ export class SupabaseFieldRepository extends BaseRepository implements IFieldRep
 
     if (error) return fail(new DomainError(error.message, "DB_ERROR"));
 
-    return ok(this.toEntity(data));
+    const entityRes = this.toEntity(data as Record<string, unknown>);
+    if (!entityRes.ok) return fail(entityRes.error);
+
+    return ok(entityRes.value);
   }
 
   public async delete(id: string): Promise<Result<void>> {
@@ -80,16 +96,26 @@ export class SupabaseFieldRepository extends BaseRepository implements IFieldRep
     return ok(undefined);
   }
 
-  private toEntity(data: Record<string, unknown>): Field {
+  private toEntity(data: Record<string, unknown>): Result<Field> {
     const fieldTypeRes = FieldType.create(data.field_type as string);
     if (!fieldTypeRes.ok) {
-      throw new DomainError(`Invalid field type in DB: ${data.field_type}`, "DATA_INTEGRITY_ERROR");
+      return fail(
+        new DomainError(`Invalid field type in DB: ${data.field_type}`, "DATA_INTEGRITY_ERROR"),
+      );
     }
 
     const fieldConfig = FieldConfig.create(
       fieldTypeRes.value.value,
       (data.config as Record<string, unknown>) || {},
     );
+    if (!fieldConfig.ok) {
+      return fail(
+        new DomainError(
+          `Invalid field config in DB for type ${fieldTypeRes.value.value}: ${fieldConfig.error.message}`,
+          "DATA_INTEGRITY_ERROR",
+        ),
+      );
+    }
 
     const result = Field.create({
       id: data.id as string,
@@ -101,20 +127,22 @@ export class SupabaseFieldRepository extends BaseRepository implements IFieldRep
       isRequired: data.is_required as boolean,
       isUnique: data.is_unique as boolean,
       defaultValue: (data.default_value as string) || undefined,
-      config: fieldConfig.ok ? fieldConfig.value : undefined,
+      config: fieldConfig.value,
       sortOrder: data.sort_order as number,
       createdAt: new Date(data.created_at as string),
       updatedAt: new Date(data.updated_at as string),
     });
 
     if (!result.ok) {
-      throw new DomainError(
-        `Failed to hydrate Field entity from database: ${result.error.message}`,
-        "DATA_INTEGRITY_ERROR",
+      return fail(
+        new DomainError(
+          `Failed to hydrate Field entity from database: ${result.error.message}`,
+          "DATA_INTEGRITY_ERROR",
+        ),
       );
     }
 
-    return result.value;
+    return ok(result.value);
   }
 
   private toPersistence(field: Field) {

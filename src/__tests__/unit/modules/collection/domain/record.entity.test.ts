@@ -146,6 +146,47 @@ describe("DataRecord entity", () => {
     }
   });
 
+  it("accepts valid image metadata and rejects non-image mime type", () => {
+    resetFactories();
+    const field = makeField({
+      name: "avatar",
+      fieldType: "IMAGE",
+    });
+
+    const validRecord = makeRecord({
+      data: {
+        avatar: {
+          bucket: "record_files",
+          path: "workspace-1/collection-1/avatar/profile.png",
+          name: "profile.png",
+          mimeType: "image/png",
+          size: 1024,
+        },
+      },
+    });
+
+    const invalidRecord = makeRecord({
+      data: {
+        avatar: {
+          bucket: "record_files",
+          path: "workspace-1/collection-1/avatar/profile.pdf",
+          name: "profile.pdf",
+          mimeType: "application/pdf",
+          size: 1024,
+        },
+      },
+    });
+
+    const validResult = validRecord.validateAgainstSchema([field]);
+    const invalidResult = invalidRecord.validateAgainstSchema([field]);
+
+    expect(validResult.ok).toBe(true);
+    expect(invalidResult.ok).toBe(false);
+    if (!invalidResult.ok) {
+      expect((invalidResult.error as Error & { code?: string }).code).toBe("INVALID_IMAGE_VALUE");
+    }
+  });
+
   it("serializes validated data records", () => {
     resetFactories();
     const record = makeRecord({

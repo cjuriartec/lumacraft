@@ -82,6 +82,28 @@ describe("field use cases", () => {
     expect(repository.create).not.toHaveBeenCalled();
   });
 
+  it("creates image fields with image config", async () => {
+    const repository = new InMemoryFieldRepository();
+    const useCase = new CreateFieldUseCase(repository);
+    const uuidSpy = vi.spyOn(crypto, "randomUUID").mockReturnValue("field-image-1");
+
+    const result = await useCase.execute({
+      collectionId: "collection-1",
+      name: "cover",
+      displayName: "Cover",
+      fieldType: "IMAGE",
+      config: {
+        allowedMimeTypes: ["image/png", "image/jpeg"],
+        maxSizeBytes: 1024 * 1024,
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    expect(repository.create).toHaveBeenCalledOnce();
+    expect(repository.create.mock.calls[0][0].fieldType.value).toBe("IMAGE");
+    uuidSpy.mockRestore();
+  });
+
   it("lists and deletes fields via the repository port", async () => {
     resetFactories();
     const field = makeField({ collectionId: "collection-1" });

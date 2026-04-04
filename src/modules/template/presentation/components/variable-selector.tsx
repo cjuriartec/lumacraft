@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Database,
   Hash,
+  Image as ImageIcon,
   Search,
   Type,
 } from "lucide-react";
@@ -254,7 +255,7 @@ function NodeItem({
   const [expanded, setExpanded] = React.useState(level < 1); // Expand first level by default
   const hasChildren = node.children && node.children.length > 0;
 
-  const getIcon = (type: string) => {
+  const getIcon = (type: VariableNode["fieldType"]) => {
     switch (type) {
       case "TEXT":
         return <Type size={14} />;
@@ -266,6 +267,8 @@ function NodeItem({
         return <CheckCircle2 size={14} />;
       case "RELATION":
         return <Database size={14} />;
+      case "IMAGE":
+        return <ImageIcon size={14} />;
       default:
         return <Type size={14} />;
     }

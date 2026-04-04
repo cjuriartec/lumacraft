@@ -335,6 +335,7 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
                         type: VARIABLE_TYPE,
                         fieldPath: node.path,
                         collectionId: node.collectionId,
+                        fieldType: node.fieldType,
                         children: [{ text: "" }],
                       };
 

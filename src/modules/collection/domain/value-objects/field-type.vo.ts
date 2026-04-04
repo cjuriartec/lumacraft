@@ -8,6 +8,7 @@ const VALID_FIELD_TYPES = [
   "ENUM",
   "RELATION",
   "FILE",
+  "IMAGE",
   "LOCATION",
 ] as const;
 

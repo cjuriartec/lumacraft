@@ -29,6 +29,12 @@ describe("VariableSelector keyboard navigation", () => {
         fieldType: "TEXT",
         collectionId: "collection-1",
       },
+      {
+        path: "cliente.avatar",
+        displayName: "Avatar",
+        fieldType: "IMAGE",
+        collectionId: "collection-1",
+      },
     ];
   });
 
@@ -61,6 +67,31 @@ describe("VariableSelector keyboard navigation", () => {
     expect(onSelect).toHaveBeenCalledWith(
       expect.objectContaining({
         path: "cliente.email",
+      }),
+    );
+  });
+
+  it("returns image variables with IMAGE field type", () => {
+    const onSelect = vi.fn();
+
+    render(
+      <VariableSelector
+        collectionId="collection-1"
+        open
+        onOpenChange={vi.fn()}
+        onSelect={onSelect}
+      />,
+    );
+
+    const imageButton = screen.getByText("Avatar").closest("button");
+    expect(imageButton).not.toBeNull();
+
+    fireEvent.click(imageButton as HTMLButtonElement);
+
+    expect(onSelect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        path: "cliente.avatar",
+        fieldType: "IMAGE",
       }),
     );
   });

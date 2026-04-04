@@ -13,6 +13,31 @@ function isUuid(value: unknown): value is string {
   return typeof value === "string" && UUID_REGEX.test(value);
 }
 
+type FileMetadataValue = {
+  bucket: string;
+  path: string;
+  name: string;
+  mimeType: string;
+  size: number;
+};
+
+function isValidFileMetadata(value: unknown): value is FileMetadataValue {
+  if (!isPlainObject(value)) return false;
+
+  const requiredKeys = ["bucket", "path", "name", "mimeType", "size"] as const;
+  for (const key of requiredKeys) {
+    if (!(key in value)) return false;
+  }
+
+  return (
+    typeof value.bucket === "string" &&
+    typeof value.path === "string" &&
+    typeof value.name === "string" &&
+    typeof value.mimeType === "string" &&
+    typeof value.size === "number"
+  );
+}
+
 interface DataRecordProps {
   id: string;
   collectionId: string;
@@ -135,38 +160,31 @@ export class DataRecord extends BaseEntity {
         }
 
         if (typeValue === "FILE") {
-          if (!isPlainObject(value)) {
-            return fail(
-              new DomainError(
-                `Field ${field.displayName || field.name} must be a file metadata object`,
-                "INVALID_FILE_VALUE",
-              ),
-            );
-          }
-
-          const requiredKeys = ["bucket", "path", "name", "mimeType", "size"] as const;
-          for (const key of requiredKeys) {
-            if (!(key in value)) {
-              return fail(
-                new DomainError(
-                  `Field ${field.displayName || field.name} file is missing ${key}`,
-                  "INVALID_FILE_VALUE",
-                ),
-              );
-            }
-          }
-
-          if (
-            typeof value.bucket !== "string" ||
-            typeof value.path !== "string" ||
-            typeof value.name !== "string" ||
-            typeof value.mimeType !== "string" ||
-            typeof value.size !== "number"
-          ) {
+          if (!isValidFileMetadata(value)) {
             return fail(
               new DomainError(
                 `Field ${field.displayName || field.name} has invalid file metadata`,
                 "INVALID_FILE_VALUE",
+              ),
+            );
+          }
+        }
+
+        if (typeValue === "IMAGE") {
+          if (!isValidFileMetadata(value)) {
+            return fail(
+              new DomainError(
+                `Field ${field.displayName || field.name} has invalid image metadata`,
+                "INVALID_IMAGE_VALUE",
+              ),
+            );
+          }
+
+          if (!value.mimeType.startsWith("image/")) {
+            return fail(
+              new DomainError(
+                `Field ${field.displayName || field.name} must contain an image mime type`,
+                "INVALID_IMAGE_VALUE",
               ),
             );
           }
