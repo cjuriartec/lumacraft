@@ -92,9 +92,15 @@ export const insertBlock = (
     }
 
     if (!isSameBlockType) {
-      editor.getApi(SuggestionPlugin).suggestion.withoutSuggestions(() => {
+      const suggestionApi = editor.getApi(SuggestionPlugin);
+
+      if (suggestionApi && suggestionApi.suggestion) {
+        suggestionApi.suggestion.withoutSuggestions(() => {
+          editor.tf.removeNodes({ previousEmptyBlock: true });
+        });
+      } else {
         editor.tf.removeNodes({ previousEmptyBlock: true });
-      });
+      }
     }
   });
 };

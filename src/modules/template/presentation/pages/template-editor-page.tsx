@@ -19,7 +19,6 @@ import {
   Code,
   Database,
   Highlighter,
-  PaintBucket,
   RotateCw,
   Strikethrough,
 } from "lucide-react";
@@ -59,6 +58,8 @@ import { TooltipProvider } from "@/shared/presentation/components/ui/tooltip";
 import { TurnIntoToolbarButton } from "@/shared/presentation/components/ui/turn-into-toolbar-button";
 import { useBreadcrumbs } from "@/shared/presentation/providers/breadcrumb-provider";
 
+import { SlashInputElement } from "../components/slash-command/slash-input-element";
+import { SlashInputPlugin, SlashPlugin } from "../components/slash-command/slash-plugin";
 import type { VariableElementNode } from "../components/variable-block";
 import { VARIABLE_TYPE, VariableElement, VariablePlugin } from "../components/variable-block";
 import { VariableSelector } from "../components/variable-selector";
@@ -78,14 +79,14 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
   const { collections } = useCollections();
 
   const [localName, setLocalName] = React.useState(template?.name || "");
+  const [isVariableSelectorOpen, setIsVariableSelectorOpen] = React.useState(false);
 
   // Update local name when template loads or changes from elsewhere
   React.useEffect(() => {
     if (template?.name && template.name !== localName) {
       setLocalName(template.name);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [template?.name]);
+  }, [template?.name, localName]);
 
   // Debounced name update
   React.useEffect(() => {
@@ -98,6 +99,18 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
     return () => clearTimeout(timeout);
   }, [localName, template, updateName]);
 
+  // Listen for slash command variable trigger
+  React.useEffect(() => {
+    const handleOpenVariableSelector = () => {
+      setIsVariableSelectorOpen(true);
+    };
+
+    window.addEventListener("open-variable-selector", handleOpenVariableSelector);
+    return () => {
+      window.removeEventListener("open-variable-selector", handleOpenVariableSelector);
+    };
+  }, []);
+
   useBreadcrumbs([
     { label: "Documentos", href: "/templates" },
     { label: template?.name || "Cargando..." },
@@ -108,6 +121,7 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
     const c = collections.find((col) => col.id === template.collectionId);
     return c ? c.displayName || c.name : "Colección";
   }, [template, collections]);
+
   const plateValue = React.useMemo(
     () => templateBlocksToPlateValue(template?.blocks),
     [template?.blocks],
@@ -123,6 +137,8 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
           collectionId: template?.collectionId || undefined,
         },
       }),
+      SlashPlugin,
+      SlashInputPlugin.withComponent(SlashInputElement),
       BlockSelectionPlugin,
       ...DndKit,
     ],
@@ -284,9 +300,7 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
                   <FontColorToolbarButton
                     nodeType={FontBackgroundColorPlugin.key}
                     tooltip="Color de fondo"
-                  >
-                    <PaintBucket size={16} />
-                  </FontColorToolbarButton>
+                  />
                 </ToolbarGroup>
 
                 <ToolbarGroup>
@@ -311,6 +325,8 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
                   <VariableSelector
                     collectionId={template.collectionId}
                     disabled={!template.collectionId}
+                    open={isVariableSelectorOpen}
+                    onOpenChange={setIsVariableSelectorOpen}
                     onSelect={(node) => {
                       const variableNode: VariableElementNode = {
                         type: VARIABLE_TYPE,
@@ -339,7 +355,7 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
               <ResizableProvider>
                 <EditorContainer>
                   <Editor
-                    placeholder="Comienza a escribir tu documento..."
+                    placeholder="Escribe '/' para ver comandos rápidos..."
                     variant="demo"
                     className="min-h-[800px]"
                   />

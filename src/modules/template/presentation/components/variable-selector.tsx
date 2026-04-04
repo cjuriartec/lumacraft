@@ -28,6 +28,8 @@ interface VariableSelectorProps {
   onSelect: (node: VariableNode) => void;
   trigger?: React.ReactNode;
   disabled?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 const filterNodes = (nodes: VariableNode[], query: string): VariableNode[] => {
@@ -53,10 +55,22 @@ export function VariableSelector({
   onSelect,
   trigger,
   disabled,
+  open: controlledOpen,
+  onOpenChange,
 }: VariableSelectorProps) {
   const { nodes, loading } = useVariableFields(collectionId);
   const [searchTerm, setSearchTerm] = React.useState("");
-  const [open, setOpen] = React.useState(false);
+  const [internalOpen, setInternalOpen] = React.useState(false);
+
+  const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setOpen = React.useCallback(
+    (value: boolean) => {
+      onOpenChange?.(value);
+      setInternalOpen(value);
+    },
+    [onOpenChange],
+  );
+
   const isDisabled = disabled || !collectionId;
 
   const filteredNodes = React.useMemo(() => {

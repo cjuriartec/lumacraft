@@ -67,6 +67,17 @@ vi.mock("@/shared/presentation/components/editor/plugins/dnd-kit", () => ({
   DndKit: [],
 }));
 
+vi.mock("@/modules/template/presentation/components/slash-command/slash-plugin", () => ({
+  SlashPlugin: {},
+  SlashInputPlugin: {
+    withComponent: () => ({}),
+  },
+}));
+
+vi.mock("@/modules/template/presentation/components/slash-command/slash-input-element", () => ({
+  SlashInputElement: () => <span data-testid="slash-input" />,
+}));
+
 vi.mock("@/shared/presentation/components/editor/plugins/extended-nodes-kit", () => ({
   ExtendedNodesKit: [],
 }));

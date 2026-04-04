@@ -26,10 +26,12 @@
     "supabase:cloud:push": "npx supabase db push --linked"
   },
   "dependencies": {
+    "@ariakit/react": "^0.4.24",
     "@hookform/resolvers": "^5.2.2",
     "@platejs/basic-nodes": "^52.3.10",
     "@platejs/basic-styles": "^52.3.10",
     "@platejs/callout": "^52.3.10",
+    "@platejs/combobox": "^52.3.10",
     "@platejs/date": "^52.3.10",
     "@platejs/dnd": "^52.3.16",
     "@platejs/excalidraw": "^52.3.10",
