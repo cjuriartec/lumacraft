@@ -19,6 +19,7 @@ import {
   Code,
   Database,
   Highlighter,
+  PaintBucket,
   RotateCw,
   Strikethrough,
 } from "lucide-react";
@@ -300,7 +301,9 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
                   <FontColorToolbarButton
                     nodeType={FontBackgroundColorPlugin.key}
                     tooltip="Color de fondo"
-                  />
+                  >
+                    <PaintBucket size={16} />
+                  </FontColorToolbarButton>
                 </ToolbarGroup>
 
                 <ToolbarGroup>
