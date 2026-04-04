@@ -102,16 +102,19 @@ const groups: Group[] = [
     group: "Lumacraft",
     items: [
       {
+        focusEditor: false,
         icon: <Braces size={16} className="text-primary" />,
         keywords: ["variable", "campo", "dinamico", "braces"],
         label: "Variable",
         value: "variable",
         onSelect: (editor) => {
-          // Trigger the variable selector custom event
-          const event = new CustomEvent("open-variable-selector", {
-            detail: { editor },
+          // Delay opening to the next frame so slash cleanup doesn't close it immediately.
+          window.requestAnimationFrame(() => {
+            const event = new CustomEvent("open-variable-selector", {
+              detail: { editor },
+            });
+            window.dispatchEvent(event);
           });
-          window.dispatchEvent(event);
         },
       },
     ],

@@ -72,11 +72,92 @@ export function VariableSelector({
   );
 
   const isDisabled = disabled || !collectionId;
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
+  const listContainerRef = React.useRef<HTMLDivElement>(null);
 
   const filteredNodes = React.useMemo(() => {
     if (!searchTerm) return nodes;
     return filterNodes(nodes, searchTerm);
   }, [nodes, searchTerm]);
+
+  const getVisibleItems = React.useCallback(() => {
+    if (!listContainerRef.current) return [];
+
+    return Array.from(
+      listContainerRef.current.querySelectorAll<HTMLButtonElement>("[data-variable-item='true']"),
+    );
+  }, []);
+
+  React.useEffect(() => {
+    if (!open || isDisabled) return;
+
+    const frameId = window.requestAnimationFrame(() => {
+      searchInputRef.current?.focus();
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [open, isDisabled]);
+
+  const handleSearchKeyDown = React.useCallback(
+    (event: React.KeyboardEvent<HTMLInputElement>) => {
+      if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+
+      event.preventDefault();
+      const items = getVisibleItems();
+      if (!items.length) return;
+
+      if (event.key === "ArrowDown") {
+        items[0]?.focus();
+        return;
+      }
+
+      items[items.length - 1]?.focus();
+    },
+    [getVisibleItems],
+  );
+
+  const handleListKeyDown = React.useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      const items = getVisibleItems();
+      if (!items.length) return;
+
+      const activeElement = document.activeElement;
+      const currentIndex = items.findIndex((item) => item === activeElement);
+
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        const nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % items.length;
+        items[nextIndex]?.focus();
+        return;
+      }
+
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        const prevIndex =
+          currentIndex < 0 ? items.length - 1 : (currentIndex - 1 + items.length) % items.length;
+        items[prevIndex]?.focus();
+        return;
+      }
+
+      if (event.key === "Home") {
+        event.preventDefault();
+        items[0]?.focus();
+        return;
+      }
+
+      if (event.key === "End") {
+        event.preventDefault();
+        items[items.length - 1]?.focus();
+        return;
+      }
+
+      if (event.key === "Enter" && currentIndex >= 0) {
+        event.preventDefault();
+        items[currentIndex]?.click();
+      }
+    },
+    [getVisibleItems],
+  );
 
   return (
     <Popover
@@ -109,10 +190,12 @@ export function VariableSelector({
         <div className="flex items-center px-4 py-3 gap-1">
           <Search className="mr-2 h-4 w-4 shrink-0 text-muted/50" />
           <input
+            ref={searchInputRef}
             className="flex px-2 h-8 w-full rounded-md bg-transparent text-sm outline-none placeholder:text-muted/40 disabled:cursor-not-allowed disabled:opacity-50"
             placeholder="Buscar campos..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyDown={handleSearchKeyDown}
           />
         </div>
         <ScrollArea className="h-72">
@@ -125,7 +208,7 @@ export function VariableSelector({
               No se encontraron campos
             </div>
           ) : (
-            <div className="p-1">
+            <div ref={listContainerRef} className="p-1" onKeyDown={handleListKeyDown}>
               <NodeList
                 nodes={filteredNodes}
                 onSelect={(node) => {
@@ -191,6 +274,7 @@ function NodeItem({
   return (
     <div>
       <button
+        data-variable-item="true"
         onClick={() => {
           if (node.fieldType !== "RELATION") {
             onSelect(node);
@@ -199,7 +283,7 @@ function NodeItem({
           }
         }}
         className={cn(
-          "group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-surface-hover/50",
+          "group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-surface-hover/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/40",
           node.fieldType === "RELATION" ? "text-foreground/70" : "text-foreground",
         )}
         style={{ paddingLeft: `${level * 12 + 8}px` }}
