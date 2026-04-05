@@ -376,21 +376,6 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
               </div>
 
               <div className="flex items-center gap-4">
-                <div className="flex items-center gap-4 border-r border-border/40 pr-4">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 gap-2 bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary font-bold transition-all hover:scale-[1.02]"
-                    onClick={() => {
-                      setIsPreviewOpen(true);
-                      void generatePreview(plateValueToTemplateBlocks(editor.children));
-                    }}
-                  >
-                    <Eye size={14} />
-                    Generar Preview
-                  </Button>
-                </div>
-
                 <div className="flex items-center gap-2 text-[12px] font-medium transition-all duration-300">
                   {!canEdit ? (
                     <span className="text-foreground/30 font-light flex items-center gap-1.5">
@@ -424,6 +409,20 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
                       )}
                     </>
                   )}
+                </div>
+                <div className="flex items-center gap-4 border-l border-border/20 pl-4">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 gap-2.5 px-4 text-[11px] font-bold uppercase tracking-[0.15em] text-foreground/60 transition-all hover:bg-primary/5 hover:text-primary"
+                    onClick={() => {
+                      setIsPreviewOpen(true);
+                      void generatePreview(plateValueToTemplateBlocks(editor.children));
+                    }}
+                  >
+                    <Eye size={14} className="opacity-70" />
+                    Vista Previa
+                  </Button>
                 </div>
               </div>
             </div>
