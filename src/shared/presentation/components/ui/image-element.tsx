@@ -52,6 +52,8 @@ export function ImageElement(props: PlateElementProps) {
         <div
           className={cn(
             "max-w-full",
+            "flex",
+            "justify-center",
             align === "center" && "mx-auto",
             align === "right" && "ml-auto",
           )}
@@ -67,7 +69,7 @@ export function ImageElement(props: PlateElementProps) {
               minWidth: 92,
               readOnly,
             }}
-            className="rounded-lg size-full!"
+            className="rounded-lg "
           >
             <ResizeHandle
               className={cn(
