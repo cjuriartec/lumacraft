@@ -6,10 +6,13 @@ import { CollectionUseCaseFactory } from "@/modules/collection/application/colle
 import { TEMPLATE_PREVIEW_MAX_EAGER_DEPTH } from "@/modules/template/application/constants/template-preview.constants";
 import { TemplatePreviewEvent } from "@/modules/template/application/services/template-preview.types";
 import { GenerateTemplatePreviewUseCase } from "@/modules/template/application/use-cases/generate-template-preview.use-case";
+import {
+  isTemplateBlocks,
+  type TemplateBlocks,
+} from "@/modules/template/domain/types/template-blocks";
 import { EagerLoadTemplateContextResolverAdapter } from "@/modules/template/infrastructure/adapters/eager-load-template-context-resolver.adapter";
 import { SupabaseTemplateAssetUrlResolverAdapter } from "@/modules/template/infrastructure/adapters/supabase-template-asset-url-resolver.adapter";
 import { SupabaseTemplateRepository } from "@/modules/template/infrastructure/repositories/supabase-template.repository";
-import { isTemplateBlocks, type TemplateBlocks } from "@/modules/template/domain/types/template-blocks";
 import { createClient } from "@/shared/infrastructure/supabase/server";
 
 const bodySchema = z.object({

@@ -163,9 +163,10 @@ function toPlateText(text: string): PlateTextNode {
   return { text };
 }
 
-function toParagraph(text: string): PlateElementNode {
+function toParagraph(text: string, align?: string): PlateElementNode {
   return {
     type: "p",
+    ...(align ? { align } : {}),
     children: [toPlateText(text)],
   };
 }
@@ -276,6 +277,44 @@ function isImageMetadata(value: unknown): value is {
 function clampNumber(value: number, min: number, max: number): number {
   if (!Number.isFinite(value)) return min;
   return Math.max(min, Math.min(max, Math.round(value)));
+}
+
+function findImageMetadataInContext(
+  path: string,
+  context: Record<string, unknown>,
+): { bucket?: string; name?: string } | null {
+  const stack = [context];
+  const seen = new Set<unknown>();
+
+  while (stack.length > 0) {
+    const current = stack.pop()!;
+    if (!isRecord(current) || seen.has(current)) continue;
+    seen.add(current);
+
+    if (
+      current.path === path &&
+      typeof current.mimeType === "string" &&
+      current.mimeType.startsWith("image/")
+    ) {
+      return {
+        bucket: typeof current.bucket === "string" ? current.bucket : undefined,
+        name: typeof current.name === "string" ? current.name : undefined,
+      };
+    }
+
+    for (const key in current) {
+      const val = current[key];
+      if (isRecord(val)) {
+        stack.push(val);
+      } else if (Array.isArray(val)) {
+        for (const item of val) {
+          if (isRecord(item)) stack.push(item);
+        }
+      }
+    }
+  }
+
+  return null;
 }
 
 function readImageLayoutFromVariableNode(node: PlateElementNode): {
@@ -427,9 +466,13 @@ async function tryExtractSingleImageFromParagraph(
   });
 }
 
-function parseLineToBlock(line: string): PlateElementNode {
+async function parseLineToBlock(
+  line: string,
+  compileContext: CompileContext,
+  warnings: string[],
+): Promise<PlateElementNode> {
   const trimmed = line.trim();
-  if (trimmed.length === 0) return toParagraph("");
+  if (trimmed.length === 0) return toParagraph("", "justify");
 
   const headingMatch = /^(#{1,3})\s+(.+)$/.exec(trimmed);
   if (headingMatch) {
@@ -444,6 +487,7 @@ function parseLineToBlock(line: string): PlateElementNode {
   if (unorderedMatch) {
     return {
       type: "p",
+      align: "justify",
       listStyleType: "disc",
       indent: 1,
       children: [toPlateText(unorderedMatch[1])],
@@ -454,6 +498,7 @@ function parseLineToBlock(line: string): PlateElementNode {
   if (orderedMatch) {
     return {
       type: "p",
+      align: "justify",
       listStyleType: "decimal",
       indent: 1,
       children: [toPlateText(orderedMatch[1])],
@@ -464,23 +509,40 @@ function parseLineToBlock(line: string): PlateElementNode {
   if (quoteMatch) {
     return {
       type: "blockquote",
+      align: "justify",
       children: [toPlateText(quoteMatch[1])],
     };
   }
 
   const imageMatch = /^!\[([^\]]*)\]\(([^)]+)\)$/.exec(trimmed);
   if (imageMatch) {
-    return toImage(normalizeStorageUrl(imageMatch[2]), imageMatch[1] ?? "");
+    const path = imageMatch[2];
+    const metadata = findImageMetadataInContext(path, compileContext.context.root);
+    const imageUrl = await resolveImageStorageUrl(path, metadata?.bucket, compileContext, warnings);
+    return toImage(imageUrl, imageMatch[1] || metadata?.name || "image", {
+      bucket: metadata?.bucket,
+      path,
+    });
   }
 
-  return toParagraph(trimmed);
+  return toParagraph(trimmed, "justify");
 }
 
-function renderTemplateToBlocks(template: string, scope: TemplateRuntimeScope): PlateElementNode[] {
+async function renderTemplateToBlocks(
+  template: string,
+  scope: TemplateRuntimeScope,
+  compileContext: CompileContext,
+  warnings: string[],
+): Promise<PlateElementNode[]> {
   const rendered = interpolateTemplateString(template, scope);
   if (rendered.trim().length === 0) return [];
 
-  return rendered.split("\n").map(parseLineToBlock);
+  const lines = rendered.split("\n");
+  const blocks: PlateElementNode[] = [];
+  for (const line of lines) {
+    blocks.push(await parseLineToBlock(line, compileContext, warnings));
+  }
+  return blocks;
 }
 
 function extractJsonCandidate(raw: string): string | null {
@@ -498,10 +560,14 @@ function extractJsonCandidate(raw: string): string | null {
   return null;
 }
 
-function structuredBlockToPlate(block: StructuredAIDocumentBlock): PlateElementNode[] {
+async function structuredBlockToPlate(
+  block: StructuredAIDocumentBlock,
+  compileContext: CompileContext,
+  warnings: string[],
+): Promise<PlateElementNode[]> {
   switch (block.type) {
     case "paragraph":
-      return [toParagraph(block.text)];
+      return [toParagraph(block.text, "justify")];
     case "heading":
       return [
         {
@@ -513,12 +579,14 @@ function structuredBlockToPlate(block: StructuredAIDocumentBlock): PlateElementN
       return [
         {
           type: "blockquote",
+          align: "justify",
           children: [toPlateText(block.text)],
         },
       ];
     case "bullet_list":
       return block.items.map((item) => ({
         type: "p",
+        align: "justify",
         listStyleType: "disc",
         indent: 1,
         children: [toPlateText(item)],
@@ -526,18 +594,37 @@ function structuredBlockToPlate(block: StructuredAIDocumentBlock): PlateElementN
     case "ordered_list":
       return block.items.map((item) => ({
         type: "p",
+        align: "justify",
         listStyleType: "decimal",
         indent: 1,
         children: [toPlateText(item)],
       }));
-    case "image":
-      return [toImage(normalizeStorageUrl(block.url), block.alt ?? "image")];
+    case "image": {
+      const path = block.url;
+      const metadata = findImageMetadataInContext(path, compileContext.context.root);
+      const imageUrl = await resolveImageStorageUrl(
+        path,
+        metadata?.bucket,
+        compileContext,
+        warnings,
+      );
+      return [
+        toImage(imageUrl, block.alt || metadata?.name || "image", {
+          bucket: metadata?.bucket,
+          path,
+        }),
+      ];
+    }
     default:
       return [];
   }
 }
 
-function parseStructuredAIDocument(raw: string): PlateElementNode[] | null {
+async function parseStructuredAIDocument(
+  raw: string,
+  compileContext: CompileContext,
+  warnings: string[],
+): Promise<PlateElementNode[] | null> {
   const candidate = extractJsonCandidate(raw);
   if (!candidate) return null;
 
@@ -546,7 +633,11 @@ function parseStructuredAIDocument(raw: string): PlateElementNode[] | null {
     const result = structuredAIDocumentSchema.safeParse(parsed);
     if (!result.success) return null;
 
-    return result.data.blocks.flatMap((block) => structuredBlockToPlate(block));
+    const blocks: PlateElementNode[] = [];
+    for (const block of result.data.blocks) {
+      blocks.push(...(await structuredBlockToPlate(block, compileContext, warnings)));
+    }
+    return blocks;
   } catch {
     return null;
   }
@@ -600,7 +691,7 @@ async function compileTemplateAiNodeStreamed(
   const providerResult = compileContext.aiProviderFactory.create("GEMINI");
   if (!providerResult.ok) {
     warnings.push(providerResult.error.message);
-    return [toParagraph("No se pudo generar contenido IA en esta ejecucion.")];
+    return [toParagraph("No se pudo generar contenido IA en esta ejecucion.", "justify")];
   }
 
   const groundedPrompt = buildGroundedPrompt({
@@ -649,21 +740,27 @@ async function compileTemplateAiNodeStreamed(
 
   if (streamError && aiText.trim().length === 0) {
     warnings.push(streamError.message);
-    return [toParagraph("No se pudo generar contenido IA en esta ejecucion.")];
+    return [toParagraph("No se pudo generar contenido IA en esta ejecucion.", "justify")];
   }
 
   if (streamError) {
     warnings.push(`${streamError.message}. Se mostrara el contenido parcial recibido.`);
   }
 
-  const structuredBlocks = parseStructuredAIDocument(aiText);
+  const structuredBlocks = await parseStructuredAIDocument(aiText, compileContext, warnings);
   if (structuredBlocks && structuredBlocks.length > 0) {
     return structuredBlocks;
   }
 
-  return aiText
-    ? aiText.split("\n").map(parseLineToBlock)
-    : [toParagraph("No se pudo generar contenido IA en esta ejecucion.")];
+  const lines = aiText ? aiText.split("\n") : [];
+  const fallbackBlocks: PlateElementNode[] = [];
+  for (const line of lines) {
+    fallbackBlocks.push(await parseLineToBlock(line, compileContext, warnings));
+  }
+
+  return fallbackBlocks.length > 0
+    ? fallbackBlocks
+    : [toParagraph("No se pudo generar contenido IA en esta ejecucion.", "justify")];
 }
 
 async function compileParagraphNode(
@@ -763,6 +860,7 @@ async function compileParagraphNode(
   return [
     {
       ...node,
+      align: "justify",
       children: compiledChildren.length > 0 ? compiledChildren : [toPlateText("")],
     },
   ];
@@ -798,7 +896,6 @@ async function compileTemplateConditionalNode(
     path: fieldPath,
     matchedValue: stringifyTemplateValue(left),
   });
-
   const selectedTemplate = matches
     ? typeof node.thenTemplate === "string"
       ? node.thenTemplate
@@ -807,7 +904,7 @@ async function compileTemplateConditionalNode(
       ? node.elseTemplate
       : "";
 
-  return renderTemplateToBlocks(selectedTemplate, scope);
+  return await renderTemplateToBlocks(selectedTemplate, scope, compileContext, []);
 }
 
 async function compileTemplateSwitchNode(
@@ -838,7 +935,7 @@ async function compileTemplateSwitchNode(
     matchedValue: stringifyTemplateValue(value),
   });
 
-  return renderTemplateToBlocks(selectedTemplate, scope);
+  return await renderTemplateToBlocks(selectedTemplate, scope, compileContext, []);
 }
 
 async function compileTemplateListNode(
@@ -865,7 +962,7 @@ async function compileTemplateListNode(
 
   if (!Array.isArray(sourceValue) || sourceValue.length === 0) {
     const emptyText = typeof node.emptyText === "string" ? node.emptyText : "";
-    return renderTemplateToBlocks(emptyText, scope);
+    return renderTemplateToBlocks(emptyText, scope, compileContext, []);
   }
 
   const itemAlias =
@@ -882,7 +979,7 @@ async function compileTemplateListNode(
       },
     };
 
-    blocks.push(...renderTemplateToBlocks(itemTemplate, itemScope));
+    blocks.push(...(await renderTemplateToBlocks(itemTemplate, itemScope, compileContext, [])));
   }
 
   return blocks;
@@ -949,7 +1046,7 @@ async function compileNode(
         ];
       }
 
-      return [toParagraph(resolveVariableText(value))];
+      return [toParagraph(resolveVariableText(value), "justify")];
     }
     default: {
       const children = Array.isArray(node.children) ? node.children : [];

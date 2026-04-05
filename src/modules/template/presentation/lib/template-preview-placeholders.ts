@@ -1,7 +1,7 @@
 "use client";
 
-import { TemplatePreviewBlockMeta } from "../../application/services/template-preview-block-metadata";
 import { TemplatePreviewBlockState } from "../../application/services/template-preview.types";
+import { TemplatePreviewBlockMeta } from "../../application/services/template-preview-block-metadata";
 import { TemplateBlocks } from "../../domain/types/template-blocks";
 
 function escapeText(value: string): string {
@@ -59,11 +59,7 @@ function createPlaceholderNode(
 ) {
   const label = getBlockLabel(meta.blockType);
   const statusLabel =
-    state?.status === "error"
-      ? "Error"
-      : state?.status === "resolved"
-        ? "Resuelto"
-        : "Procesando";
+    state?.status === "error" ? "Error" : state?.status === "resolved" ? "Resuelto" : "Procesando";
   const detail = buildStateLine(state);
 
   return {

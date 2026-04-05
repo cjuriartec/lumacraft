@@ -88,10 +88,12 @@ function projectContextByPaths(
     return cloneJsonValue(context);
   }
 
-  if (paths.some((path) => {
-    const normalizedPath = path.trim();
-    return !normalizedPath || normalizedPath === "root" || normalizedPath === "record";
-  })) {
+  if (
+    paths.some((path) => {
+      const normalizedPath = path.trim();
+      return !normalizedPath || normalizedPath === "root" || normalizedPath === "record";
+    })
+  ) {
     return cloneJsonValue(context);
   }
 
