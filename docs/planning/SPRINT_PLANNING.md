@@ -103,13 +103,14 @@ _Objetivo: Implementar el backend de automatizaciones y webhooks._
 - **US-7.02 (5 SP)**: Implementación de Supabase Webhooks y pg_cron (o Inngest).
 - **Total Estimado**: 13 SP.
 
-### **Sprint 9: Relaciones Bidireccionales (Reverse Lookups)**
+### **Sprint 9: Relaciones Avanzadas y Consistencia**
 
-_Objetivo: Descubribilidad en el grafo de datos sin impacto en el rendimiento base._
+_Objetivo: Resolver la ambigüedad en la cardinalidad y habilitar la navegación bidireccional del grafo._
 
-- **US-8.01 (8 SP)**: Arquitectura de Campo Virtual (tipo `REVERSE_LOOKUP`) en el esquema (No almacenado en JSONB).
-- **US-8.02 (5 SP)**: Endpoint para resolución perezosa o Vista PostgreSQL inteligente para lectura de dependencias.
-- **Total Estimado**: 13 SP.
+- **US-8.01 (5 SP)**: Soporte para relación `MANY_TO_ONE` (N:1) y selección única obligatoria en UI/Zod.
+- **US-8.02 (3 SP)**: Refuerzo de validaciones de cardinalidad en la capa de Dominio (`DataRecord`) y Repositorios.
+- **US-8.03 (8 SP)**: Arquitectura de Campo Virtual (tipo `REVERSE_LOOKUP`) para navegación bidireccional.
+- **Total Estimado**: 16 SP.
 
 ---
 
