@@ -49,27 +49,19 @@ export function ImageElement(props: PlateElementProps) {
   return (
     <PlateElement {...props} className={cn("my-4", props.className)}>
       <figure className="group relative" contentEditable={false}>
-        <div
-          className={cn(
-            "max-w-full",
-            "flex",
-            "justify-center",
-            align === "center" && "mx-auto",
-            align === "right" && "ml-auto",
-          )}
-          style={{
-            width: typeof widthPercent === "number" ? `${widthPercent}%` : undefined,
-            maxWidth: "100%",
-          }}
-        >
+        <div className={cn()}>
           <Resizable
             options={{
               align,
               maxWidth: "100%",
-              minWidth: 92,
+              minWidth: typeof widthPercent === "number" ? `${widthPercent}%` : undefined,
               readOnly,
             }}
-            className="rounded-lg "
+            className={cn(
+              "rounded-lg",
+              align === "center" && "mx-auto",
+              align === "right" && "ml-auto",
+            )}
           >
             <ResizeHandle
               className={cn(

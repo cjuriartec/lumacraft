@@ -36,7 +36,7 @@ export const ExtendedNodesKit = [
   ...BasicNodesKit,
   TextAlignPlugin.configure({
     inject: {
-      targetPlugins: ["p", "h1", "h2", "h3", "blockquote"],
+      targetPlugins: ["p", "h1", "h2", "h3", "blockquote", ImagePlugin.key],
     },
   }),
   FontSizePlugin,

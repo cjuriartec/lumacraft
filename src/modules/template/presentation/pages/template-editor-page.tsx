@@ -44,6 +44,7 @@ import { Button } from "@/shared/presentation/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/shared/presentation/components/ui/dialog";
@@ -620,6 +621,9 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
                       <DialogTitle className="text-[13px] font-bold uppercase tracking-[0.2em] text-foreground/80">
                         Vista Previa
                       </DialogTitle>
+                      <DialogDescription className="sr-only">
+                        Previsualiza el documento generado con los datos del registro seleccionado.
+                      </DialogDescription>
 
                       <div className="flex items-center gap-3 border-l border-border/10 pl-6">
                         <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/50">
