@@ -19,11 +19,13 @@ import {
   Cloud,
   Code,
   Database,
+  Eye,
   GitBranch,
   Highlighter,
   ListTree,
   PaintBucket,
   RotateCw,
+  Sparkles,
   SquareSplitHorizontal,
   Strikethrough,
 } from "lucide-react";
@@ -39,6 +41,12 @@ import { DndKit } from "@/shared/presentation/components/editor/plugins/dnd-kit"
 import { ExtendedNodesKit } from "@/shared/presentation/components/editor/plugins/extended-nodes-kit";
 import { AlignToolbarButton } from "@/shared/presentation/components/ui/align-toolbar-button";
 import { Button } from "@/shared/presentation/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/shared/presentation/components/ui/dialog";
 import { Editor, EditorContainer } from "@/shared/presentation/components/ui/editor";
 import { FixedToolbar } from "@/shared/presentation/components/ui/fixed-toolbar";
 import { FontColorToolbarButton } from "@/shared/presentation/components/ui/font-color-toolbar-button";
@@ -59,6 +67,13 @@ import {
 } from "@/shared/presentation/components/ui/list-toolbar-button";
 import { MarkToolbarButton } from "@/shared/presentation/components/ui/mark-toolbar-button";
 import { MediaToolbarButton } from "@/shared/presentation/components/ui/media-toolbar-button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/presentation/components/ui/select";
 import { TableToolbarButton } from "@/shared/presentation/components/ui/table-toolbar-button";
 import { ToolbarButton, ToolbarGroup } from "@/shared/presentation/components/ui/toolbar";
 import { TooltipProvider } from "@/shared/presentation/components/ui/tooltip";
@@ -109,6 +124,41 @@ interface TemplateEditorPageProps {
   templateId: string;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function toPreviewLabelValue(value: unknown): string {
+  if (typeof value === "string") return value.trim();
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+
+  if (isRecord(value) && typeof value.name === "string" && value.name.trim().length > 0) {
+    return value.name.trim();
+  }
+
+  if (Array.isArray(value)) {
+    const parts = value
+      .map((item) => {
+        if (typeof item === "string" || typeof item === "number" || typeof item === "boolean") {
+          return String(item);
+        }
+
+        if (isRecord(item) && typeof item.name === "string") {
+          return item.name;
+        }
+
+        return "";
+      })
+      .filter((item) => item.trim().length > 0);
+
+    if (parts.length > 0) {
+      return parts.join(", ");
+    }
+  }
+
+  return "";
+}
+
 export default function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
   const { template, loading, saveStatus, handleBlocksChange, updateName } =
     useTemplateEditor(templateId);
@@ -123,10 +173,8 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
     loading: previewLoading,
     error: previewError,
     warnings: previewWarnings,
-    blockStates: previewBlockStates,
     blocks: previewBlocks,
     generate: generatePreview,
-    cancel: cancelPreview,
   } = useTemplatePreview({
     templateId,
     collectionId: template?.collectionId,
@@ -135,6 +183,7 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
 
   const [localName, setLocalName] = React.useState(template?.name || "");
   const [isVariableSelectorOpen, setIsVariableSelectorOpen] = React.useState(false);
+  const [isPreviewOpen, setIsPreviewOpen] = React.useState(false);
 
   const {
     nodes: variableCatalog,
@@ -296,7 +345,7 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
         }}
       >
         <TooltipProvider disableHoverableContent>
-          <div className="flex h-full flex-col">
+          <div className="flex h-dvh flex-col overflow-hidden bg-background">
             {/* Editor Header Bar */}
             <div className="sticky top-0 z-20 flex items-center justify-between px-6 py-3 backdrop-blur-md">
               <div className="flex items-center gap-4">
@@ -327,6 +376,21 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
               </div>
 
               <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 border-r border-border/40 pr-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 gap-2 bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary font-bold transition-all hover:scale-[1.02]"
+                    onClick={() => {
+                      setIsPreviewOpen(true);
+                      void generatePreview(plateValueToTemplateBlocks(editor.children));
+                    }}
+                  >
+                    <Eye size={14} />
+                    Generar Preview
+                  </Button>
+                </div>
+
                 <div className="flex items-center gap-2 text-[12px] font-medium transition-all duration-300">
                   {!canEdit ? (
                     <span className="text-foreground/30 font-light flex items-center gap-1.5">
@@ -538,34 +602,87 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
             >
               <div className="mx-auto max-w-5xl space-y-6">
                 <ResizableProvider>
-                  <EditorContainer>
+                  <EditorContainer className="overflow-visible shadow-none border-none bg-transparent">
                     <Editor
                       placeholder={canEdit ? "Escribe '/' para ver comandos rápidos..." : ""}
                       variant="demo"
-                      className="min-h-[800px]"
+                      className="min-h-0 border-none shadow-none pb-10!"
                     />
                   </EditorContainer>
                 </ResizableProvider>
-
-                <TemplatePreviewPanel
-                  collectionLinked={Boolean(template.collectionId)}
-                  records={previewRecords}
-                  recordsLoading={previewRecordsLoading}
-                  selectedRecordId={selectedRecordId}
-                  setSelectedRecordId={setSelectedRecordId}
-                  loading={previewLoading}
-                  error={previewError}
-                  warnings={previewWarnings}
-                  blocks={previewBlocks}
-                  blockStates={previewBlockStates}
-                  primaryFieldName={primaryFieldName}
-                  onGenerate={() => {
-                    void generatePreview(plateValueToTemplateBlocks(editor.children));
-                  }}
-                  onCancel={cancelPreview}
-                />
               </div>
             </div>
+
+            <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+              <DialogContent className="flex h-[90vh] w-full max-w-[95vw] flex-col overflow-hidden border-none bg-background p-0 shadow-2xl ring-1 ring-border/5">
+                <DialogHeader className="shrink-0 border-b border-border/5 bg-surface/10 px-8 py-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-6">
+                      <DialogTitle className="text-[13px] font-bold uppercase tracking-[0.2em] text-foreground/80">
+                        Vista Previa
+                      </DialogTitle>
+
+                      <div className="flex items-center gap-3 border-l border-border/10 pl-6">
+                        <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/50">
+                          Registro:
+                        </span>
+                        <Select
+                          value={selectedRecordId}
+                          onValueChange={setSelectedRecordId}
+                          disabled={
+                            !template.collectionId || previewRecordsLoading || previewLoading
+                          }
+                        >
+                          <SelectTrigger className="h-8 w-[240px] border-none bg-transparent px-1 text-sm font-medium shadow-none focus:ring-0">
+                            <SelectValue placeholder="Selecciona un registro" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {previewRecords.map((record) => {
+                              const primaryValue = primaryFieldName
+                                ? toPreviewLabelValue(record.data[primaryFieldName])
+                                : "";
+                              const optionLabel =
+                                primaryValue.length > 0 ? primaryValue : record.id.slice(0, 8);
+
+                              return (
+                                <SelectItem key={record.id} value={record.id}>
+                                  {optionLabel}
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 mr-4">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="default"
+                        className="h-8 gap-2 px-4 text-[12px] font-bold transition-all hover:scale-[1.02]"
+                        disabled={!template.collectionId || !selectedRecordId || previewLoading}
+                        onClick={() => {
+                          void generatePreview(plateValueToTemplateBlocks(editor.children));
+                        }}
+                      >
+                        <Sparkles size={14} />
+                        {previewLoading ? "Generando..." : "Refrescar"}
+                      </Button>
+                    </div>
+                  </div>
+                </DialogHeader>
+
+                <div className="flex-1 overflow-hidden">
+                  <TemplatePreviewPanel
+                    blocks={previewBlocks}
+                    error={previewError}
+                    loading={previewLoading}
+                    warnings={previewWarnings}
+                  />
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         </TooltipProvider>
       </Plate>
