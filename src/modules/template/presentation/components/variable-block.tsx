@@ -1,6 +1,14 @@
 "use client";
 
-import { Image as ImageIcon, Maximize2, RectangleHorizontal } from "lucide-react";
+import {
+  AlignCenter,
+  AlignJustify,
+  AlignLeft,
+  AlignRight,
+  Image as ImageIcon,
+  Maximize2,
+  RectangleHorizontal,
+} from "lucide-react";
 import type { Descendant, TElement } from "platejs";
 import {
   createPlatePlugin,
@@ -31,6 +39,7 @@ export interface VariableElementNode extends TElement {
   fieldType?: FieldTypeValue;
   imageWidthPercent?: number;
   imageHeightPx?: number;
+  align?: "left" | "center" | "right" | "justify";
 }
 
 export const VariablePlugin = createPlatePlugin({
@@ -76,9 +85,12 @@ export function VariableElement(props: PlateElementProps<VariableElementNode>) {
   const readOnly = useReadOnly();
   const widthPercent = getImageWidthPercent(element);
   const heightPx = getImageHeightPx(element);
+  const align = element.align ?? "left";
 
   const updateLayout = React.useCallback(
-    (patch: Partial<Pick<VariableElementNode, "imageWidthPercent" | "imageHeightPx">>) => {
+    (
+      patch: Partial<Pick<VariableElementNode, "imageWidthPercent" | "imageHeightPx" | "align">>,
+    ) => {
       const path = editor.api.findPath(element);
       if (!path) return;
       editor.tf.setNodes(patch, { at: path });
@@ -109,7 +121,12 @@ export function VariableElement(props: PlateElementProps<VariableElementNode>) {
     <span
       {...attributes}
       contentEditable={false}
-      className="my-2 inline-flex w-full max-w-full flex-col gap-2 align-middle"
+      className={cn(
+        "my-2 inline-flex w-full max-w-full flex-col gap-2 align-middle",
+        align === "center" && "items-center",
+        align === "right" && "items-end",
+        align === "justify" && "items-stretch",
+      )}
       data-variable-field-type={element.fieldType ?? "TEXT"}
     >
       <span
@@ -118,7 +135,7 @@ export function VariableElement(props: PlateElementProps<VariableElementNode>) {
           showToolbar && "ring-2 ring-primary/35",
         )}
         style={{
-          width: `${previewWidthPx}px`,
+          width: align === "justify" ? "100%" : `${previewWidthPx}px`,
           height: `${heightPx}px`,
           maxWidth: "100%",
         }}
@@ -135,11 +152,66 @@ export function VariableElement(props: PlateElementProps<VariableElementNode>) {
 
       {showToolbar && (
         <span
-          className="inline-flex w-full max-w-full flex-wrap items-center gap-2 rounded-md border border-border/60 bg-surface/95 px-2 py-1 text-xs shadow-sm"
+          className="inline-flex w-full max-w-full flex-wrap items-center gap-x-2 gap-y-1.5 rounded-md border border-border/60 bg-surface/95 px-2 py-1 text-xs shadow-sm"
           onMouseDown={(event) => {
             event.stopPropagation();
           }}
         >
+          <div className="flex items-center gap-1.5 border-r border-border/40 pr-2">
+            <button
+              type="button"
+              className={cn(
+                "flex h-6 w-6 items-center justify-center rounded transition-colors",
+                align === "left"
+                  ? "bg-primary/15 text-primary"
+                  : "text-muted-foreground hover:bg-muted/30",
+              )}
+              onClick={() => updateLayout({ align: "left" })}
+              title="Alinear Izquierda"
+            >
+              <AlignLeft size={14} />
+            </button>
+            <button
+              type="button"
+              className={cn(
+                "flex h-6 w-6 items-center justify-center rounded transition-colors",
+                align === "center"
+                  ? "bg-primary/15 text-primary"
+                  : "text-muted-foreground hover:bg-muted/30",
+              )}
+              onClick={() => updateLayout({ align: "center" })}
+              title="Centrar"
+            >
+              <AlignCenter size={14} />
+            </button>
+            <button
+              type="button"
+              className={cn(
+                "flex h-6 w-6 items-center justify-center rounded transition-colors",
+                align === "right"
+                  ? "bg-primary/15 text-primary"
+                  : "text-muted-foreground hover:bg-muted/30",
+              )}
+              onClick={() => updateLayout({ align: "right" })}
+              title="Alinear Derecha"
+            >
+              <AlignRight size={14} />
+            </button>
+            <button
+              type="button"
+              className={cn(
+                "flex h-6 w-6 items-center justify-center rounded transition-colors",
+                align === "justify"
+                  ? "bg-primary/15 text-primary"
+                  : "text-muted-foreground hover:bg-muted/30",
+              )}
+              onClick={() => updateLayout({ align: "justify" })}
+              title="Justificar"
+            >
+              <AlignJustify size={14} />
+            </button>
+          </div>
+
           <span className="inline-flex items-center gap-1 text-muted-foreground">
             <RectangleHorizontal size={12} />
             Ancho

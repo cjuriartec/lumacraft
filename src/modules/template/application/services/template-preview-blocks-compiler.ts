@@ -179,6 +179,7 @@ function toImage(
     path?: string;
     widthPercent?: number;
     heightPx?: number;
+    align?: "left" | "center" | "right" | "justify";
   },
 ): PlateElementNode {
   return {
@@ -199,6 +200,7 @@ function toImage(
           imageHeightPx: options.heightPx,
         }
       : {}),
+    ...(options?.align ? { align: options.align } : {}),
     children: [toPlateText(alt)],
   };
 }
@@ -320,14 +322,19 @@ function findImageMetadataInContext(
 function readImageLayoutFromVariableNode(node: PlateElementNode): {
   widthPercent?: number;
   heightPx?: number;
+  align?: "left" | "center" | "right" | "justify";
 } {
   const widthRaw = node.imageWidthPercent;
   const heightRaw = node.imageHeightPx;
 
   const widthPercent = typeof widthRaw === "number" ? clampNumber(widthRaw, 0, 100) : undefined;
   const heightPx = typeof heightRaw === "number" ? clampNumber(heightRaw, 48, 1200) : undefined;
+  const align =
+    typeof node.align === "string" && ["left", "center", "right", "justify"].includes(node.align)
+      ? (node.align as "left" | "center" | "right" | "justify")
+      : undefined;
 
-  return { widthPercent, heightPx };
+  return { widthPercent, heightPx, align };
 }
 
 function isAbsoluteUrl(url: string): boolean {
@@ -463,6 +470,7 @@ async function tryExtractSingleImageFromParagraph(
     path: value.path,
     widthPercent: layout.widthPercent,
     heightPx: layout.heightPx,
+    align: layout.align,
   });
 }
 
