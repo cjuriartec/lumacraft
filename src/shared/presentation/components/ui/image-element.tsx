@@ -67,7 +67,7 @@ export function ImageElement(props: PlateElementProps) {
               minWidth: 92,
               readOnly,
             }}
-            className="rounded-lg"
+            className="rounded-lg size-full!"
           >
             <ResizeHandle
               className={cn(
