@@ -1,9 +1,10 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { makeTemplate, resetFactories } from "@/__tests__/factories/domain-factories";
 import type { Template } from "@/modules/template/domain/entities/template.entity";
+import { JsonArray } from "@/modules/template/domain/types/template-blocks";
 import TemplateEditorPage from "@/modules/template/presentation/pages/template-editor-page";
 
 const templateEditorState = vi.hoisted(() => ({
@@ -15,15 +16,65 @@ const templateEditorState = vi.hoisted(() => ({
 }));
 
 const collectionsState = vi.hoisted(() => ({
-  collections: [] as Array<{ id: string; name: string; displayName?: string }>,
+  collections: [] as Array<{
+    id: string;
+    name: string;
+    displayName?: string;
+    primaryFieldName?: string | null;
+  }>,
+}));
+
+const previewState = vi.hoisted(() => ({
+  records: [] as Array<{ id: string; data: Record<string, unknown> }>,
+  recordsLoading: false,
+  selectedRecordId: "",
+  setSelectedRecordId: vi.fn(),
+  loading: false,
+  error: null as string | null,
+  warnings: [] as string[],
+  requestId: null as string | null,
+  blockStates: [] as Array<{
+    blockId: string;
+    blockIndex: number;
+    blockType: string;
+    status: "pending" | "resolved" | "error";
+  }>,
+  blocks: [] as JsonArray,
+  generate: vi.fn(),
+  cancel: vi.fn(),
+}));
+
+const plateEditorState = vi.hoisted(() => ({
+  children: [] as Array<Record<string, unknown>>,
+}));
+
+const variableCatalogState = vi.hoisted(() => ({
+  loading: false,
+  nodes: [],
 }));
 
 vi.mock("@/modules/template/presentation/hooks/use-template-editor", () => ({
   useTemplateEditor: () => templateEditorState,
 }));
 
+vi.mock("@/modules/template/presentation/hooks/use-template-preview", () => ({
+  useTemplatePreview: () => previewState,
+}));
+
+vi.mock("@/modules/template/presentation/hooks/use-variable-fields", () => ({
+  useVariableFields: () => variableCatalogState,
+}));
+
 vi.mock("@/modules/collection/presentation/hooks/use-collections", () => ({
   useCollections: () => collectionsState,
+}));
+
+vi.mock("@/modules/authorization/presentation/providers/permission-provider", () => ({
+  usePermissions: () => ({
+    can: () => true,
+    isOwner: true,
+    isSuperAdmin: false,
+  }),
 }));
 
 vi.mock("@/shared/presentation/providers/breadcrumb-provider", () => ({
@@ -55,12 +106,55 @@ vi.mock("platejs/react", () => ({
   }),
   Plate: ({ children }: { children: ReactNode }) => <div data-testid="plate">{children}</div>,
   usePlateEditor: () => ({
+    children: plateEditorState.children,
     tf: {
       setValue: vi.fn(),
       insertNodes: vi.fn(),
       focus: vi.fn(),
     },
   }),
+}));
+
+vi.mock("@/modules/template/presentation/components/template-preview-panel", () => ({
+  TemplatePreviewPanel: ({
+    collectionLinked,
+    primaryFieldName,
+    records,
+    selectedRecordId,
+    setSelectedRecordId,
+    onGenerate,
+  }: {
+    collectionLinked: boolean;
+    primaryFieldName?: string | null;
+    records: Array<{ id: string; data: Record<string, unknown> }>;
+    selectedRecordId: string;
+    setSelectedRecordId: (recordId: string) => void;
+    onGenerate: () => void;
+  }) => (
+    <div data-testid="template-preview-panel">
+      {!collectionLinked && <p>Vincula una colección a la plantilla para habilitar el preview.</p>}
+      <select
+        value={selectedRecordId}
+        onChange={(event) => setSelectedRecordId(event.target.value)}
+      >
+        {records.map((record) => {
+          const primaryValue =
+            primaryFieldName && typeof record.data[primaryFieldName] === "string"
+              ? (record.data[primaryFieldName] as string)
+              : record.id.slice(0, 8);
+
+          return (
+            <option key={record.id} value={record.id}>
+              {primaryValue}
+            </option>
+          );
+        })}
+      </select>
+      <button type="button" onClick={onGenerate}>
+        Generar Preview
+      </button>
+    </div>
+  ),
 }));
 
 vi.mock("@/shared/presentation/components/editor/plugins/dnd-kit", () => ({
@@ -76,6 +170,22 @@ vi.mock("@/modules/template/presentation/components/slash-command/slash-plugin",
 
 vi.mock("@/modules/template/presentation/components/slash-command/slash-input-element", () => ({
   SlashInputElement: () => <span data-testid="slash-input" />,
+}));
+
+vi.mock("@/modules/template/presentation/components/template-logic-blocks", () => ({
+  TemplateLogicBlocksPluginKit: [],
+  TEMPLATE_CONDITIONAL_TYPE: "template_conditional",
+  TEMPLATE_LIST_TYPE: "template_list",
+  TEMPLATE_SWITCH_TYPE: "template_switch",
+  TEMPLATE_AI_TYPE: "template_ai",
+  createConditionalElement: () => ({ type: "template_conditional", children: [{ text: "" }] }),
+  createListElement: () => ({ type: "template_list", children: [{ text: "" }] }),
+  createSwitchElement: () => ({ type: "template_switch", children: [{ text: "" }] }),
+  createAIElement: () => ({ type: "template_ai", children: [{ text: "" }] }),
+  TemplateConditionalElement: () => <div data-testid="conditional-element" />,
+  TemplateListElement: () => <div data-testid="list-element" />,
+  TemplateSwitchElement: () => <div data-testid="switch-element" />,
+  TemplateAIElement: () => <div data-testid="ai-element" />,
 }));
 
 vi.mock("@/shared/presentation/components/editor/plugins/extended-nodes-kit", () => ({
@@ -105,6 +215,9 @@ vi.mock("@/shared/presentation/components/ui/fixed-toolbar", () => ({
 
 vi.mock("@/shared/presentation/components/ui/toolbar", () => ({
   ToolbarGroup: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  ToolbarButton: ({ children }: { children: ReactNode }) => (
+    <button type="button">{children}</button>
+  ),
 }));
 
 vi.mock("@/shared/presentation/components/ui/tooltip", () => ({
@@ -185,6 +298,20 @@ describe("TemplateEditorPage", () => {
     templateEditorState.saveStatus = "idle";
     templateEditorState.handleBlocksChange.mockReset();
     templateEditorState.updateName.mockReset();
+    previewState.setSelectedRecordId.mockReset();
+    previewState.generate.mockReset();
+    previewState.cancel.mockReset();
+    previewState.records = [];
+    previewState.recordsLoading = false;
+    previewState.selectedRecordId = "";
+    previewState.loading = false;
+    previewState.error = null;
+    previewState.warnings = [];
+    previewState.requestId = null;
+    previewState.blockStates = [];
+    plateEditorState.children = [];
+    variableCatalogState.loading = false;
+    variableCatalogState.nodes = [];
     templateEditorState.template = makeTemplate({
       id: "template-1",
       collectionId: null,
@@ -199,8 +326,80 @@ describe("TemplateEditorPage", () => {
 
     expect(screen.getByTestId("variable-selector")).toBeDisabled();
     expect(screen.getByText("Vincula una colección para insertar variables.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Vincula una colección a la plantilla para habilitar el preview."),
+    ).toBeInTheDocument();
     expect(screen.getByText("indent")).toBeInTheDocument();
     expect(screen.getByText("outdent")).toBeInTheDocument();
     expect(screen.getAllByText("font-color")).toHaveLength(2);
+  });
+
+  it("shows the collection primary field as record label in preview selector", () => {
+    templateEditorState.template = makeTemplate({
+      id: "template-1",
+      collectionId: "collection-1",
+      blocks: [],
+      name: "Contrato Base",
+    });
+
+    collectionsState.collections = [
+      {
+        id: "collection-1",
+        name: "clientes",
+        displayName: "Clientes",
+        primaryFieldName: "nombre",
+      },
+    ];
+
+    previewState.records = [
+      {
+        id: "c6f6f5ca-1f76-4d76-b09e-2eb927f98a11",
+        data: {
+          nombre: "Juanito Alcachofa",
+        },
+      },
+    ];
+    previewState.selectedRecordId = "c6f6f5ca-1f76-4d76-b09e-2eb927f98a11";
+
+    render(<TemplateEditorPage templateId="template-1" />);
+
+    expect(screen.getByRole("option", { name: "Juanito Alcachofa" })).toBeInTheDocument();
+  });
+
+  it("generates preview with the current editor blocks instead of persisted template blocks", () => {
+    templateEditorState.template = makeTemplate({
+      id: "template-1",
+      collectionId: "collection-1",
+      blocks: [{ type: "p", children: [{ text: "Persistido" }] }] as JsonArray,
+      name: "Contrato Base",
+    });
+
+    collectionsState.collections = [
+      {
+        id: "collection-1",
+        name: "clientes",
+        displayName: "Clientes",
+        primaryFieldName: "nombre",
+      },
+    ];
+
+    previewState.records = [
+      {
+        id: "record-1",
+        data: {
+          nombre: "Ana",
+        },
+      },
+    ];
+    previewState.selectedRecordId = "record-1";
+    plateEditorState.children = [{ type: "p", children: [{ text: "Desde editor" }] }];
+
+    render(<TemplateEditorPage templateId="template-1" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Generar Preview" }));
+
+    expect(previewState.generate).toHaveBeenCalledWith([
+      { type: "p", children: [{ text: "Desde editor" }] },
+    ]);
   });
 });

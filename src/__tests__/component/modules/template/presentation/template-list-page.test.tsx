@@ -97,7 +97,10 @@ describe("TemplateListPage", () => {
   it("renders empty state when there are no templates", () => {
     render(<TemplateListPage />);
 
-    expect(screen.getByText("Sin plantillas todavía")).toBeInTheDocument();
+    expect(screen.getByText("Sin plantillas")).toBeInTheDocument();
+    expect(
+      screen.getByText("No se encontraron plantillas. Comienza creando una nueva."),
+    ).toBeInTheDocument();
   });
 
   it("delegates deletion to useTemplates", () => {
@@ -107,7 +110,7 @@ describe("TemplateListPage", () => {
 
     render(<TemplateListPage />);
 
-    fireEvent.click(screen.getByLabelText("Eliminar template Contrato"));
+    fireEvent.click(screen.getByTitle("Eliminar"));
     expect(templatesState.deleteTemplate).toHaveBeenCalledWith("template-1");
   });
 
@@ -132,7 +135,7 @@ describe("TemplateListPage", () => {
 
     render(<TemplateListPage />);
 
-    fireEvent.click(screen.getByLabelText("Configurar template Contrato"));
+    fireEvent.click(screen.getByTitle("Configuración"));
     fireEvent.click(screen.getByText("submit-update"));
 
     await waitFor(() => {

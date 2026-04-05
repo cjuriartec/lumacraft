@@ -14,21 +14,26 @@ import { BlockSelectionPlugin } from "@platejs/selection/react";
 import {
   AlertCircle,
   ArrowLeft,
+  BrainCircuit,
   CheckCircle2,
   Cloud,
   Code,
   Database,
+  GitBranch,
   Highlighter,
+  ListTree,
   PaintBucket,
   RotateCw,
+  SquareSplitHorizontal,
   Strikethrough,
 } from "lucide-react";
 import Link from "next/link";
-import { Plate, usePlateEditor } from "platejs/react";
+import { Plate, type PlateElementProps, usePlateEditor } from "platejs/react";
 import * as React from "react";
 
 import { usePermissions } from "@/modules/authorization/presentation/providers/permission-provider";
 import { useCollections } from "@/modules/collection/presentation/hooks/use-collections";
+import { TEMPLATE_PREVIEW_MAX_EAGER_DEPTH } from "@/modules/template/application/constants/template-preview.constants";
 import { cn, getShortcutText } from "@/shared/lib/utils";
 import { DndKit } from "@/shared/presentation/components/editor/plugins/dnd-kit";
 import { ExtendedNodesKit } from "@/shared/presentation/components/editor/plugins/extended-nodes-kit";
@@ -55,17 +60,46 @@ import {
 import { MarkToolbarButton } from "@/shared/presentation/components/ui/mark-toolbar-button";
 import { MediaToolbarButton } from "@/shared/presentation/components/ui/media-toolbar-button";
 import { TableToolbarButton } from "@/shared/presentation/components/ui/table-toolbar-button";
-import { ToolbarGroup } from "@/shared/presentation/components/ui/toolbar";
+import { ToolbarButton, ToolbarGroup } from "@/shared/presentation/components/ui/toolbar";
 import { TooltipProvider } from "@/shared/presentation/components/ui/tooltip";
 import { TurnIntoToolbarButton } from "@/shared/presentation/components/ui/turn-into-toolbar-button";
 import { useBreadcrumbs } from "@/shared/presentation/providers/breadcrumb-provider";
 
 import { SlashInputElement } from "../components/slash-command/slash-input-element";
 import { SlashInputPlugin, SlashPlugin } from "../components/slash-command/slash-plugin";
-import type { VariableElementNode } from "../components/variable-block";
-import { VARIABLE_TYPE, VariableElement, VariablePlugin } from "../components/variable-block";
+import {
+  createAIElement,
+  createConditionalElement,
+  createListElement,
+  createSwitchElement,
+  TEMPLATE_AI_TYPE,
+  TEMPLATE_CONDITIONAL_TYPE,
+  TEMPLATE_LIST_TYPE,
+  TEMPLATE_SWITCH_TYPE,
+  TemplateAIElement,
+  type TemplateAIElementNode,
+  TemplateConditionalElement,
+  type TemplateConditionalElementNode,
+  TemplateListElement,
+  type TemplateListElementNode,
+  TemplateLogicBlocksPluginKit,
+  TemplateSwitchElement,
+  type TemplateSwitchElementNode,
+} from "../components/template-logic-blocks";
+import { TemplatePreviewPanel } from "../components/template-preview-panel";
+import {
+  DEFAULT_IMAGE_VARIABLE_HEIGHT_PX,
+  DEFAULT_IMAGE_VARIABLE_WIDTH_PERCENT,
+  VARIABLE_TYPE,
+  VariableElement,
+  type VariableElementNode,
+  VariablePlugin,
+} from "../components/variable-block";
 import { VariableSelector } from "../components/variable-selector";
+import { TemplateVariableCatalogProvider } from "../contexts/template-variable-catalog-context";
 import { useTemplateEditor } from "../hooks/use-template-editor";
+import { useTemplatePreview } from "../hooks/use-template-preview";
+import { useVariableFields } from "../hooks/use-variable-fields";
 import {
   plateValueToTemplateBlocks,
   templateBlocksToPlateValue,
@@ -81,9 +115,36 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
   const { collections } = useCollections();
 
   const { can, isOwner, isSuperAdmin } = usePermissions();
+  const {
+    records: previewRecords,
+    recordsLoading: previewRecordsLoading,
+    selectedRecordId,
+    setSelectedRecordId,
+    loading: previewLoading,
+    error: previewError,
+    warnings: previewWarnings,
+    blockStates: previewBlockStates,
+    blocks: previewBlocks,
+    generate: generatePreview,
+    cancel: cancelPreview,
+  } = useTemplatePreview({
+    templateId,
+    collectionId: template?.collectionId,
+    accountId: template?.accountId,
+  });
 
   const [localName, setLocalName] = React.useState(template?.name || "");
   const [isVariableSelectorOpen, setIsVariableSelectorOpen] = React.useState(false);
+
+  const {
+    nodes: variableCatalog,
+    loading: variableCatalogLoading,
+    error: variableCatalogError,
+  } = useVariableFields({
+    collectionId: template?.collectionId,
+    recordId: selectedRecordId || null,
+    depth: TEMPLATE_PREVIEW_MAX_EAGER_DEPTH,
+  });
 
   const canEdit = template?.collectionId
     ? can(template.collectionId, "update")
@@ -119,11 +180,15 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
     };
   }, [canEdit]);
 
-  const collectionName = React.useMemo(() => {
-    if (!template?.collectionId) return "N/A";
-    const c = collections.find((col) => col.id === template.collectionId);
-    return c ? c.displayName || c.name : "Colección";
-  }, [template, collections]);
+  const activeCollection = template?.collectionId
+    ? (collections.find((col) => col.id === template.collectionId) ?? null)
+    : null;
+
+  const collectionName = activeCollection
+    ? activeCollection.displayName || activeCollection.name
+    : "N/A";
+
+  const primaryFieldName = activeCollection?.primaryFieldName ?? null;
 
   const templatesBackHref = template?.collectionId
     ? `/collections/${template.collectionId}?tab=templates`
@@ -155,6 +220,7 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
           collectionId: template?.collectionId || undefined,
         },
       }),
+      ...TemplateLogicBlocksPluginKit,
       SlashPlugin,
       SlashInputPlugin.withComponent(SlashInputElement),
       BlockSelectionPlugin,
@@ -163,6 +229,18 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
     override: {
       components: {
         [VARIABLE_TYPE]: VariableElement,
+        [TEMPLATE_CONDITIONAL_TYPE]: (props: PlateElementProps<TemplateConditionalElementNode>) => (
+          <TemplateConditionalElement {...props} />
+        ),
+        [TEMPLATE_LIST_TYPE]: (props: PlateElementProps<TemplateListElementNode>) => (
+          <TemplateListElement {...props} />
+        ),
+        [TEMPLATE_SWITCH_TYPE]: (props: PlateElementProps<TemplateSwitchElementNode>) => (
+          <TemplateSwitchElement {...props} />
+        ),
+        [TEMPLATE_AI_TYPE]: (props: PlateElementProps<TemplateAIElementNode>) => (
+          <TemplateAIElement {...props} />
+        ),
       },
     },
   });
@@ -201,217 +279,296 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
   }
 
   return (
-    <Plate
-      editor={editor}
-      readOnly={!canEdit}
-      onChange={({ value }) => {
-        if (canEdit) {
-          handleBlocksChange(plateValueToTemplateBlocks(value));
-        }
+    <TemplateVariableCatalogProvider
+      value={{
+        nodes: variableCatalog,
+        loading: variableCatalogLoading,
+        error: variableCatalogError,
       }}
     >
-      <TooltipProvider disableHoverableContent>
-        <div className="flex h-full flex-col">
-          {/* Editor Header Bar */}
-          <div className="sticky top-0 z-20 flex items-center justify-between px-6 py-3 backdrop-blur-md">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" asChild className="rounded-full">
-                <Link href={templatesBackHref}>
-                  <ArrowLeft size={18} />
-                </Link>
-              </Button>
-              <div className="flex flex-col">
-                <div className="flex items-center gap-3">
-                  <input
-                    className="min-w-[200px] border-none bg-transparent p-0 text-lg font-bold text-foreground outline-none focus:ring-0"
-                    value={localName}
-                    onChange={(e) => setLocalName(e.target.value)}
-                    readOnly={!canEdit}
-                  />
-                  <span className="flex items-center gap-1.5 rounded border border-primary/10 bg-primary/5 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-primary/70">
-                    <Database size={10} />
-                    {collectionName}
-                  </span>
-                  {!canEdit && (
-                    <span className="flex items-center gap-1.5 rounded border border-foreground/10 bg-foreground/5 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-foreground/40">
-                      Modo Revisor
+      <Plate
+        editor={editor}
+        readOnly={!canEdit}
+        onChange={({ value }) => {
+          if (canEdit) {
+            handleBlocksChange(plateValueToTemplateBlocks(value));
+          }
+        }}
+      >
+        <TooltipProvider disableHoverableContent>
+          <div className="flex h-full flex-col">
+            {/* Editor Header Bar */}
+            <div className="sticky top-0 z-20 flex items-center justify-between px-6 py-3 backdrop-blur-md">
+              <div className="flex items-center gap-4">
+                <Button variant="ghost" size="icon" asChild className="rounded-full">
+                  <Link href={templatesBackHref}>
+                    <ArrowLeft size={18} />
+                  </Link>
+                </Button>
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-3">
+                    <input
+                      className="min-w-[200px] border-none bg-transparent p-0 text-lg font-bold text-foreground outline-none focus:ring-0"
+                      value={localName}
+                      onChange={(e) => setLocalName(e.target.value)}
+                      readOnly={!canEdit}
+                    />
+                    <span className="flex items-center gap-1.5 rounded border border-primary/10 bg-primary/5 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-primary/70">
+                      <Database size={10} />
+                      {collectionName}
                     </span>
+                    {!canEdit && (
+                      <span className="flex items-center gap-1.5 rounded border border-foreground/10 bg-foreground/5 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-foreground/40">
+                        Modo Revisor
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 text-[12px] font-medium transition-all duration-300">
+                  {!canEdit ? (
+                    <span className="text-foreground/30 font-light flex items-center gap-1.5">
+                      No tienes permisos para editar
+                    </span>
+                  ) : (
+                    <>
+                      {saveStatus === "saving" && (
+                        <>
+                          <RotateCw className="animate-spin text-primary" size={14} />
+                          <span className="text-foreground/60">Guardando...</span>
+                        </>
+                      )}
+                      {saveStatus === "saved" && (
+                        <>
+                          <CheckCircle2 className="text-primary" size={14} />
+                          <span className="text-foreground/60">Guardado</span>
+                        </>
+                      )}
+                      {saveStatus === "error" && (
+                        <>
+                          <AlertCircle className="text-destructive" size={14} />
+                          <span className="text-destructive/80">Error al guardar</span>
+                        </>
+                      )}
+                      {saveStatus === "idle" && (
+                        <>
+                          <Cloud className="text-foreground/20" size={14} />
+                          <span className="text-foreground/30">Sincronizado</span>
+                        </>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 text-[12px] font-medium transition-all duration-300">
-                {!canEdit ? (
-                  <span className="text-foreground/30 font-light flex items-center gap-1.5">
-                    No tienes permisos para editar
-                  </span>
-                ) : (
-                  <>
-                    {saveStatus === "saving" && (
-                      <>
-                        <RotateCw className="animate-spin text-primary" size={14} />
-                        <span className="text-foreground/60">Guardando...</span>
-                      </>
-                    )}
-                    {saveStatus === "saved" && (
-                      <>
-                        <CheckCircle2 className="text-primary" size={14} />
-                        <span className="text-foreground/60">Guardado</span>
-                      </>
-                    )}
-                    {saveStatus === "error" && (
-                      <>
-                        <AlertCircle className="text-destructive" size={14} />
-                        <span className="text-destructive/80">Error al guardar</span>
-                      </>
-                    )}
-                    {saveStatus === "idle" && (
-                      <>
-                        <Cloud className="text-foreground/20" size={14} />
-                        <span className="text-foreground/30">Sincronizado</span>
-                      </>
-                    )}
-                  </>
-                )}
+            {/* Plate Toolbar - Only visible in edit mode */}
+            {canEdit && (
+              <div className="sticky top-[57px] z-10 overflow-x-auto px-4">
+                <div className="mx-auto max-w-7xl rounded-lg bg-surface/90 px-6 backdrop-blur-sm shadow-sm border border-border/10">
+                  <FixedToolbar className="bg-transparent backdrop-blur-none shadow-none">
+                    <ToolbarGroup>
+                      <UndoToolbarButton />
+                      <RedoToolbarButton />
+                    </ToolbarGroup>
+
+                    <ToolbarGroup>
+                      <TurnIntoToolbarButton />
+                    </ToolbarGroup>
+
+                    <ToolbarGroup>
+                      <MarkToolbarButton
+                        nodeType={BoldPlugin.key}
+                        tooltip={`Negrita (${getShortcutText()}B)`}
+                      >
+                        <span className="font-bold">B</span>
+                      </MarkToolbarButton>
+                      <MarkToolbarButton
+                        nodeType={ItalicPlugin.key}
+                        tooltip={`Cursiva (${getShortcutText()}I)`}
+                      >
+                        <span className="italic">I</span>
+                      </MarkToolbarButton>
+                      <MarkToolbarButton
+                        nodeType={UnderlinePlugin.key}
+                        tooltip={`Subrayado (${getShortcutText()}U)`}
+                      >
+                        <span className="underline">U</span>
+                      </MarkToolbarButton>
+                      <MarkToolbarButton
+                        nodeType={StrikethroughPlugin.key}
+                        tooltip={`Tachado (${getShortcutText()}S)`}
+                      >
+                        <Strikethrough size={16} />
+                      </MarkToolbarButton>
+                      <MarkToolbarButton
+                        nodeType={CodePlugin.key}
+                        tooltip={`Código (${getShortcutText()}E)`}
+                      >
+                        <Code size={16} />
+                      </MarkToolbarButton>
+                      <MarkToolbarButton
+                        nodeType={HighlightPlugin.key}
+                        tooltip={`Resaltar (${getShortcutText()}H)`}
+                      >
+                        <Highlighter size={16} />
+                      </MarkToolbarButton>
+                    </ToolbarGroup>
+
+                    <ToolbarGroup>
+                      <FontSizeToolbarButton />
+                      <FontColorToolbarButton
+                        nodeType={FontColorPlugin.key}
+                        tooltip="Color de texto"
+                      />
+                      <FontColorToolbarButton
+                        nodeType={FontBackgroundColorPlugin.key}
+                        tooltip="Color de fondo"
+                      >
+                        <PaintBucket size={16} />
+                      </FontColorToolbarButton>
+                    </ToolbarGroup>
+
+                    <ToolbarGroup>
+                      <AlignToolbarButton />
+                      <LineHeightToolbarButton />
+                      <OutdentToolbarButton />
+                      <IndentToolbarButton />
+                    </ToolbarGroup>
+
+                    <ToolbarGroup>
+                      <BulletedListToolbarButton />
+                      <NumberedListToolbarButton />
+                    </ToolbarGroup>
+
+                    <ToolbarGroup>
+                      <ToolbarButton
+                        tooltip="Insertar Conditional Block"
+                        onMouseDown={(event: React.MouseEvent) => {
+                          event.preventDefault();
+                          editor.tf.insertNodes([createConditionalElement()]);
+                        }}
+                      >
+                        <GitBranch size={15} />
+                      </ToolbarButton>
+                      <ToolbarButton
+                        tooltip="Insertar List Block"
+                        onMouseDown={(event: React.MouseEvent) => {
+                          event.preventDefault();
+                          editor.tf.insertNodes([createListElement()]);
+                        }}
+                      >
+                        <ListTree size={15} />
+                      </ToolbarButton>
+                      <ToolbarButton
+                        tooltip="Insertar Switch Block"
+                        onMouseDown={(event: React.MouseEvent) => {
+                          event.preventDefault();
+                          editor.tf.insertNodes([createSwitchElement()]);
+                        }}
+                      >
+                        <SquareSplitHorizontal size={15} />
+                      </ToolbarButton>
+                      <ToolbarButton
+                        tooltip="Insertar AI Block"
+                        onMouseDown={(event: React.MouseEvent) => {
+                          event.preventDefault();
+                          editor.tf.insertNodes([createAIElement()]);
+                        }}
+                      >
+                        <BrainCircuit size={15} />
+                      </ToolbarButton>
+                    </ToolbarGroup>
+
+                    <ToolbarGroup>
+                      <LinkToolbarButton />
+                      <TableToolbarButton />
+                      <MediaToolbarButton nodeType="img" />
+                    </ToolbarGroup>
+
+                    <ToolbarGroup>
+                      <VariableSelector
+                        collectionId={template.collectionId || undefined}
+                        recordId={selectedRecordId || null}
+                        depth={TEMPLATE_PREVIEW_MAX_EAGER_DEPTH}
+                        nodes={variableCatalog}
+                        loading={variableCatalogLoading}
+                        disabled={!template.collectionId}
+                        open={isVariableSelectorOpen}
+                        onOpenChange={setIsVariableSelectorOpen}
+                        onSelect={(node) => {
+                          const isImageVariable = node.fieldType === "IMAGE";
+                          const variableNode: VariableElementNode = {
+                            type: VARIABLE_TYPE,
+                            fieldPath: node.path,
+                            collectionId: node.collectionId,
+                            fieldType: node.fieldType,
+                            ...(isImageVariable
+                              ? {
+                                  imageWidthPercent: DEFAULT_IMAGE_VARIABLE_WIDTH_PERCENT,
+                                  imageHeightPx: DEFAULT_IMAGE_VARIABLE_HEIGHT_PX,
+                                }
+                              : {}),
+                            children: [{ text: "" }],
+                          };
+
+                          editor.tf.insertNodes([variableNode]);
+                          editor.tf.focus();
+                        }}
+                      />
+                      {!template.collectionId && (
+                        <span className="text-xs text-muted-foreground">
+                          Vincula una colección para insertar variables.
+                        </span>
+                      )}
+                    </ToolbarGroup>
+                  </FixedToolbar>
+                </div>
+              </div>
+            )}
+
+            {/* Editor Content */}
+            <div
+              className={cn(
+                "flex-1 overflow-y-auto bg-background/40 px-6 py-10",
+                !canEdit && "pt-6",
+              )}
+            >
+              <div className="mx-auto max-w-5xl space-y-6">
+                <ResizableProvider>
+                  <EditorContainer>
+                    <Editor
+                      placeholder={canEdit ? "Escribe '/' para ver comandos rápidos..." : ""}
+                      variant="demo"
+                      className="min-h-[800px]"
+                    />
+                  </EditorContainer>
+                </ResizableProvider>
+
+                <TemplatePreviewPanel
+                  collectionLinked={Boolean(template.collectionId)}
+                  records={previewRecords}
+                  recordsLoading={previewRecordsLoading}
+                  selectedRecordId={selectedRecordId}
+                  setSelectedRecordId={setSelectedRecordId}
+                  loading={previewLoading}
+                  error={previewError}
+                  warnings={previewWarnings}
+                  blocks={previewBlocks}
+                  blockStates={previewBlockStates}
+                  primaryFieldName={primaryFieldName}
+                  onGenerate={() => {
+                    void generatePreview(plateValueToTemplateBlocks(editor.children));
+                  }}
+                  onCancel={cancelPreview}
+                />
               </div>
             </div>
           </div>
-
-          {/* Plate Toolbar - Only visible in edit mode */}
-          {canEdit && (
-            <div className="sticky top-[57px] z-10 overflow-x-auto px-4">
-              <div className="mx-auto max-w-7xl rounded-lg bg-surface/90 px-6 backdrop-blur-sm shadow-sm border border-border/10">
-                <FixedToolbar className="bg-transparent backdrop-blur-none shadow-none">
-                  <ToolbarGroup>
-                    <UndoToolbarButton />
-                    <RedoToolbarButton />
-                  </ToolbarGroup>
-
-                  <ToolbarGroup>
-                    <TurnIntoToolbarButton />
-                  </ToolbarGroup>
-
-                  <ToolbarGroup>
-                    <MarkToolbarButton
-                      nodeType={BoldPlugin.key}
-                      tooltip={`Negrita (${getShortcutText()}B)`}
-                    >
-                      <span className="font-bold">B</span>
-                    </MarkToolbarButton>
-                    <MarkToolbarButton
-                      nodeType={ItalicPlugin.key}
-                      tooltip={`Cursiva (${getShortcutText()}I)`}
-                    >
-                      <span className="italic">I</span>
-                    </MarkToolbarButton>
-                    <MarkToolbarButton
-                      nodeType={UnderlinePlugin.key}
-                      tooltip={`Subrayado (${getShortcutText()}U)`}
-                    >
-                      <span className="underline">U</span>
-                    </MarkToolbarButton>
-                    <MarkToolbarButton
-                      nodeType={StrikethroughPlugin.key}
-                      tooltip={`Tachado (${getShortcutText()}S)`}
-                    >
-                      <Strikethrough size={16} />
-                    </MarkToolbarButton>
-                    <MarkToolbarButton
-                      nodeType={CodePlugin.key}
-                      tooltip={`Código (${getShortcutText()}E)`}
-                    >
-                      <Code size={16} />
-                    </MarkToolbarButton>
-                    <MarkToolbarButton
-                      nodeType={HighlightPlugin.key}
-                      tooltip={`Resaltar (${getShortcutText()}H)`}
-                    >
-                      <Highlighter size={16} />
-                    </MarkToolbarButton>
-                  </ToolbarGroup>
-
-                  <ToolbarGroup>
-                    <FontSizeToolbarButton />
-                    <FontColorToolbarButton
-                      nodeType={FontColorPlugin.key}
-                      tooltip="Color de texto"
-                    />
-                    <FontColorToolbarButton
-                      nodeType={FontBackgroundColorPlugin.key}
-                      tooltip="Color de fondo"
-                    >
-                      <PaintBucket size={16} />
-                    </FontColorToolbarButton>
-                  </ToolbarGroup>
-
-                  <ToolbarGroup>
-                    <AlignToolbarButton />
-                    <LineHeightToolbarButton />
-                    <OutdentToolbarButton />
-                    <IndentToolbarButton />
-                  </ToolbarGroup>
-
-                  <ToolbarGroup>
-                    <BulletedListToolbarButton />
-                    <NumberedListToolbarButton />
-                  </ToolbarGroup>
-
-                  <ToolbarGroup>
-                    <LinkToolbarButton />
-                    <TableToolbarButton />
-                    <MediaToolbarButton nodeType="img" />
-                  </ToolbarGroup>
-
-                  <ToolbarGroup>
-                    <VariableSelector
-                      collectionId={template.collectionId}
-                      disabled={!template.collectionId}
-                      open={isVariableSelectorOpen}
-                      onOpenChange={setIsVariableSelectorOpen}
-                      onSelect={(node) => {
-                        const variableNode: VariableElementNode = {
-                          type: VARIABLE_TYPE,
-                          fieldPath: node.path,
-                          collectionId: node.collectionId,
-                          fieldType: node.fieldType,
-                          children: [{ text: "" }],
-                        };
-
-                        editor.tf.insertNodes([variableNode]);
-                        editor.tf.focus();
-                      }}
-                    />
-                    {!template.collectionId && (
-                      <span className="text-xs text-muted-foreground">
-                        Vincula una colección para insertar variables.
-                      </span>
-                    )}
-                  </ToolbarGroup>
-                </FixedToolbar>
-              </div>
-            </div>
-          )}
-
-          {/* Editor Content */}
-          <div
-            className={cn("flex-1 overflow-y-auto bg-background/40 px-6 py-10", !canEdit && "pt-6")}
-          >
-            <div className="mx-auto max-w-5xl space-y-6">
-              <ResizableProvider>
-                <EditorContainer>
-                  <Editor
-                    placeholder={canEdit ? "Escribe '/' para ver comandos rápidos..." : ""}
-                    variant="demo"
-                    className="min-h-[800px]"
-                  />
-                </EditorContainer>
-              </ResizableProvider>
-            </div>
-          </div>
-        </div>
-      </TooltipProvider>
-    </Plate>
+        </TooltipProvider>
+      </Plate>
+    </TemplateVariableCatalogProvider>
   );
 }

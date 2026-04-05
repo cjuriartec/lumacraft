@@ -134,6 +134,15 @@ export class FieldConfig {
       );
     }
 
+    if (typeof schema.safeParse !== "function") {
+      return fail(
+        new DomainError(
+          `Schema for ${fieldType} is invalid. Expected a Zod schema with safeParse.`,
+          "INTERNAL_ERROR",
+        ),
+      );
+    }
+
     const result = schema.safeParse(raw);
 
     if (!result.success) {

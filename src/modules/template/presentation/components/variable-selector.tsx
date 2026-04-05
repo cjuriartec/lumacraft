@@ -26,6 +26,10 @@ import { useVariableFields, VariableNode } from "../hooks/use-variable-fields";
 
 interface VariableSelectorProps {
   collectionId?: string | null;
+  recordId?: string | null;
+  depth?: number;
+  nodes?: VariableNode[];
+  loading?: boolean;
   onSelect: (node: VariableNode) => void;
   trigger?: React.ReactNode;
   disabled?: boolean;
@@ -53,16 +57,24 @@ const filterNodes = (nodes: VariableNode[], query: string): VariableNode[] => {
 
 export function VariableSelector({
   collectionId,
+  recordId,
+  depth = 2,
+  nodes: providedNodes,
+  loading: providedLoading,
   onSelect,
   trigger,
   disabled,
   open: controlledOpen,
   onOpenChange,
 }: VariableSelectorProps) {
-  const { nodes, loading } = useVariableFields(collectionId);
+  const { nodes: hookNodes, loading: hookLoading } = useVariableFields(
+    providedNodes ? undefined : { collectionId, recordId, depth },
+  );
   const [searchTerm, setSearchTerm] = React.useState("");
   const [internalOpen, setInternalOpen] = React.useState(false);
 
+  const nodes = providedNodes ?? hookNodes;
+  const loading = providedLoading ?? hookLoading;
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
   const setOpen = React.useCallback(
     (value: boolean) => {
@@ -72,7 +84,7 @@ export function VariableSelector({
     [onOpenChange],
   );
 
-  const isDisabled = disabled || !collectionId;
+  const isDisabled = disabled || (!collectionId && !providedNodes);
   const searchInputRef = React.useRef<HTMLInputElement>(null);
   const listContainerRef = React.useRef<HTMLDivElement>(null);
 

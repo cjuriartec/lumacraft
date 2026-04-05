@@ -106,10 +106,11 @@ const fieldSchema = z.object({
   isRequired: z.boolean().default(false).optional(),
   isUnique: z.boolean().default(false).optional(),
   defaultValue: z.string().optional(),
-  config: z.any().optional(),
+  config: z.record(z.string(), z.unknown()).optional(),
 });
 
 interface FieldConfigUI {
+  [key: string]: unknown;
   multiline?: boolean;
   placeholder?: string;
   minLength?: number;

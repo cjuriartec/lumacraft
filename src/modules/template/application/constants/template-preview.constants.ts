@@ -1,0 +1,1 @@
+export const TEMPLATE_PREVIEW_MAX_EAGER_DEPTH = 5;

@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Braces,
   Heading1,
   Heading2,
   Heading3,
@@ -15,6 +14,7 @@ import { KEYS, type TComboboxInputElement } from "platejs";
 import { type PlateEditor, PlateElement, type PlateElementProps } from "platejs/react";
 import * as React from "react";
 
+import { getTemplateLogicSlashGroups } from "@/modules/template/presentation/components/template-logic-blocks";
 import { insertBlock } from "@/shared/presentation/components/editor/transforms";
 import {
   InlineCombobox,
@@ -31,7 +31,7 @@ type Group = {
   items: {
     icon: React.ReactNode;
     value: string;
-    onSelect: (editor: PlateEditor, value: string) => void;
+    onSelect: (editor: PlateEditor) => void;
     className?: string;
     focusEditor?: boolean;
     keywords?: string[];
@@ -39,7 +39,7 @@ type Group = {
   }[];
 };
 
-const groups: Group[] = [
+const baseGroups: Group[] = [
   {
     group: "Bloques básicos",
     items: [
@@ -93,36 +93,30 @@ const groups: Group[] = [
       },
     ].map((item) => ({
       ...item,
-      onSelect: (editor, value) => {
-        insertBlock(editor, value, { upsert: true });
+      onSelect: (editor) => {
+        if (item.value === KEYS.ul || item.value === KEYS.ol) {
+          editor.tf.insertNodes(
+            editor.api.create.block({
+              indent: 1,
+              listStyleType: item.value,
+            }),
+            { select: true },
+          );
+          return;
+        }
+
+        insertBlock(editor, item.value, { upsert: true });
       },
     })),
-  },
-  {
-    group: "Lumacraft",
-    items: [
-      {
-        focusEditor: false,
-        icon: <Braces size={16} className="text-primary" />,
-        keywords: ["variable", "campo", "dinamico", "braces"],
-        label: "Variable",
-        value: "variable",
-        onSelect: (editor) => {
-          // Delay opening to the next frame so slash cleanup doesn't close it immediately.
-          window.requestAnimationFrame(() => {
-            const event = new CustomEvent("open-variable-selector", {
-              detail: { editor },
-            });
-            window.dispatchEvent(event);
-          });
-        },
-      },
-    ],
   },
 ];
 
 export function SlashInputElement(props: PlateElementProps<TComboboxInputElement>) {
   const { editor, element } = props;
+  const groups = React.useMemo<Group[]>(
+    () => [...baseGroups, ...getTemplateLogicSlashGroups()],
+    [],
+  );
 
   return (
     <PlateElement {...props} as="span">
@@ -140,7 +134,7 @@ export function SlashInputElement(props: PlateElementProps<TComboboxInputElement
                 <InlineComboboxItem
                   key={value}
                   value={value}
-                  onClick={() => onSelect(editor, value)}
+                  onClick={() => onSelect(editor)}
                   label={label}
                   focusEditor={focusEditor}
                   group={group}
