@@ -23,7 +23,12 @@
     "supabase:local": "node scripts/setup-local.mjs",
     "supabase:local:reset": "npx supabase db reset",
     "supabase:cloud:reset": "npx supabase db reset --linked",
-    "supabase:cloud:push": "npx supabase db push --linked"
+    "supabase:cloud:push": "npx supabase db push --linked",
+    "release": "standard-version",
+    "release:minor": "standard-version --release-as minor",
+    "release:major": "standard-version --release-as major",
+    "release:pre": "standard-version --prerelease alpha",
+    "prepare": "husky"
   },
   "dependencies": {
     "@ariakit/react": "^0.4.24",
@@ -93,6 +98,8 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@commitlint/cli": "^20.5.0",
+    "@commitlint/config-conventional": "^20.5.0",
     "@playwright/test": "^1.51.1",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
@@ -108,8 +115,10 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.5",
     "eslint-plugin-simple-import-sort": "^12.1.1",
+    "husky": "^9.1.7",
     "jsdom": "^29.0.1",
     "prettier": "^3.8.1",
+    "standard-version": "^9.5.0",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.2"
