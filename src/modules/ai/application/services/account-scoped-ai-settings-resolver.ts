@@ -135,7 +135,12 @@ export class AccountScopedAISettingsResolver {
 
       const decryptedSecretResult = decryptSecret(providerSecret, env);
       if (!decryptedSecretResult.ok) {
-        return fail(decryptedSecretResult.error);
+        // If decryption fails (e.g. changed master key), we ignore it instead of failing the resolution.
+        // This prevents a deadlock where the user can't fix their settings because they can't be resolved.
+        console.warn(
+          `Failed to decrypt AI secret for provider ${providerId} in account ${accountId}: ${decryptedSecretResult.error.message}`,
+        );
+        continue;
       }
 
       decryptedSecrets[providerId] = decryptedSecretResult.value;
