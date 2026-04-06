@@ -19,4 +19,6 @@ export interface AIProviderPort {
     request: AIGenerationRequest,
     signal?: AbortSignal,
   ): AsyncGenerator<Result<AIGenerationChunk, DomainError>, void, void>;
+
+  testConnection(timeoutMs?: number): Promise<Result<void, DomainError>>;
 }

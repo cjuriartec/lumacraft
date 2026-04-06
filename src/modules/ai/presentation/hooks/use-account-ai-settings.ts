@@ -14,6 +14,7 @@ interface UseAccountAISettingsResult {
   error: string | null;
   refresh: () => Promise<void>;
   save: (payload: UpdateAccountAISettingsDto) => Promise<AccountAISettingsDto>;
+  testConnection: (providerId: string, apiKey?: string) => Promise<void>;
 }
 
 async function parseResponse<T>(response: Response): Promise<T> {
@@ -102,6 +103,36 @@ export function useAccountAISettings(accountId?: string | null): UseAccountAISet
     },
     [accountId],
   );
+  
+  const testConnection = useCallback(
+    async (providerId: string, apiKey?: string) => {
+      if (!accountId) {
+        throw new Error("No workspace selected");
+      }
+
+      setError(null);
+
+      try {
+        await parseResponse<{ success: boolean }>(
+          await fetch(`/api/accounts/${accountId}/ai-settings/test-connection`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ providerId, apiKey }),
+          }),
+        );
+      } catch (requestError) {
+        const message =
+          requestError instanceof Error
+            ? requestError.message
+            : "Error al validar la conexión";
+        setError(message);
+        throw requestError;
+      }
+    },
+    [accountId],
+  );
 
   return {
     settings,
@@ -110,5 +141,6 @@ export function useAccountAISettings(accountId?: string | null): UseAccountAISet
     error,
     refresh,
     save,
+    testConnection,
   };
 }

@@ -190,6 +190,36 @@ export class GeminiAdapter implements AIProviderPort {
     }
   }
 
+  public async testConnection(timeoutMs?: number): Promise<Result<void, DomainError>> {
+    if (!this.client) {
+      return fail(new DomainError("Missing GEMINI_API_KEY", "AI_PROVIDER_NOT_CONFIGURED"));
+    }
+
+    const abortScope = this.createAbortScope(undefined, timeoutMs ?? 5_000);
+
+    try {
+      await this.client.models.generateContent({
+        model: this.defaultModel,
+        contents: [{ role: "user", parts: [{ text: "ping" }] }],
+        config: {
+          maxOutputTokens: 1,
+          abortSignal: abortScope.signal,
+        },
+      });
+
+      return ok(undefined);
+    } catch (error) {
+      if (this.isAbortError(error) || abortScope.timedOut()) {
+        return fail(new DomainError("Gemini connection test timeout", "AI_PROVIDER_TIMEOUT"));
+      }
+
+      const message = error instanceof Error ? error.message : "Internal Gemini Error";
+      return fail(new DomainError(`Gemini connection failed: ${message}`, "AI_PROVIDER_UPSTREAM_ERROR"));
+    } finally {
+      abortScope.dispose();
+    }
+  }
+
   private buildConfig(
     request: AIGenerationRequest,
     abortSignal: AbortSignal,
@@ -223,9 +253,12 @@ export class GeminiAdapter implements AIProviderPort {
     return config;
   }
 
-  private createAbortScope(signal?: AbortSignal) {
+  private createAbortScope(signal?: AbortSignal, overrideTimeoutMs?: number) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort("timeout"), this.timeoutMs);
+    const timeout = setTimeout(
+      () => controller.abort("timeout"),
+      overrideTimeoutMs ?? this.timeoutMs,
+    );
     const timeoutSignal = controller.signal;
 
     if (!signal) {

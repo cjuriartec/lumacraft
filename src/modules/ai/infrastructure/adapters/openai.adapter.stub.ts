@@ -22,4 +22,8 @@ export class OpenAIAdapterStub implements AIProviderPort {
   ): AsyncGenerator<Result<AIGenerationChunk, DomainError>, void, void> {
     yield fail(new DomainError("OpenAI adapter is not implemented yet", "NOT_IMPLEMENTED"));
   }
+
+  public async testConnection(): Promise<Result<void, DomainError>> {
+    return fail(new DomainError("OpenAI adapter is not implemented yet", "NOT_IMPLEMENTED"));
+  }
 }

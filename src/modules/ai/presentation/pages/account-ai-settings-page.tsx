@@ -69,11 +69,20 @@ function normalizeDraftModel(draft: UpdateAccountAISettingsDto): UpdateAccountAI
 export default function AccountAISettingsPage() {
   const { currentWorkspace } = useWorkspace();
   const { isOwner, isSuperAdmin } = usePermissions();
-  const { settings, loading, saving, error, save } = useAccountAISettings(currentWorkspace?.id);
+  const { settings, loading, saving, error, save, testConnection } = useAccountAISettings(
+    currentWorkspace?.id,
+  );
 
   const [draft, setDraft] = useState<UpdateAccountAISettingsDto | null>(null);
   const [secretInputs, setSecretInputs] = useState<Partial<Record<AIProviderId, string>>>({});
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const [testingConnection, setTestingConnection] = useState<Partial<Record<AIProviderId, boolean>>>(
+    {},
+  );
+  const [testResults, setTestResults] = useState<
+    Partial<Record<AIProviderId, { success: boolean; message?: string } | null>>
+  >({});
 
   useBreadcrumbs([{ label: "Configuración", href: "/settings" }, { label: "IA" }]);
 
@@ -95,6 +104,26 @@ export default function AccountAISettingsPage() {
     if (!draft) return [];
     return draft.providerOptions[draft.defaultProvider]?.allowedModels ?? [];
   }, [draft]);
+
+  const handleTestConnection = async (providerId: AIProviderId) => {
+    setTestingConnection((prev) => ({ ...prev, [providerId]: true }));
+    setTestResults((prev) => ({ ...prev, [providerId]: null }));
+
+    try {
+      await testConnection(providerId, secretInputs[providerId]);
+      setTestResults((prev) => ({ ...prev, [providerId]: { success: true } }));
+    } catch (e) {
+      setTestResults((prev) => ({
+        ...prev,
+        [providerId]: {
+          success: false,
+          message: e instanceof Error ? e.message : "Error desconocido",
+        },
+      }));
+    } finally {
+      setTestingConnection((prev) => ({ ...prev, [providerId]: false }));
+    }
+  };
 
   if (!currentWorkspace) {
     return (
@@ -382,7 +411,6 @@ export default function AccountAISettingsPage() {
         {AI_PROVIDER_IDS.map((providerId) => {
           const secretStatus = settings.providerSecrets[providerId];
           const allowedModels = draft.providerOptions[providerId]?.allowedModels ?? [];
-
           return (
             <div
               key={providerId}
@@ -402,14 +430,44 @@ export default function AccountAISettingsPage() {
                     </p>
                   </div>
                 </div>
-                <div className="text-right text-xs text-foreground/60">
-                  <p>{secretStatus.isConfigured ? "Configurado" : "Sin configurar"}</p>
-                  {secretStatus.last4 && <p>Terminada en {secretStatus.last4}</p>}
-                  {secretStatus.updatedAt && (
-                    <p>Actualizada {new Date(secretStatus.updatedAt).toLocaleString()}</p>
-                  )}
+                <div className="flex items-center gap-4">
+                  <div className="text-right text-xs text-foreground/60">
+                    <p>{secretStatus.isConfigured ? "Configurado" : "Sin configurar"}</p>
+                    {secretStatus.last4 && <p>Terminada en {secretStatus.last4}</p>}
+                    {secretStatus.updatedAt && (
+                      <p>Actualizada {new Date(secretStatus.updatedAt).toLocaleString()}</p>
+                    )}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 rounded-lg border-primary/20 text-xs hover:bg-primary/5 hover:text-primary"
+                    onClick={() => handleTestConnection(providerId)}
+                    disabled={testingConnection[providerId]}
+                  >
+                    {testingConnection[providerId] ? (
+                      <RotateCw className="mr-1 animate-spin" size={12} />
+                    ) : (
+                      <BrainCircuit className="mr-1" size={12} />
+                    )}
+                    Validar conexión
+                  </Button>
                 </div>
               </div>
+
+              {testResults[providerId] && (
+                <div
+                  className={`rounded-xl border px-4 py-2 text-xs ${
+                    testResults[providerId]?.success
+                      ? "border-primary/30 bg-primary/10 text-primary"
+                      : "border-destructive/30 bg-destructive/10 text-destructive"
+                  }`}
+                >
+                  {testResults[providerId]?.success
+                    ? "Conexión exitosa. El proveedor está listo para usarse."
+                    : `Error de conexión: ${testResults[providerId]?.message}`}
+                </div>
+              )}
 
               <div className="grid gap-2">
                 <Label>Catálogo editable de modelos</Label>
