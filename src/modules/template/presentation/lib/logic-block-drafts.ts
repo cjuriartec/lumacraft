@@ -79,10 +79,6 @@ export const aiDraftSchema = z.object({
           "Incluye al menos una variable como {{root}} o {{campo}} para anclar el bloque IA.",
       });
     }),
-  provider: z.enum(["GEMINI"]).optional(),
-  model: z.string().optional(),
-  temperature: z.number().min(0).max(2).optional(),
-  maxTokens: z.number().int().positive().optional(),
 });
 
 export type ConditionalDraft = z.infer<typeof conditionalDraftSchema>;

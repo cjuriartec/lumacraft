@@ -1,3 +1,5 @@
+import { GoogleGenAI } from "@google/genai";
+
 import { DomainError, fail, ok, Result } from "@/shared/domain/result";
 
 import { AIProviderPort } from "../../domain/ports/ai-provider.port";
@@ -11,129 +13,78 @@ import {
 interface GeminiAdapterOptions {
   apiKey?: string;
   defaultModel?: string;
+  defaultTemperature?: number;
+  defaultMaxTokens?: number;
   timeoutMs?: number;
+  thinkingConfig?: Record<string, unknown>;
 }
 
 const DEFAULT_MODEL = "gemini-2.0-flash";
 const DEFAULT_TIMEOUT_MS = 25_000;
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function extractTextFromGeminiPayload(payload: unknown): string {
-  const candidates = isRecord(payload) ? payload.candidates : undefined;
-  if (!Array.isArray(candidates) || candidates.length === 0) return "";
-
-  let text = "";
-
-  for (const candidate of candidates) {
-    if (!isRecord(candidate)) continue;
-    const content = candidate.content;
-    if (!isRecord(content) || !Array.isArray(content.parts)) continue;
-
-    for (const part of content.parts) {
-      if (isRecord(part) && typeof part.text === "string") {
-        text += part.text;
-      }
-    }
-  }
-
-  return text;
-}
-
 function resolveModel(request: AIGenerationRequest, fallbackModel: string): string {
   return request.model?.trim() || fallbackModel;
 }
 
-function buildRequestBody(request: AIGenerationRequest) {
-  const generationConfig: Record<string, unknown> = {};
-
-  if (typeof request.temperature === "number") {
-    generationConfig.temperature = request.temperature;
-  }
-
-  if (typeof request.maxTokens === "number") {
-    generationConfig.maxOutputTokens = request.maxTokens;
-  }
-
-  if (request.responseFormat?.mimeType) {
-    generationConfig.responseMimeType = request.responseFormat.mimeType;
-  }
-
-  if (request.responseFormat?.schema) {
-    generationConfig.responseSchema = request.responseFormat.schema;
-  }
-
-  return {
-    contents: [
-      {
-        role: "user",
-        parts: [{ text: request.prompt }],
-      },
-    ],
-    generationConfig,
-  };
-}
-
-function parseSseDataPayload(rawEvent: string): string | null {
-  const dataLines = rawEvent
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.startsWith("data:"))
-    .map((line) => line.replace(/^data:\s?/, ""));
-
-  if (dataLines.length === 0) return null;
-
-  const payload = dataLines.join("\n").trim();
-  if (!payload || payload === "[DONE]") return null;
-
-  return payload;
+function resolveNumber(
+  value: number | undefined,
+  fallback: number | undefined,
+): number | undefined {
+  return typeof value === "number" ? value : fallback;
 }
 
 export class GeminiAdapter implements AIProviderPort {
   public readonly id: AIProviderId = "GEMINI";
 
   private readonly apiKey?: string;
+  private readonly client?: GoogleGenAI;
   private readonly defaultModel: string;
+  private readonly defaultTemperature?: number;
+  private readonly defaultMaxTokens?: number;
   private readonly timeoutMs: number;
+  private readonly thinkingConfig?: Record<string, unknown>;
 
   constructor(options: GeminiAdapterOptions = {}) {
     this.apiKey = options.apiKey;
+    this.client = this.apiKey ? new GoogleGenAI({ apiKey: this.apiKey }) : undefined;
     this.defaultModel = options.defaultModel ?? DEFAULT_MODEL;
+    this.defaultTemperature = options.defaultTemperature;
+    this.defaultMaxTokens = options.defaultMaxTokens;
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+    this.thinkingConfig = options.thinkingConfig;
   }
 
   public async generate(
     request: AIGenerationRequest,
     signal?: AbortSignal,
   ): Promise<Result<AIGenerationResponse, DomainError>> {
-    if (!this.apiKey) {
+    if (!this.client) {
       return fail(new DomainError("Missing GEMINI_API_KEY", "AI_PROVIDER_NOT_CONFIGURED"));
     }
 
     const model = resolveModel(request, this.defaultModel);
+    const abortScope = this.createAbortScope(signal);
 
     try {
-      const response = await this.executeWithTimeout(model, false, request, signal);
-
-      if (!response.ok) {
-        return fail(response.error);
-      }
-
-      const text = extractTextFromGeminiPayload(response.value);
+      const response = await this.client.models.generateContent({
+        model,
+        contents: request.prompt,
+        config: this.buildConfig(request, abortScope.signal),
+      });
 
       return ok({
         provider: this.id,
         model,
-        text,
+        text: typeof response.text === "string" ? response.text : "",
       });
     } catch (error) {
-      if (error instanceof DomainError) {
-        return fail(error);
+      if (this.isAbortError(error) || abortScope.timedOut()) {
+        return fail(new DomainError("Gemini request timeout", "AI_PROVIDER_TIMEOUT"));
       }
 
       return fail(new DomainError("Gemini upstream error", "AI_PROVIDER_UPSTREAM_ERROR"));
+    } finally {
+      abortScope.dispose();
     }
   }
 
@@ -141,87 +92,38 @@ export class GeminiAdapter implements AIProviderPort {
     request: AIGenerationRequest,
     signal?: AbortSignal,
   ): AsyncGenerator<Result<AIGenerationChunk, DomainError>, void, void> {
-    if (!this.apiKey) {
+    if (!this.client) {
       yield fail(new DomainError("Missing GEMINI_API_KEY", "AI_PROVIDER_NOT_CONFIGURED"));
       return;
     }
 
     const model = resolveModel(request, this.defaultModel);
-
-    const timeoutController = new AbortController();
-    const timeout = setTimeout(() => timeoutController.abort("timeout"), this.timeoutMs);
-
-    const mergedSignal = this.mergeSignals(signal, timeoutController.signal);
+    const abortScope = this.createAbortScope(signal);
     let hasTextChunks = false;
 
     try {
-      const endpoint = this.buildEndpoint(model, true);
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(buildRequestBody(request)),
-        signal: mergedSignal,
+      const stream = await this.client.models.generateContentStream({
+        model,
+        contents: request.prompt,
+        config: this.buildConfig(request, abortScope.signal),
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        yield fail(
-          new DomainError(
-            `Gemini stream failed: ${response.status} ${errorText}`,
-            "AI_PROVIDER_UPSTREAM_ERROR",
-          ),
-        );
-        return;
-      }
-
-      if (!response.body) {
-        yield fail(
-          new DomainError("Gemini stream returned empty body", "AI_PROVIDER_UPSTREAM_ERROR"),
-        );
-        return;
-      }
-
-      const decoder = new TextDecoder();
-      const reader = response.body.getReader();
-
       let index = 0;
-      let buffer = "";
 
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-
-        const events = buffer.split("\n\n");
-        buffer = events.pop() ?? "";
-
-        for (const rawEvent of events) {
-          const payloadText = parseSseDataPayload(rawEvent);
-          if (!payloadText) {
-            continue;
-          }
-
-          try {
-            const payload = JSON.parse(payloadText) as unknown;
-            const text = extractTextFromGeminiPayload(payload);
-
-            if (!text) continue;
-
-            hasTextChunks = true;
-            yield ok({
-              provider: this.id,
-              model,
-              index,
-              text,
-            });
-            index += 1;
-          } catch {
-            // Ignore malformed chunk and continue stream.
-          }
+      for await (const chunk of stream) {
+        const text = typeof chunk.text === "string" ? chunk.text : "";
+        if (!text) {
+          continue;
         }
+
+        hasTextChunks = true;
+        yield ok({
+          provider: this.id,
+          model,
+          index,
+          text,
+        });
+        index += 1;
       }
 
       if (!hasTextChunks) {
@@ -246,7 +148,7 @@ export class GeminiAdapter implements AIProviderPort {
         });
       }
     } catch (error) {
-      if (this.isAbortError(error) || timeoutController.signal.aborted) {
+      if (this.isAbortError(error) || abortScope.timedOut()) {
         if (hasTextChunks) {
           yield fail(
             new DomainError(
@@ -284,85 +186,81 @@ export class GeminiAdapter implements AIProviderPort {
         text: fallback.value.text,
       });
     } finally {
-      clearTimeout(timeout);
+      abortScope.dispose();
     }
   }
 
-  private async executeWithTimeout(
-    model: string,
-    stream: boolean,
+  private buildConfig(
     request: AIGenerationRequest,
-    signal?: AbortSignal,
-  ): Promise<Result<unknown, DomainError>> {
-    const timeoutController = new AbortController();
-    const timeout = setTimeout(() => timeoutController.abort("timeout"), this.timeoutMs);
-    const mergedSignal = this.mergeSignals(signal, timeoutController.signal);
+    abortSignal: AbortSignal,
+  ): Record<string, unknown> {
+    const config: Record<string, unknown> = {
+      abortSignal,
+    };
 
-    try {
-      const response = await fetch(this.buildEndpoint(model, stream), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(buildRequestBody(request)),
-        signal: mergedSignal,
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        return fail(
-          new DomainError(
-            `Gemini request failed: ${response.status} ${errorText}`,
-            "AI_PROVIDER_UPSTREAM_ERROR",
-          ),
-        );
-      }
-
-      const payload = (await response.json()) as unknown;
-      return ok(payload);
-    } catch (error) {
-      if (this.isAbortError(error) || timeoutController.signal.aborted) {
-        return fail(new DomainError("Gemini request timeout", "AI_PROVIDER_TIMEOUT"));
-      }
-
-      return fail(new DomainError("Gemini upstream error", "AI_PROVIDER_UPSTREAM_ERROR"));
-    } finally {
-      clearTimeout(timeout);
+    const temperature = resolveNumber(request.temperature, this.defaultTemperature);
+    if (typeof temperature === "number") {
+      config.temperature = temperature;
     }
+
+    const maxTokens = resolveNumber(request.maxTokens, this.defaultMaxTokens);
+    if (typeof maxTokens === "number") {
+      config.maxOutputTokens = maxTokens;
+    }
+
+    if (request.responseFormat?.mimeType) {
+      config.responseMimeType = request.responseFormat.mimeType;
+    }
+
+    if (request.responseFormat?.schema) {
+      config.responseSchema = request.responseFormat.schema;
+    }
+
+    if (this.thinkingConfig) {
+      config.thinkingConfig = this.thinkingConfig;
+    }
+
+    return config;
   }
 
-  private buildEndpoint(model: string, stream: boolean): string {
-    const action = stream ? "streamGenerateContent" : "generateContent";
-    const query = stream ? "alt=sse&" : "";
-
-    return `https://generativelanguage.googleapis.com/v1beta/models/${model}:${action}?${query}key=${this.apiKey}`;
-  }
-
-  private mergeSignals(primary?: AbortSignal, secondary?: AbortSignal): AbortSignal | undefined {
-    if (!primary && !secondary) return undefined;
-    if (!primary) return secondary;
-    if (!secondary) return primary;
-
+  private createAbortScope(signal?: AbortSignal) {
     const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort("timeout"), this.timeoutMs);
+    const timeoutSignal = controller.signal;
+
+    if (!signal) {
+      return {
+        signal: timeoutSignal,
+        timedOut: () => timeoutSignal.aborted,
+        dispose: () => clearTimeout(timeout),
+      };
+    }
 
     const onAbort = () => {
       controller.abort();
-      primary.removeEventListener("abort", onAbort);
-      secondary.removeEventListener("abort", onAbort);
+      signal.removeEventListener("abort", onAbort);
     };
 
-    if (primary.aborted || secondary.aborted) {
+    if (signal.aborted) {
       controller.abort();
-      return controller.signal;
+    } else {
+      signal.addEventListener("abort", onAbort);
     }
 
-    primary.addEventListener("abort", onAbort);
-    secondary.addEventListener("abort", onAbort);
-
-    return controller.signal;
+    return {
+      signal: timeoutSignal,
+      timedOut: () => timeoutSignal.aborted && !signal.aborted,
+      dispose: () => {
+        clearTimeout(timeout);
+        signal.removeEventListener("abort", onAbort);
+      },
+    };
   }
 
   private isAbortError(error: unknown): boolean {
-    return error instanceof Error && error.name === "AbortError";
+    return (
+      error instanceof Error &&
+      (error.name === "AbortError" || error.message.toLowerCase().includes("abort"))
+    );
   }
 }

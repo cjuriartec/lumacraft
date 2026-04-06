@@ -1,6 +1,8 @@
 import { interpolateTemplateString } from "@/modules/template/application/services/template-path-resolver";
 import { TemplateRuntimeFieldMetadata } from "@/modules/template/domain/types/template-runtime-context";
 
+import { ACCOUNT_AI_INTERNAL_BASE_PROMPT } from "./account-ai-system-prompt";
+
 const DEFAULT_MAX_CONTEXT_CHARS = 10_000;
 const TOKEN_REGEX = /\{\{\s*([a-zA-Z0-9_.\[\]-]+)\s*\}\}/g;
 
@@ -214,9 +216,11 @@ export function buildGroundedPrompt(input: BuildPromptInput): BuildPromptOutput 
     locals: input.locals ?? {},
   });
 
-  const systemInstruction =
-    input.systemInstruction ??
+  const systemInstruction = input.systemInstruction ?? ACCOUNT_AI_INTERNAL_BASE_PROMPT;
+  /*
     "Redacta documentos con tono oficial, técnico y legal cuando aplique. Responde solo con el contexto y metadata provistos, sin inventar datos. Entrega salida compatible con Plate (párrafos, encabezados, listas, citas, enlaces e imágenes), evitando HTML. Si falta información, decláralo explícitamente.";
+
+  */
 
   const prompt = [
     "# System",

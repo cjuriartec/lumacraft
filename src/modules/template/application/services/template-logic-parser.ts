@@ -338,13 +338,6 @@ function parseCustomTemplateNode(
       return {
         type: "ai",
         prompt,
-        provider:
-          node.provider === "GEMINI" || node.provider === "OPENAI" || node.provider === "ANTHROPIC"
-            ? node.provider
-            : undefined,
-        model: asString(node.model),
-        temperature: typeof node.temperature === "number" ? node.temperature : undefined,
-        maxTokens: typeof node.maxTokens === "number" ? node.maxTokens : undefined,
       };
     }
 

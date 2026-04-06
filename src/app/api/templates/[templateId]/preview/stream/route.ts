@@ -1,7 +1,12 @@
+import { SupabaseClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-import { DefaultAIProviderFactory } from "@/modules/ai/infrastructure/factories/default-ai-provider.factory";
+import { composeAccountAISystemPrompt } from "@/modules/ai/application/services/account-ai-system-prompt";
+import { AccountScopedAISettingsResolver } from "@/modules/ai/application/services/account-scoped-ai-settings-resolver";
+import { GetAccountAISettingsUseCase } from "@/modules/ai/application/use-cases/get-account-ai-settings.use-case";
+import { SaveAccountAISettingsUseCase } from "@/modules/ai/application/use-cases/save-account-ai-settings.use-case";
+import { SupabaseAccountAISettingsRepository } from "@/modules/ai/infrastructure/repositories/supabase-account-ai-settings.repository";
 import { CollectionUseCaseFactory } from "@/modules/collection/application/collection-use-case.factory";
 import { TEMPLATE_PREVIEW_MAX_EAGER_DEPTH } from "@/modules/template/application/constants/template-preview.constants";
 import { TemplatePreviewEvent } from "@/modules/template/application/services/template-preview.types";
@@ -13,6 +18,8 @@ import {
 import { EagerLoadTemplateContextResolverAdapter } from "@/modules/template/infrastructure/adapters/eager-load-template-context-resolver.adapter";
 import { SupabaseTemplateAssetUrlResolverAdapter } from "@/modules/template/infrastructure/adapters/supabase-template-asset-url-resolver.adapter";
 import { SupabaseTemplateRepository } from "@/modules/template/infrastructure/repositories/supabase-template.repository";
+import { resolveAccountAccess } from "@/shared/infrastructure/supabase/account-access";
+import { createAdminClientOrNull } from "@/shared/infrastructure/supabase/admin";
 import { createClient } from "@/shared/infrastructure/supabase/server";
 
 const bodySchema = z.object({
@@ -55,11 +62,8 @@ function encodeSseEvent(event: TemplatePreviewEvent): string {
   return `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`;
 }
 
-function readBooleanEnv(value: string | undefined, fallback: boolean): boolean {
-  if (value === undefined) return fallback;
-  if (value.toLowerCase() === "true") return true;
-  if (value.toLowerCase() === "false") return false;
-  return fallback;
+function createRepositoryClient(supabase: SupabaseClient) {
+  return createAdminClientOrNull() ?? supabase;
 }
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
@@ -83,10 +87,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   const supabase = await createClient();
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  if (!session) {
+  if (!user) {
     return NextResponse.json(
       {
         error: {
@@ -98,6 +102,26 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     );
   }
 
+  const accessResult = await resolveAccountAccess(supabase, user.id, bodyResult.data.accountId);
+
+  if (!accessResult.ok) {
+    return NextResponse.json(toErrorPayload(accessResult.error, "DB_ERROR"), {
+      status: 500,
+    });
+  }
+
+  if (!accessResult.value.isMember) {
+    return NextResponse.json(
+      {
+        error: {
+          code: "FORBIDDEN",
+          message: "You do not have access to this workspace",
+        },
+      },
+      { status: 403 },
+    );
+  }
+
   const templateRepository = new SupabaseTemplateRepository(supabase);
   const collectionFactory = CollectionUseCaseFactory.create(supabase);
   const eagerLoadUseCase = collectionFactory.eagerLoadRecord();
@@ -106,8 +130,37 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     eagerLoadUseCase,
     listFieldsUseCase,
   );
-  const aiProviderFactory = DefaultAIProviderFactory.fromEnv();
   const assetUrlResolver = new SupabaseTemplateAssetUrlResolverAdapter(supabase);
+  const accountAISettingsRepository = new SupabaseAccountAISettingsRepository(
+    createRepositoryClient(supabase),
+  );
+  const accountAISettingsResolver = new AccountScopedAISettingsResolver(
+    new GetAccountAISettingsUseCase(accountAISettingsRepository),
+    new SaveAccountAISettingsUseCase(accountAISettingsRepository),
+  );
+  const resolvedAccountAISettings = await accountAISettingsResolver.resolve(
+    bodyResult.data.accountId,
+    process.env,
+    {
+      persistBootstrap: accessResult.value.isAdmin,
+    },
+  );
+
+  if (!resolvedAccountAISettings.ok) {
+    return NextResponse.json(
+      toErrorPayload(resolvedAccountAISettings.error, "ACCOUNT_AI_SETTINGS_ERROR"),
+      {
+        status: 500,
+      },
+    );
+  }
+
+  const aiProviderFactory = resolvedAccountAISettings.value.providerFactory;
+  const accountAISettings = resolvedAccountAISettings.value.settings;
+  const aiSystemInstruction = composeAccountAISystemPrompt({
+    settings: accountAISettings,
+    mode: "structured_preview",
+  });
 
   const generatePreviewUseCase = new GenerateTemplatePreviewUseCase(
     templateRepository,
@@ -118,10 +171,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
   const shouldStream = bodyResult.data.options?.stream ?? true;
   const previewDepth = TEMPLATE_PREVIEW_MAX_EAGER_DEPTH;
-  const enableAI = readBooleanEnv(process.env.FEATURE_TEMPLATE_AI, true);
-  const enableLogic = readBooleanEnv(process.env.FEATURE_TEMPLATE_LOGIC, true);
-  const maxAiBlocks = Math.max(1, Number(process.env.TEMPLATE_PREVIEW_MAX_AI_BLOCKS ?? 3));
-  const timeoutMs = Math.max(5_000, Number(process.env.TEMPLATE_PREVIEW_TIMEOUT_MS ?? 45_000));
+  const enableAI = accountAISettings.featureTemplateAI;
+  const enableLogic = accountAISettings.featureTemplateLogic;
+  const maxAiBlocks = Math.max(1, accountAISettings.templatePreviewMaxAIBlocks);
+  const timeoutMs = Math.max(5_000, accountAISettings.templatePreviewTimeoutMs);
 
   if (!shouldStream) {
     const result = await generatePreviewUseCase.execute({
@@ -131,6 +184,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       collectionId: bodyResult.data.collectionId,
       recordId: bodyResult.data.recordId,
       blocks: bodyResult.data.blocks,
+      aiSystemInstruction,
       depth: previewDepth,
       signal: request.signal,
       options: {
@@ -203,6 +257,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             collectionId: bodyResult.data.collectionId,
             recordId: bodyResult.data.recordId,
             blocks: bodyResult.data.blocks,
+            aiSystemInstruction,
             depth: previewDepth,
             onEvent: relayEvent,
             signal: abortController.signal,

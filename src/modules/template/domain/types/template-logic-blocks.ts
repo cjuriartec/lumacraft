@@ -64,10 +64,6 @@ export interface TemplateSwitchLogicBlock {
 export interface TemplateAILogicBlock {
   type: "ai";
   prompt: string;
-  provider?: "GEMINI" | "OPENAI" | "ANTHROPIC";
-  model?: string;
-  temperature?: number;
-  maxTokens?: number;
 }
 
 export type TemplateLogicBlock =
@@ -129,10 +125,6 @@ const logicBlockSchema: z.ZodType<TemplateLogicBlock> = z.lazy(() =>
     z.object({
       type: z.literal("ai"),
       prompt: z.string().min(1),
-      provider: z.enum(["GEMINI", "OPENAI", "ANTHROPIC"]).optional(),
-      model: z.string().min(1).optional(),
-      temperature: z.number().min(0).max(2).optional(),
-      maxTokens: z.number().int().positive().optional(),
     }),
   ]),
 );

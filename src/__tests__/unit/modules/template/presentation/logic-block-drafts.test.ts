@@ -68,11 +68,9 @@ describe("logic block draft schemas", () => {
   it("requires explicit grounding variables for ai prompts", () => {
     const invalid = aiDraftSchema.safeParse({
       promptTemplate: "Resume este registro",
-      provider: "GEMINI",
     });
     const valid = aiDraftSchema.safeParse({
       promptTemplate: "Resume {{root}}",
-      provider: "GEMINI",
     });
 
     expect(invalid.success).toBe(false);

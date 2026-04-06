@@ -13,9 +13,12 @@ import type { ReactNode } from "react";
 import * as React from "react";
 
 import { Button } from "@/shared/presentation/components/ui/button";
+import { Textarea } from "@/shared/presentation/components/ui/textarea";
 
 import { useTemplateVariableCatalog } from "../contexts/template-variable-catalog-context";
+import { TemplateVariableCatalogNode } from "../types/template-variable-catalog";
 import { LogicBlockEditorDialog } from "./logic-block-editor-dialog";
+import { VariableSelector } from "./variable-selector";
 
 export const TEMPLATE_CONDITIONAL_TYPE = "template_conditional";
 export const TEMPLATE_LIST_TYPE = "template_list";
@@ -71,10 +74,6 @@ export interface TemplateAIElementNode extends TElement {
   type: typeof TEMPLATE_AI_TYPE;
   children: LogicNodeChildren;
   promptTemplate: string;
-  provider?: "GEMINI" | "OPENAI" | "ANTHROPIC";
-  model?: string;
-  temperature?: number;
-  maxTokens?: number;
 }
 
 function baseChildren(): LogicNodeChildren {
@@ -122,9 +121,6 @@ export function createAIElement(): TemplateAIElementNode {
     type: TEMPLATE_AI_TYPE,
     children: baseChildren(),
     promptTemplate: DEFAULT_TEMPLATE_AI_PROMPT,
-    provider: "GEMINI",
-    temperature: 0.2,
-    maxTokens: 300,
   };
 }
 
@@ -183,6 +179,109 @@ function BlockShell({
         {title}
       </div>
       {children}
+    </div>
+  );
+}
+
+function insertPromptToken(
+  textarea: HTMLTextAreaElement | null,
+  currentValue: string,
+  token: string,
+  onChange: (nextValue: string) => void,
+) {
+  if (!textarea) {
+    onChange(`${currentValue}${token}`);
+    return;
+  }
+
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const nextValue = `${currentValue.slice(0, start)}${token}${currentValue.slice(end)}`;
+  onChange(nextValue);
+
+  window.requestAnimationFrame(() => {
+    textarea.focus();
+    const nextCursor = start + token.length;
+    textarea.setSelectionRange(nextCursor, nextCursor);
+  });
+}
+
+function autoResizeTextarea(textarea: HTMLTextAreaElement | null) {
+  if (!textarea) return;
+
+  textarea.style.height = "0px";
+  textarea.style.height = `${Math.max(textarea.scrollHeight, 96)}px`;
+}
+
+interface TemplateAIInlinePromptEditorProps {
+  value: string;
+  catalogNodes: TemplateVariableCatalogNode[];
+  catalogLoading?: boolean;
+  catalogError?: string | null;
+  onChange: (nextPrompt: string) => void;
+}
+
+export function TemplateAIInlinePromptEditor({
+  value,
+  catalogNodes,
+  catalogLoading = false,
+  catalogError = null,
+  onChange,
+}: TemplateAIInlinePromptEditorProps) {
+  const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
+
+  React.useLayoutEffect(() => {
+    autoResizeTextarea(textareaRef.current);
+  }, [value]);
+
+  const handleChange = (nextValue: string) => {
+    onChange(nextValue);
+    autoResizeTextarea(textareaRef.current);
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-7 rounded-lg border-border/40 text-[11px] font-semibold uppercase tracking-[0.12em]"
+          onClick={() => insertPromptToken(textareaRef.current, value, "{{root}}", handleChange)}
+        >
+          Usar Registro
+        </Button>
+        <VariableSelector
+          nodes={catalogNodes}
+          loading={catalogLoading}
+          onSelect={(node) =>
+            insertPromptToken(textareaRef.current, value, `{{${node.path}}}`, handleChange)
+          }
+          trigger={
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1.5 rounded-lg border-border/40 text-[11px] font-semibold uppercase tracking-[0.12em]"
+            >
+              <Braces size={12} />
+              Variables
+            </Button>
+          }
+        />
+        {catalogError && <span className="text-[11px] text-destructive">{catalogError}</span>}
+      </div>
+      <Textarea
+        ref={textareaRef}
+        value={value}
+        onChange={(event) => handleChange(event.target.value)}
+        placeholder="Describe lo que la IA debe generar para este bloque..."
+        className="min-h-[96px] resize-none rounded-xl border-border/40 bg-background/70 text-sm leading-6"
+      />
+      <p className="text-[11px] leading-5 text-muted-foreground">
+        Inserta variables como {`{{root}}`} o {`{{cliente.nombre}}`} para anclar el prompt al
+        registro actual. La cuenta define proveedor, modelo, temperatura y tokens.
+      </p>
     </div>
   );
 }
@@ -336,12 +435,9 @@ export function TemplateAIElement(props: PlateElementProps<TemplateAIElementNode
     error: variableCatalogError,
   } = useTemplateVariableCatalog();
   const editor = useEditorRef();
-
-  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
-
-  const handleEdit = () => {
-    setIsDialogOpen(true);
-  };
+  const promptValue = element.promptTemplate?.trim().length
+    ? element.promptTemplate
+    : DEFAULT_TEMPLATE_AI_PROMPT;
 
   const onSave = (updatedElement: Partial<TemplateAIElementNode>) => {
     const path = editor.api.findPath(element);
@@ -353,23 +449,14 @@ export function TemplateAIElement(props: PlateElementProps<TemplateAIElementNode
   return (
     <PlateElement {...props} as="div" attributes={attributes}>
       <BlockShell icon={<BrainCircuit size={14} />} title="AI Block">
-        <p className="line-clamp-2 text-xs text-foreground/80">{element.promptTemplate}</p>
-        <p className="mt-1 text-[11px] text-muted-foreground">
-          provider: <b>GEMINI</b>
-        </p>
-        <Button type="button" size="sm" variant="outline" className="mt-2 h-7" onClick={handleEdit}>
-          Editar
-        </Button>
+        <TemplateAIInlinePromptEditor
+          value={promptValue}
+          catalogNodes={variableCatalog}
+          catalogLoading={variableCatalogLoading}
+          catalogError={variableCatalogError}
+          onChange={(nextPrompt) => onSave({ promptTemplate: nextPrompt })}
+        />
       </BlockShell>
-      <LogicBlockEditorDialog
-        open={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
-        element={element}
-        onSave={onSave}
-        catalogNodes={variableCatalog}
-        catalogLoading={variableCatalogLoading}
-        catalogError={variableCatalogError}
-      />
       {children}
     </PlateElement>
   );

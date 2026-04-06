@@ -40,6 +40,7 @@ interface EvaluateTemplateLogicParams {
   blocks: TemplateLogicBlock[];
   context: TemplateRuntimeContext;
   aiProviderFactory: AIProviderFactoryPort;
+  aiSystemInstruction?: string;
   onEvent?: (event: TemplateLogicStreamEvent) => void;
   signal?: AbortSignal;
 }
@@ -314,7 +315,7 @@ async function evaluateBlock(
     }
 
     case "ai": {
-      const providerResult = params.aiProviderFactory.create(block.provider);
+      const providerResult = params.aiProviderFactory.create();
       if (!providerResult.ok) {
         return fail(providerResult.error);
       }
@@ -325,6 +326,7 @@ async function evaluateBlock(
         context: scope.root,
         locals: scope.locals,
         fieldMetadataByPath: params.context.fieldMetadataByPath,
+        systemInstruction: params.aiSystemInstruction,
       });
 
       if (groundedPrompt.truncated) {
@@ -336,9 +338,6 @@ async function evaluateBlock(
       const stream = provider.stream(
         {
           prompt: groundedPrompt.prompt,
-          model: block.model,
-          temperature: block.temperature,
-          maxTokens: block.maxTokens,
           groundingContext: groundedPrompt.contextSnapshot,
           metadata: {
             usedPaths: groundedPrompt.usedPaths,

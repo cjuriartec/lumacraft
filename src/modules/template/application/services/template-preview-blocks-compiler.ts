@@ -44,6 +44,7 @@ interface CompileTemplatePreviewBlocksParams {
   blocks: TemplateBlocks;
   context: TemplateRuntimeContext;
   aiProviderFactory: AIProviderFactoryPort;
+  aiSystemInstruction?: string;
   assetUrlResolver?: TemplateAssetUrlResolverPort;
   onEvent?: (event: TemplatePreviewEvent) => void;
   enableAI?: boolean;
@@ -60,6 +61,7 @@ interface CompileContext {
   requestId: string;
   context: TemplateRuntimeContext;
   aiProviderFactory: AIProviderFactoryPort;
+  aiSystemInstruction?: string;
   assetUrlResolver?: TemplateAssetUrlResolverPort;
   imageUrlCache: Map<string, string>;
   onEvent?: (event: TemplatePreviewEvent) => void;
@@ -136,14 +138,6 @@ const AI_DOCUMENT_RESPONSE_SCHEMA: Record<string, unknown> = {
   },
   required: ["blocks"],
 };
-
-const AI_DOCUMENT_SYSTEM_PROMPT = [
-  "Eres un redactor experto en documentos oficiales tecnicos y legales.",
-  "Debes responder con precision, tono formal y estructura clara.",
-  "El contenido debe ser compatible con Plate editor: parrafos, headings, listas, citas e imagenes.",
-  "No devuelvas HTML.",
-  "Responde exclusivamente con JSON valido usando el esquema solicitado.",
-].join(" ");
 
 const LOGIC_NODE_TYPES = new Set(["template_conditional", "template_list", "template_switch"]);
 
@@ -692,14 +686,10 @@ async function compileTemplateAiNodeStreamed(
     return [];
   }
 
-  if (node.provider && node.provider !== "GEMINI") {
-    warnings.push(`El proveedor ${node.provider} no esta disponible en preview. Se usara Gemini.`);
-  }
-
-  const providerResult = compileContext.aiProviderFactory.create("GEMINI");
+  const providerResult = compileContext.aiProviderFactory.create();
   if (!providerResult.ok) {
     warnings.push(providerResult.error.message);
-    return [toParagraph("No se pudo generar contenido IA en esta ejecucion.", "justify")];
+    return [toParagraph(`AI no disponible: ${providerResult.error.message}`, "justify")];
   }
 
   const groundedPrompt = buildGroundedPrompt({
@@ -707,14 +697,11 @@ async function compileTemplateAiNodeStreamed(
     context: scope.root,
     locals: scope.locals,
     fieldMetadataByPath: compileContext.context.fieldMetadataByPath,
-    systemInstruction: AI_DOCUMENT_SYSTEM_PROMPT,
+    systemInstruction: compileContext.aiSystemInstruction,
   });
 
   const request = {
     prompt: groundedPrompt.prompt,
-    model: typeof node.model === "string" ? node.model : undefined,
-    temperature: typeof node.temperature === "number" ? node.temperature : undefined,
-    maxTokens: typeof node.maxTokens === "number" ? node.maxTokens : undefined,
     groundingContext: groundedPrompt.contextSnapshot,
     metadata: {
       usedPaths: groundedPrompt.usedPaths,
@@ -748,7 +735,7 @@ async function compileTemplateAiNodeStreamed(
 
   if (streamError && aiText.trim().length === 0) {
     warnings.push(streamError.message);
-    return [toParagraph("No se pudo generar contenido IA en esta ejecucion.", "justify")];
+    return [toParagraph(`AI error: ${streamError.message}`, "justify")];
   }
 
   if (streamError) {
@@ -768,7 +755,7 @@ async function compileTemplateAiNodeStreamed(
 
   return fallbackBlocks.length > 0
     ? fallbackBlocks
-    : [toParagraph("No se pudo generar contenido IA en esta ejecucion.", "justify")];
+    : [toParagraph("AI no devolvio contenido para este bloque.", "justify")];
 }
 
 async function compileParagraphNode(
@@ -1167,6 +1154,7 @@ export async function compileTemplatePreviewBlocks(
       requestId: params.requestId,
       context: params.context,
       aiProviderFactory: params.aiProviderFactory,
+      aiSystemInstruction: params.aiSystemInstruction,
       assetUrlResolver: params.assetUrlResolver,
       imageUrlCache: new Map<string, string>(),
       onEvent: params.onEvent,

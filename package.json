@@ -27,6 +27,7 @@
   },
   "dependencies": {
     "@ariakit/react": "^0.4.24",
+    "@google/genai": "^1.48.0",
     "@hookform/resolvers": "^5.2.2",
     "@platejs/basic-nodes": "^52.3.10",
     "@platejs/basic-styles": "^52.3.10",

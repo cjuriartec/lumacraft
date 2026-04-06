@@ -2,6 +2,7 @@ import { DomainError, fail, ok, Result } from "@/shared/domain/result";
 
 import { AIProviderPort } from "../../domain/ports/ai-provider.port";
 import { AIProviderFactoryPort } from "../../domain/ports/ai-provider-factory.port";
+import { AccountAIProviderOptions } from "../../domain/types/account-ai-settings.types";
 import { AIProviderId } from "../../domain/types/ai-provider.types";
 import { AnthropicAdapterStub } from "../adapters/anthropic.adapter.stub";
 import { GeminiAdapter } from "../adapters/gemini.adapter";
@@ -9,9 +10,14 @@ import { OpenAIAdapterStub } from "../adapters/openai.adapter.stub";
 
 interface DefaultAIProviderFactoryOptions {
   geminiApiKey?: string;
+  openaiApiKey?: string;
+  anthropicApiKey?: string;
   defaultProvider?: AIProviderId;
   defaultModel?: string;
+  defaultTemperature?: number;
+  defaultMaxTokens?: number;
   requestTimeoutMs?: number;
+  providerOptions?: AccountAIProviderOptions;
 }
 
 function normalizeProvider(raw: string | undefined): AIProviderId {
@@ -38,7 +44,10 @@ export class DefaultAIProviderFactory implements AIProviderFactoryPort {
       GEMINI: new GeminiAdapter({
         apiKey: options.geminiApiKey,
         defaultModel,
+        defaultTemperature: options.defaultTemperature,
+        defaultMaxTokens: options.defaultMaxTokens,
         timeoutMs,
+        thinkingConfig: options.providerOptions?.GEMINI?.thinkingConfig,
       }),
       OPENAI: new OpenAIAdapterStub(),
       ANTHROPIC: new AnthropicAdapterStub(),

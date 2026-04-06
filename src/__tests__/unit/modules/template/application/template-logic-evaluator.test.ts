@@ -97,7 +97,6 @@ describe("template logic evaluator", () => {
       {
         type: "ai",
         prompt: "Resume {{customer.name}}",
-        provider: "GEMINI",
       },
     ];
 

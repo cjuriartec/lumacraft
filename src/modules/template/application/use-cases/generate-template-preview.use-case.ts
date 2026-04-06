@@ -18,6 +18,7 @@ interface GenerateTemplatePreviewParams {
   collectionId: string;
   recordId: string;
   blocks: TemplateBlocks;
+  aiSystemInstruction?: string;
   depth?: number;
   onEvent?: (event: TemplatePreviewEvent) => void;
   signal?: AbortSignal;
@@ -154,6 +155,7 @@ export class GenerateTemplatePreviewUseCase {
       blocks: params.blocks,
       context: contextResult.value,
       aiProviderFactory: this.aiProviderFactory,
+      aiSystemInstruction: params.aiSystemInstruction,
       assetUrlResolver: this.assetUrlResolver,
       onEvent: params.onEvent,
       enableAI,

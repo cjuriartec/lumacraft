@@ -22,12 +22,21 @@ describe("template logic parser", () => {
         itemTemplate: "- {{item.name}}\\n",
         children: [{ text: "" }],
       },
+      {
+        type: "template_ai",
+        promptTemplate: "Resume {{customer.name}}",
+        provider: "GEMINI",
+        model: "gemini-2.0-flash",
+        temperature: 0.2,
+        maxTokens: 300,
+        children: [{ text: "" }],
+      },
     ];
 
     const result = parseTemplateBlocksToLogic(blocks);
 
     expect(result.warnings).toEqual([]);
-    expect(result.blocks).toHaveLength(3);
+    expect(result.blocks).toHaveLength(5);
     expect(result.blocks[0]).toEqual({ type: "text", text: "Hola mundo\n" });
     expect(result.blocks[1]).toEqual({
       type: "variable",
@@ -38,6 +47,11 @@ describe("template logic parser", () => {
       type: "list",
       sourcePath: "items",
       itemAlias: "item",
+    });
+    expect(result.blocks[3]).toEqual({ type: "text", text: "\n" });
+    expect(result.blocks[4]).toEqual({
+      type: "ai",
+      prompt: "Resume {{customer.name}}",
     });
   });
 

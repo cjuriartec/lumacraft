@@ -143,6 +143,9 @@ describe("compileTemplatePreviewBlocks", () => {
         type: "template_ai",
         promptTemplate: "Genera un informe basado en {{nombre}}",
         provider: "GEMINI",
+        model: "gemini-2.0-flash",
+        temperature: 0.3,
+        maxTokens: 512,
         children: [{ text: "" }],
       },
     ];

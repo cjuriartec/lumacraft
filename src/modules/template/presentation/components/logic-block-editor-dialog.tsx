@@ -139,7 +139,6 @@ export function LogicBlockEditorDialog<T extends BlockNode>({
       const aiElement = element as TemplateAIElementNode;
       setFormData({
         ...aiElement,
-        provider: "GEMINI",
         promptTemplate:
           aiElement.promptTemplate?.trim().length > 0
             ? aiElement.promptTemplate
@@ -704,7 +703,7 @@ export function LogicBlockEditorDialog<T extends BlockNode>({
                 className="h-6 gap-1.5 text-[10px] font-bold uppercase tracking-wider text-primary hover:text-primary/80"
                 onClick={() =>
                   insertTemplateVariable("aiPromptTemplate", promptValue, "{{root}}", (nextValue) =>
-                    update({ promptTemplate: nextValue, provider: "GEMINI" }),
+                    update({ promptTemplate: nextValue }),
                   )
                 }
               >
@@ -719,7 +718,7 @@ export function LogicBlockEditorDialog<T extends BlockNode>({
                     "aiPromptTemplate",
                     promptValue,
                     `{{${node.path}}}`,
-                    (nextValue) => update({ promptTemplate: nextValue, provider: "GEMINI" }),
+                    (nextValue) => update({ promptTemplate: nextValue }),
                   )
                 }
                 trigger={
@@ -739,7 +738,7 @@ export function LogicBlockEditorDialog<T extends BlockNode>({
           <Textarea
             id="aiPromptTemplate"
             value={promptValue}
-            onChange={(event) => update({ promptTemplate: event.target.value, provider: "GEMINI" })}
+            onChange={(event) => update({ promptTemplate: event.target.value })}
             placeholder="Describe lo que quieres que la IA genere..."
             className="min-h-[100px] bg-surface border-border/40 rounded-xl resize-none font-light"
           />
@@ -747,82 +746,6 @@ export function LogicBlockEditorDialog<T extends BlockNode>({
             Ancla el bloque con variables explicitas como {`{{root}}`} o {`{{campo}}`} para que la
             IA reciba contexto real del registro y no invente datos.
           </p>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="grid gap-2">
-            <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground ml-1">
-              Proveedor
-            </Label>
-            <Select
-              value={data.provider ?? "GEMINI"}
-              onValueChange={(nextValue) =>
-                update({ provider: nextValue as TemplateAIElementNode["provider"] })
-              }
-            >
-              <SelectTrigger className="bg-surface border-border/40 rounded-xl">
-                <SelectValue placeholder="Selecciona proveedor" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="GEMINI">Google Gemini</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground ml-1">
-              El preview estructurado solo expone providers con adapter real.
-            </p>
-          </div>
-          <div className="grid gap-2">
-            <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground ml-1">
-              Modelo (Opcional)
-            </Label>
-            <Input
-              value={data.model ?? ""}
-              onChange={(event) => update({ model: event.target.value })}
-              placeholder="ej. gemini-2.0-flash"
-              className="bg-surface border-border/40 rounded-xl"
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="grid gap-2">
-            <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground ml-1">
-              Temperatura (0-2)
-            </Label>
-            <Input
-              type="number"
-              step="0.1"
-              min="0"
-              max="2"
-              value={data.temperature ?? 0.2}
-              onChange={(event) => {
-                if (event.target.value === "") {
-                  update({ temperature: undefined });
-                  return;
-                }
-                update({ temperature: Number(event.target.value) });
-              }}
-              className="bg-surface border-border/40 rounded-xl"
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground ml-1">
-              Max Tokens
-            </Label>
-            <Input
-              type="number"
-              min="1"
-              value={data.maxTokens ?? 300}
-              onChange={(event) => {
-                if (event.target.value === "") {
-                  update({ maxTokens: undefined });
-                  return;
-                }
-                update({ maxTokens: Number(event.target.value) });
-              }}
-              className="bg-surface border-border/40 rounded-xl"
-            />
-          </div>
         </div>
       </div>
     );
