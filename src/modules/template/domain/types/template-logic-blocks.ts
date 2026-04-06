@@ -45,6 +45,7 @@ export interface TemplateListLogicBlock {
   type: "list";
   sourcePath: string;
   itemAlias?: string;
+  listStyle?: "none" | "bullet" | "number";
   blocks: TemplateLogicBlock[];
   emptyText?: string;
 }
@@ -115,6 +116,7 @@ const logicBlockSchema: z.ZodType<TemplateLogicBlock> = z.lazy(() =>
       type: z.literal("list"),
       sourcePath: z.string().min(1),
       itemAlias: z.string().min(1).optional(),
+      listStyle: z.enum(["none", "bullet", "number"]).optional(),
       blocks: z.array(logicBlockSchema),
       emptyText: z.string().optional(),
     }),

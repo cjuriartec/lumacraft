@@ -281,8 +281,10 @@ async function evaluateBlock(
       }
 
       const results: string[] = [];
+      const listStyle = block.listStyle ?? "none";
 
-      for (const item of value) {
+      for (let i = 0; i < value.length; i += 1) {
+        const item = value[i];
         const childScope: TemplateRuntimeScope = {
           root: scope.root,
           locals: {
@@ -300,7 +302,15 @@ async function evaluateBlock(
           streamMeta,
         );
         if (!result.ok) return fail(result.error);
-        results.push(result.value);
+
+        let itemText = result.value;
+        if (listStyle === "bullet") {
+          itemText = `- ${itemText.trim()}\n`;
+        } else if (listStyle === "number") {
+          itemText = `${i + 1}. ${itemText.trim()}\n`;
+        }
+
+        results.push(itemText);
       }
 
       return ok(results.join(""));

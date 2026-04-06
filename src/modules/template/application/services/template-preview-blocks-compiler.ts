@@ -969,9 +969,11 @@ async function compileTemplateListNode(
   const itemAlias =
     typeof node.itemAlias === "string" && node.itemAlias.length > 0 ? node.itemAlias : "item";
   const itemTemplate = typeof node.itemTemplate === "string" ? node.itemTemplate : "{{item}}";
+  const listStyle = typeof node.listStyle === "string" ? node.listStyle : "none";
 
   const blocks: PlateElementNode[] = [];
-  for (const item of sourceValue) {
+  for (let i = 0; i < sourceValue.length; i += 1) {
+    const item = sourceValue[i];
     const itemScope: TemplateRuntimeScope = {
       root: scope.root,
       locals: {
@@ -980,7 +982,20 @@ async function compileTemplateListNode(
       },
     };
 
-    blocks.push(...(await renderTemplateToBlocks(itemTemplate, itemScope, compileContext, [])));
+    const itemBlocks = await renderTemplateToBlocks(itemTemplate, itemScope, compileContext, []);
+
+    if (listStyle === "bullet" || listStyle === "number") {
+      itemBlocks.forEach((block, blockIndex) => {
+        if (blockIndex === 0) {
+          block.listStyleType = listStyle === "bullet" ? "disc" : "decimal";
+          block.indent = 1;
+        } else {
+          block.indent = (typeof block.indent === "number" ? block.indent : 0) + 2;
+        }
+      });
+    }
+
+    blocks.push(...itemBlocks);
   }
 
   return blocks;

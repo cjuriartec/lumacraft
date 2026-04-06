@@ -31,6 +31,7 @@ export const listDraftSchema = z.object({
     .min(1, "El alias es obligatorio.")
     .regex(/^[a-zA-Z_][a-zA-Z0-9_]*$/, "Alias inválido. Usa letras, números y guion bajo."),
   itemTemplate: z.string().min(1, "El template del ítem es obligatorio."),
+  listStyle: z.enum(["none", "bullet", "number"]).default("none"),
   emptyText: z.string().optional(),
 });
 

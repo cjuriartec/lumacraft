@@ -76,13 +76,6 @@ describe("TemplateAIInlinePromptEditor", () => {
     expect(textarea.value).toContain("{{cliente.nombre}}");
   });
 
-  it("displays automatic root context help text", () => {
-    render(<Wrapper />);
-
-    expect(screen.getByText(/registro completo/i)).toBeInTheDocument();
-    expect(screen.getByText(/automáticamente/i)).toBeInTheDocument();
-  });
-
   it("auto-grows the textarea based on scrollHeight", () => {
     render(
       <TemplateAIInlinePromptEditor

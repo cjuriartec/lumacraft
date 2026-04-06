@@ -1,6 +1,6 @@
 "use client";
 
-import { Braces, BrainCircuit, Database, GitBranch, ListTree, Split } from "lucide-react";
+import { Braces, BrainCircuit, GitBranch, ListTree, Split } from "lucide-react";
 import { Descendant, TElement } from "platejs";
 import {
   createPlatePlugin,
@@ -57,6 +57,7 @@ export interface TemplateListElementNode extends TElement {
   sourcePath: string;
   itemAlias?: string;
   itemTemplate?: string;
+  listStyle?: "none" | "bullet" | "number";
   emptyText?: string;
 }
 
@@ -103,6 +104,7 @@ export function createListElement(): TemplateListElementNode {
     sourcePath: "items",
     itemAlias: "item",
     itemTemplate: "- {{item.nombre}}\n",
+    listStyle: "none",
     emptyText: "",
   };
 }
@@ -222,7 +224,6 @@ interface TemplateAIInlinePromptEditorProps {
   catalogNodes: TemplateVariableCatalogNode[];
   catalogLoading?: boolean;
   catalogError?: string | null;
-  collectionContext?: TemplateCollectionContext | null;
   onChange: (nextPrompt: string) => void;
 }
 
@@ -231,7 +232,6 @@ export function TemplateAIInlinePromptEditor({
   catalogNodes,
   catalogLoading = false,
   catalogError = null,
-  collectionContext = null,
   onChange,
 }: TemplateAIInlinePromptEditorProps) {
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
@@ -247,25 +247,7 @@ export function TemplateAIInlinePromptEditor({
 
   return (
     <div className="space-y-3">
-      {collectionContext && (
-        <div className="flex items-center gap-2 rounded-lg border border-primary/10 bg-primary/5 px-3 py-2">
-          <Database size={12} className="shrink-0 text-primary/60" />
-          <div className="min-w-0 flex-1">
-            <span className="text-[11px] font-semibold text-primary/80">
-              {collectionContext.name}
-            </span>
-            {collectionContext.description && (
-              <span className="ml-1.5 text-[10px] text-muted-foreground/60">
-                — {collectionContext.description}
-              </span>
-            )}
-          </div>
-          <span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-primary/50">
-            Contexto Auto
-          </span>
-        </div>
-      )}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 justify-end">
         <VariableSelector
           nodes={catalogNodes}
           loading={catalogLoading}
@@ -293,10 +275,6 @@ export function TemplateAIInlinePromptEditor({
         placeholder="Describe lo que la IA debe generar para este bloque..."
         className="min-h-[96px] resize-none rounded-xl border-border/40 bg-background/70 text-sm leading-6"
       />
-      <p className="text-[11px] leading-5 text-muted-foreground">
-        El registro completo ({`{{root}}`}) y el contexto de la colección se envían automáticamente.
-        Inserta variables como {`{{cliente.nombre}}`} para refinar el prompt.
-      </p>
     </div>
   );
 }
@@ -448,7 +426,6 @@ export function TemplateAIElement(props: PlateElementProps<TemplateAIElementNode
     nodes: variableCatalog,
     loading: variableCatalogLoading,
     error: variableCatalogError,
-    collectionContext,
   } = useTemplateVariableCatalog();
   const editor = useEditorRef();
   const promptValue = element.promptTemplate?.trim().length
@@ -470,7 +447,6 @@ export function TemplateAIElement(props: PlateElementProps<TemplateAIElementNode
           catalogNodes={variableCatalog}
           catalogLoading={variableCatalogLoading}
           catalogError={variableCatalogError}
-          collectionContext={collectionContext}
           onChange={(nextPrompt) => onSave({ promptTemplate: nextPrompt })}
         />
       </BlockShell>

@@ -203,6 +203,68 @@ describe("compileTemplatePreviewBlocks", () => {
     expect(types).not.toContain("template_list");
   });
 
+  it("applies list styles (bullet/number) to list blocks", async () => {
+    const templateBlocks: TemplateBlocks = [
+      {
+        type: "template_list",
+        sourcePath: "items",
+        itemAlias: "item",
+        itemTemplate: "{{item.nombre}}",
+        listStyle: "bullet",
+        children: [{ text: "" }],
+      },
+    ];
+
+    const context: TemplateRuntimeContext = {
+      recordId: "record-1",
+      collectionId: "collection-1",
+      collectionName: "Clientes",
+      root: {
+        items: [{ nombre: "A" }, { nombre: "B" }],
+      },
+    };
+
+    const result = await compileTemplatePreviewBlocks({
+      requestId: "req-list-style",
+      blocks: templateBlocks,
+      context,
+      aiProviderFactory: new StructuredAIProviderFactory(),
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const compiled = result.value.blocks as any[];
+    expect(compiled).toHaveLength(2);
+    expect(compiled[0].listStyleType).toBe("disc");
+    expect(compiled[0].indent).toBe(1);
+    expect(compiled[1].listStyleType).toBe("disc");
+    expect(compiled[1].indent).toBe(1);
+
+    // Test numbered list
+    const numberedResult = await compileTemplatePreviewBlocks({
+      requestId: "req-list-num",
+      blocks: [
+        {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ...(templateBlocks[0] as any),
+          listStyle: "number",
+        },
+      ],
+      context,
+      aiProviderFactory: new StructuredAIProviderFactory(),
+    });
+
+    expect(numberedResult.ok).toBe(true);
+    if (!numberedResult.ok) return;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const numberedBlocks = numberedResult.value.blocks as any[];
+    expect(numberedBlocks[0].listStyleType).toBe("decimal");
+    expect(numberedBlocks[0].indent).toBe(1);
+  });
+
   it("uses signed URLs for image variables when resolver is available", async () => {
     const templateBlocks: TemplateBlocks = [
       {

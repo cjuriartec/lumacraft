@@ -408,6 +408,27 @@ export function LogicBlockEditorDialog<T extends BlockNode>({
         </div>
 
         <div className="grid gap-2">
+          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground ml-1">
+            Estilo de Lista
+          </Label>
+          <Select
+            value={data.listStyle ?? "none"}
+            onValueChange={(nextValue) =>
+              update({ listStyle: nextValue as TemplateListElementNode["listStyle"] })
+            }
+          >
+            <SelectTrigger className="bg-surface border-border/40 rounded-xl">
+              <SelectValue placeholder="Seleccionar estilo..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Ninguno (Contenido crudo)</SelectItem>
+              <SelectItem value="bullet">Viñetas (•)</SelectItem>
+              <SelectItem value="number">Numerada (1.)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="grid gap-2">
           <div className="flex items-center justify-between ml-1">
             <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
               Template del ítem

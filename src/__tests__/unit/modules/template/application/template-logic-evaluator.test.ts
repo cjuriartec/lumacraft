@@ -133,4 +133,55 @@ describe("template logic evaluator", () => {
     expect(html).toContain("<ul>");
     expect(html).toContain("<p>Parrafo</p>");
   });
+
+  it("evaluates lists with specific styles (bullet/number)", async () => {
+    const context: TemplateRuntimeContext = {
+      recordId: "record-1",
+      collectionId: "collection-1",
+      collectionName: "Clientes",
+      root: {
+        items: [{ name: "A" }, { name: "B" }],
+      },
+    };
+
+    // Bullet Style
+    const bulletResult = await evaluateTemplateLogic({
+      blocks: [
+        {
+          type: "list",
+          sourcePath: "items",
+          itemAlias: "item",
+          listStyle: "bullet",
+          blocks: [{ type: "text", text: "{{item.name}}" }],
+        },
+      ],
+      context,
+      aiProviderFactory: new StaticAIProviderFactory(),
+    });
+
+    expect(bulletResult.ok).toBe(true);
+    if (bulletResult.ok) {
+      expect(bulletResult.value.markdown).toBe("- A\n- B\n");
+    }
+
+    // Number Style
+    const numberResult = await evaluateTemplateLogic({
+      blocks: [
+        {
+          type: "list",
+          sourcePath: "items",
+          itemAlias: "item",
+          listStyle: "number",
+          blocks: [{ type: "text", text: "{{item.name}}" }],
+        },
+      ],
+      context,
+      aiProviderFactory: new StaticAIProviderFactory(),
+    });
+
+    expect(numberResult.ok).toBe(true);
+    if (numberResult.ok) {
+      expect(numberResult.value.markdown).toBe("1. A\n2. B\n");
+    }
+  });
 });
