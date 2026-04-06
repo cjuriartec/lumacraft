@@ -1,0 +1,82 @@
+"use client";
+
+import * as TabsPrimitive from "@radix-ui/react-tabs";
+import * as React from "react";
+
+import { cn } from "@/shared/lib/utils";
+
+const TabsContext = React.createContext<{ variant: "default" | "line" }>({
+  variant: "default",
+});
+
+interface TabsProps extends React.ComponentPropsWithoutRef<typeof TabsPrimitive.Root> {
+  variant?: "default" | "line";
+}
+
+const Tabs = ({ variant = "default", ...props }: TabsProps) => (
+  <TabsContext.Provider value={{ variant }}>
+    <TabsPrimitive.Root {...props} />
+  </TabsContext.Provider>
+);
+
+const TabsList = React.forwardRef<
+  React.ComponentRef<typeof TabsPrimitive.List>,
+  React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>
+>(({ className, ...props }, ref) => {
+  const { variant } = React.useContext(TabsContext);
+
+  return (
+    <TabsPrimitive.List
+      ref={ref}
+      className={cn(
+        "inline-flex h-11 items-center justify-center p-1 text-muted",
+        variant === "default" && "rounded-lg bg-surface/40",
+        variant === "line" &&
+          "bg-transparent border-b border-border/10 justify-start w-full px-0 gap-6 rounded-none h-auto",
+        className,
+      )}
+      {...props}
+    />
+  );
+});
+TabsList.displayName = TabsPrimitive.List.displayName;
+
+const TabsTrigger = React.forwardRef<
+  React.ComponentRef<typeof TabsPrimitive.Trigger>,
+  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>
+>(({ className, ...props }, ref) => {
+  const { variant } = React.useContext(TabsContext);
+
+  return (
+    <TabsPrimitive.Trigger
+      ref={ref}
+      className={cn(
+        "inline-flex items-center justify-center whitespace-nowrap px-4 py-2 text-sm font-semibold ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+        variant === "default" &&
+          "rounded-md data-[state=active]:bg-surface data-[state=active]:text-primary data-[state=active]:shadow-none",
+        variant === "line" &&
+          "rounded-none border-b-2 border-transparent bg-transparent py-3 px-0 data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:bg-transparent transition-none",
+        className,
+      )}
+      {...props}
+    />
+  );
+});
+TabsTrigger.displayName = TabsPrimitive.Trigger.displayName;
+
+const TabsContent = React.forwardRef<
+  React.ComponentRef<typeof TabsPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content>
+>(({ className, ...props }, ref) => (
+  <TabsPrimitive.Content
+    ref={ref}
+    className={cn(
+      "mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+      className,
+    )}
+    {...props}
+  />
+));
+TabsContent.displayName = TabsPrimitive.Content.displayName;
+
+export { Tabs, TabsContent, TabsList, TabsTrigger };
