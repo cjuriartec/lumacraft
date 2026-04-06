@@ -64,20 +64,23 @@ function Wrapper() {
 }
 
 describe("TemplateAIInlinePromptEditor", () => {
-  it("inserts root and variable tokens inline", () => {
+  it("inserts variable tokens inline", () => {
     render(<Wrapper />);
 
     const textarea = screen.getByRole("textbox") as HTMLTextAreaElement;
     textarea.focus();
     textarea.setSelectionRange(textarea.value.length, textarea.value.length);
 
-    fireEvent.click(screen.getByRole("button", { name: "Usar Registro" }));
-    expect(textarea.value).toContain("{{root}}");
-
-    textarea.setSelectionRange(textarea.value.length, textarea.value.length);
     fireEvent.click(screen.getByRole("button", { name: "Insertar variable" }));
 
     expect(textarea.value).toContain("{{cliente.nombre}}");
+  });
+
+  it("displays automatic root context help text", () => {
+    render(<Wrapper />);
+
+    expect(screen.getByText(/registro completo/i)).toBeInTheDocument();
+    expect(screen.getByText(/automáticamente/i)).toBeInTheDocument();
   });
 
   it("auto-grows the textarea based on scrollHeight", () => {

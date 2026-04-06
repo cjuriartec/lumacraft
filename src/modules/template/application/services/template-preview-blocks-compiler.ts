@@ -692,12 +692,18 @@ async function compileTemplateAiNodeStreamed(
     return [toParagraph(`AI no disponible: ${providerResult.error.message}`, "justify")];
   }
 
+  const collectionContext =
+    node.collectionContext && typeof node.collectionContext === "object"
+      ? (node.collectionContext as { id: string; name: string; description?: string })
+      : null;
+
   const groundedPrompt = buildGroundedPrompt({
     promptTemplate,
     context: scope.root,
     locals: scope.locals,
     fieldMetadataByPath: compileContext.context.fieldMetadataByPath,
     systemInstruction: compileContext.aiSystemInstruction,
+    collectionContext,
   });
 
   const request = {

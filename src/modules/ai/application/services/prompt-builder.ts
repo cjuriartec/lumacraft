@@ -173,6 +173,12 @@ function clampSnapshot(raw: string, maxChars: number): { text: string; truncated
   };
 }
 
+export interface CollectionContextInput {
+  id: string;
+  name: string;
+  description?: string;
+}
+
 export interface BuildPromptInput {
   promptTemplate: string;
   context: Record<string, unknown>;
@@ -180,6 +186,7 @@ export interface BuildPromptInput {
   maxContextChars?: number;
   systemInstruction?: string;
   fieldMetadataByPath?: Record<string, TemplateRuntimeFieldMetadata>;
+  collectionContext?: CollectionContextInput | null;
 }
 
 export interface BuildPromptOutput {
@@ -197,7 +204,13 @@ export function buildGroundedPrompt(input: BuildPromptInput): BuildPromptOutput 
   };
 
   const usedPaths = extractPromptPaths(input.promptTemplate);
-  const contextPaths = usedPaths.length > 0 ? usedPaths : ["root"];
+  // Always include root context so AI has full record data
+  const contextPaths =
+    usedPaths.length > 0
+      ? usedPaths.includes("root")
+        ? usedPaths
+        : ["root", ...usedPaths]
+      : ["root"];
   const projectedContext = projectContextByPaths(mergedContext, contextPaths);
   const metadata = buildFieldMetadataSnapshot(
     mergedContext,
@@ -217,15 +230,19 @@ export function buildGroundedPrompt(input: BuildPromptInput): BuildPromptOutput 
   });
 
   const systemInstruction = input.systemInstruction ?? ACCOUNT_AI_INTERNAL_BASE_PROMPT;
-  /*
-    "Redacta documentos con tono oficial, técnico y legal cuando aplique. Responde solo con el contexto y metadata provistos, sin inventar datos. Entrega salida compatible con Plate (párrafos, encabezados, listas, citas, enlaces e imágenes), evitando HTML. Si falta información, decláralo explícitamente.";
 
-  */
+  const promptSections = ["# System", systemInstruction, ""];
 
-  const prompt = [
-    "# System",
-    systemInstruction,
-    "",
+  if (input.collectionContext) {
+    const collectionParts = [`# Collection Context`, `Name: ${input.collectionContext.name}`];
+    if (input.collectionContext.description?.trim()) {
+      collectionParts.push(`Description: ${input.collectionContext.description.trim()}`);
+    }
+    collectionParts.push(`ID: ${input.collectionContext.id}`);
+    promptSections.push(...collectionParts, "");
+  }
+
+  promptSections.push(
     "# Context (Variables Referenciadas)",
     contextClamped.text,
     "",
@@ -234,7 +251,9 @@ export function buildGroundedPrompt(input: BuildPromptInput): BuildPromptOutput 
     "",
     "# User Prompt",
     renderedPrompt,
-  ].join("\n");
+  );
+
+  const prompt = promptSections.join("\n");
 
   return {
     prompt,

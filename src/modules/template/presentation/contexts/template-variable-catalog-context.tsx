@@ -2,18 +2,23 @@
 
 import * as React from "react";
 
-import { TemplateVariableCatalogNode } from "../types/template-variable-catalog";
+import {
+  TemplateCollectionContext,
+  TemplateVariableCatalogNode,
+} from "../types/template-variable-catalog";
 
 interface TemplateVariableCatalogContextValue {
   nodes: TemplateVariableCatalogNode[];
   loading: boolean;
   error: string | null;
+  collectionContext: TemplateCollectionContext | null;
 }
 
 const TemplateVariableCatalogContext = React.createContext<TemplateVariableCatalogContextValue>({
   nodes: [],
   loading: false,
   error: null,
+  collectionContext: null,
 });
 
 interface TemplateVariableCatalogProviderProps {

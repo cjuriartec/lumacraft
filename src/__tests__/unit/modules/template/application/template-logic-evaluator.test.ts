@@ -38,6 +38,10 @@ class StaticAIProvider implements AIProviderPort {
       text: "IA chunk",
     });
   }
+
+  public async testConnection(): Promise<Result<void, DomainError>> {
+    return ok(undefined);
+  }
 }
 
 class StaticAIProviderFactory implements AIProviderFactoryPort {

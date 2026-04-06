@@ -65,15 +65,15 @@ describe("logic block draft schemas", () => {
     expect(result.success).toBe(false);
   });
 
-  it("requires explicit grounding variables for ai prompts", () => {
-    const invalid = aiDraftSchema.safeParse({
+  it("accepts prompts without explicit grounding variables since root is auto-injected", () => {
+    const withoutVariables = aiDraftSchema.safeParse({
       promptTemplate: "Resume este registro",
     });
-    const valid = aiDraftSchema.safeParse({
+    const withVariables = aiDraftSchema.safeParse({
       promptTemplate: "Resume {{root}}",
     });
 
-    expect(invalid.success).toBe(false);
-    expect(valid.success).toBe(true);
+    expect(withoutVariables.success).toBe(true);
+    expect(withVariables.success).toBe(true);
   });
 });

@@ -135,8 +135,18 @@ export class SupabaseRecordRepository extends BaseRepository implements IRecordR
     return ok(((data as Record<string, unknown>[]) || []).map((item) => this.toEntity(item)));
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private applyFilters(query: any, filters: ColumnFilter[]) {
+  private applyFilters<
+    T extends {
+      eq: (column: string, value: unknown) => T;
+      neq: (column: string, value: unknown) => T;
+      gt: (column: string, value: unknown) => T;
+      gte: (column: string, value: unknown) => T;
+      lt: (column: string, value: unknown) => T;
+      lte: (column: string, value: unknown) => T;
+      ilike: (column: string, value: string) => T;
+      in: (column: string, values: unknown[]) => T;
+    },
+  >(query: T, filters: ColumnFilter[]): T {
     let nextQuery = query;
     const nativeColumns = [
       "id",

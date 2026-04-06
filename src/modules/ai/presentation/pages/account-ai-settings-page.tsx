@@ -77,9 +77,9 @@ export default function AccountAISettingsPage() {
   const [secretInputs, setSecretInputs] = useState<Partial<Record<AIProviderId, string>>>({});
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const [testingConnection, setTestingConnection] = useState<Partial<Record<AIProviderId, boolean>>>(
-    {},
-  );
+  const [testingConnection, setTestingConnection] = useState<
+    Partial<Record<AIProviderId, boolean>>
+  >({});
   const [testResults, setTestResults] = useState<
     Partial<Record<AIProviderId, { success: boolean; message?: string } | null>>
   >({});

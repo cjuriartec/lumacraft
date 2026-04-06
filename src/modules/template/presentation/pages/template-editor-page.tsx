@@ -238,6 +238,18 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
     ? activeCollection.displayName || activeCollection.name
     : "N/A";
 
+  const collectionContextForAI = React.useMemo(
+    () =>
+      activeCollection
+        ? {
+            id: activeCollection.id,
+            name: activeCollection.displayName || activeCollection.name,
+            description: activeCollection.description,
+          }
+        : null,
+    [activeCollection],
+  );
+
   const primaryFieldName = activeCollection?.primaryFieldName ?? null;
 
   const templatesBackHref = template?.collectionId
@@ -334,6 +346,7 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
         nodes: variableCatalog,
         loading: variableCatalogLoading,
         error: variableCatalogError,
+        collectionContext: collectionContextForAI,
       }}
     >
       <Plate

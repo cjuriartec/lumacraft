@@ -116,45 +116,7 @@ vi.mock("platejs/react", () => ({
 }));
 
 vi.mock("@/modules/template/presentation/components/template-preview-panel", () => ({
-  TemplatePreviewPanel: ({
-    collectionLinked,
-    primaryFieldName,
-    records,
-    selectedRecordId,
-    setSelectedRecordId,
-    onGenerate,
-  }: {
-    collectionLinked: boolean;
-    primaryFieldName?: string | null;
-    records: Array<{ id: string; data: Record<string, unknown> }>;
-    selectedRecordId: string;
-    setSelectedRecordId: (recordId: string) => void;
-    onGenerate: () => void;
-  }) => (
-    <div data-testid="template-preview-panel">
-      {!collectionLinked && <p>Vincula una colección a la plantilla para habilitar el preview.</p>}
-      <select
-        value={selectedRecordId}
-        onChange={(event) => setSelectedRecordId(event.target.value)}
-      >
-        {records.map((record) => {
-          const primaryValue =
-            primaryFieldName && typeof record.data[primaryFieldName] === "string"
-              ? (record.data[primaryFieldName] as string)
-              : record.id.slice(0, 8);
-
-          return (
-            <option key={record.id} value={record.id}>
-              {primaryValue}
-            </option>
-          );
-        })}
-      </select>
-      <button type="button" onClick={onGenerate}>
-        Generar Preview
-      </button>
-    </div>
-  ),
+  TemplatePreviewPanel: () => <div data-testid="template-preview-panel" />,
 }));
 
 vi.mock("@/shared/presentation/components/editor/plugins/dnd-kit", () => ({
@@ -291,6 +253,32 @@ vi.mock("@/modules/template/presentation/components/variable-selector", () => ({
   ),
 }));
 
+vi.mock("@/shared/presentation/components/ui/select", () => ({
+  Select: ({
+    children,
+    value,
+    onValueChange,
+  }: {
+    children: ReactNode;
+    value?: string;
+    onValueChange: (v: string) => void;
+  }) => (
+    <div data-testid="select-mock" data-value={value} onClick={() => onValueChange("mock-value")}>
+      {children}
+    </div>
+  ),
+  SelectTrigger: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  SelectValue: ({ children, placeholder }: { children?: ReactNode; placeholder?: string }) => (
+    <span>{children || placeholder}</span>
+  ),
+  SelectContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  SelectItem: ({ children, value }: { children: ReactNode; value: string }) => (
+    <option value={value} role="option">
+      {children}
+    </option>
+  ),
+}));
+
 describe("TemplateEditorPage", () => {
   beforeEach(() => {
     resetFactories();
@@ -326,9 +314,6 @@ describe("TemplateEditorPage", () => {
 
     expect(screen.getByTestId("variable-selector")).toBeDisabled();
     expect(screen.getByText("Vincula una colección para insertar variables.")).toBeInTheDocument();
-    expect(
-      screen.getByText("Vincula una colección a la plantilla para habilitar el preview."),
-    ).toBeInTheDocument();
     expect(screen.getByText("indent")).toBeInTheDocument();
     expect(screen.getByText("outdent")).toBeInTheDocument();
     expect(screen.getAllByText("font-color")).toHaveLength(2);
@@ -363,6 +348,8 @@ describe("TemplateEditorPage", () => {
 
     render(<TemplateEditorPage templateId="template-1" />);
 
+    fireEvent.click(screen.getByRole("button", { name: /Vista Previa/i }));
+
     expect(screen.getByRole("option", { name: "Juanito Alcachofa" })).toBeInTheDocument();
   });
 
@@ -396,7 +383,7 @@ describe("TemplateEditorPage", () => {
 
     render(<TemplateEditorPage templateId="template-1" />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Generar Preview" }));
+    fireEvent.click(screen.getByRole("button", { name: /Vista Previa/i }));
 
     expect(previewState.generate).toHaveBeenCalledWith([
       { type: "p", children: [{ text: "Desde editor" }] },

@@ -695,45 +695,29 @@ export function LogicBlockEditorDialog<T extends BlockNode>({
             <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
               Prompt de IA
             </Label>
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-6 gap-1.5 text-[10px] font-bold uppercase tracking-wider text-primary hover:text-primary/80"
-                onClick={() =>
-                  insertTemplateVariable("aiPromptTemplate", promptValue, "{{root}}", (nextValue) =>
-                    update({ promptTemplate: nextValue }),
-                  )
-                }
-              >
-                <Braces size={12} />
-                Usar Registro
-              </Button>
-              <VariableSelector
-                nodes={catalogNodes}
-                loading={catalogLoading}
-                onSelect={(node) =>
-                  insertTemplateVariable(
-                    "aiPromptTemplate",
-                    promptValue,
-                    `{{${node.path}}}`,
-                    (nextValue) => update({ promptTemplate: nextValue }),
-                  )
-                }
-                trigger={
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 gap-1.5 text-[10px] font-bold uppercase tracking-wider text-primary hover:text-primary/80"
-                  >
-                    <Braces size={12} />
-                    Insertar Variable
-                  </Button>
-                }
-              />
-            </div>
+            <VariableSelector
+              nodes={catalogNodes}
+              loading={catalogLoading}
+              onSelect={(node) =>
+                insertTemplateVariable(
+                  "aiPromptTemplate",
+                  promptValue,
+                  `{{${node.path}}}`,
+                  (nextValue) => update({ promptTemplate: nextValue }),
+                )
+              }
+              trigger={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 gap-1.5 text-[10px] font-bold uppercase tracking-wider text-primary hover:text-primary/80"
+                >
+                  <Braces size={12} />
+                  Insertar Variable
+                </Button>
+              }
+            />
           </div>
           <Textarea
             id="aiPromptTemplate"
@@ -743,8 +727,8 @@ export function LogicBlockEditorDialog<T extends BlockNode>({
             className="min-h-[100px] bg-surface border-border/40 rounded-xl resize-none font-light"
           />
           <p className="text-xs text-muted-foreground ml-1">
-            Ancla el bloque con variables explicitas como {`{{root}}`} o {`{{campo}}`} para que la
-            IA reciba contexto real del registro y no invente datos.
+            El registro completo ({`{{root}}`}) y el contexto de la colección se envían
+            automáticamente. Usa variables como {`{{campo}}`} para refinar el prompt.
           </p>
         </div>
       </div>

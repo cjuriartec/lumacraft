@@ -2,14 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { TestAIProviderConnectionUseCase } from "@/modules/ai/application/use-cases/test-ai-provider-connection.use-case";
-import { AI_PROVIDER_IDS, AIProviderId } from "@/modules/ai/domain/types/ai-provider.types";
-import { GeminiAdapter } from "@/modules/ai/infrastructure/adapters/gemini.adapter";
+import { AI_PROVIDER_IDS } from "@/modules/ai/domain/types/ai-provider.types";
 import { AnthropicAdapterStub } from "@/modules/ai/infrastructure/adapters/anthropic.adapter.stub";
+import { GeminiAdapter } from "@/modules/ai/infrastructure/adapters/gemini.adapter";
 import { OpenAIAdapterStub } from "@/modules/ai/infrastructure/adapters/openai.adapter.stub";
-import { encryptSecret, decryptSecret } from "@/modules/ai/infrastructure/security/account-ai-settings-crypto";
 import { SupabaseAccountAISettingsRepository } from "@/modules/ai/infrastructure/repositories/supabase-account-ai-settings.repository";
-import { createAdminClientOrNull } from "@/shared/infrastructure/supabase/admin";
+import { decryptSecret } from "@/modules/ai/infrastructure/security/account-ai-settings-crypto";
 import { resolveAccountAccess } from "@/shared/infrastructure/supabase/account-access";
+import { createAdminClientOrNull } from "@/shared/infrastructure/supabase/admin";
 import { createClient } from "@/shared/infrastructure/supabase/server";
 
 const bodySchema = z.object({
@@ -36,15 +36,23 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
   const { providerId, apiKey: inputApiKey } = bodyResult.data;
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) {
-    return NextResponse.json({ error: { code: "UNAUTHORIZED", message: "Unauthorized" } }, { status: 401 });
+    return NextResponse.json(
+      { error: { code: "UNAUTHORIZED", message: "Unauthorized" } },
+      { status: 401 },
+    );
   }
 
   const accessResult = await resolveAccountAccess(supabase, user.id, accountId);
   if (!accessResult.ok || !accessResult.value.isMember) {
-    return NextResponse.json({ error: { code: "FORBIDDEN", message: "Forbidden" } }, { status: 403 });
+    return NextResponse.json(
+      { error: { code: "FORBIDDEN", message: "Forbidden" } },
+      { status: 403 },
+    );
   }
 
   let finalApiKey = inputApiKey;
@@ -54,7 +62,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const adminClient = createAdminClientOrNull() ?? supabase;
     const repository = new SupabaseAccountAISettingsRepository(adminClient);
     const settingsResult = await repository.findByAccountId(accountId);
-    
+
     if (settingsResult.ok && settingsResult.value) {
       const encrypted = settingsResult.value.providerSecrets[providerId];
       if (encrypted) {
@@ -86,7 +94,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       adapter = new AnthropicAdapterStub();
       break;
     default:
-      return NextResponse.json({ error: { code: "INVALID_PROVIDER", message: "Invalid provider" } }, { status: 400 });
+      return NextResponse.json(
+        { error: { code: "INVALID_PROVIDER", message: "Invalid provider" } },
+        { status: 400 },
+      );
   }
 
   const useCase = new TestAIProviderConnectionUseCase();

@@ -1,6 +1,6 @@
 "use client";
 
-import { Braces, BrainCircuit, GitBranch, ListTree, Split } from "lucide-react";
+import { Braces, BrainCircuit, Database, GitBranch, ListTree, Split } from "lucide-react";
 import { Descendant, TElement } from "platejs";
 import {
   createPlatePlugin,
@@ -16,7 +16,10 @@ import { Button } from "@/shared/presentation/components/ui/button";
 import { Textarea } from "@/shared/presentation/components/ui/textarea";
 
 import { useTemplateVariableCatalog } from "../contexts/template-variable-catalog-context";
-import { TemplateVariableCatalogNode } from "../types/template-variable-catalog";
+import {
+  TemplateCollectionContext,
+  TemplateVariableCatalogNode,
+} from "../types/template-variable-catalog";
 import { LogicBlockEditorDialog } from "./logic-block-editor-dialog";
 import { VariableSelector } from "./variable-selector";
 
@@ -25,7 +28,7 @@ export const TEMPLATE_LIST_TYPE = "template_list";
 export const TEMPLATE_SWITCH_TYPE = "template_switch";
 export const TEMPLATE_AI_TYPE = "template_ai";
 export const DEFAULT_TEMPLATE_AI_PROMPT =
-  "Resume el registro actual usando {{root}}. Destaca datos clave y no inventes informacion.";
+  "Resume el registro actual. Destaca datos clave y no inventes informacion.";
 
 type LogicNodeChildren = Descendant[];
 
@@ -74,6 +77,7 @@ export interface TemplateAIElementNode extends TElement {
   type: typeof TEMPLATE_AI_TYPE;
   children: LogicNodeChildren;
   promptTemplate: string;
+  collectionContext?: TemplateCollectionContext | null;
 }
 
 function baseChildren(): LogicNodeChildren {
@@ -218,6 +222,7 @@ interface TemplateAIInlinePromptEditorProps {
   catalogNodes: TemplateVariableCatalogNode[];
   catalogLoading?: boolean;
   catalogError?: string | null;
+  collectionContext?: TemplateCollectionContext | null;
   onChange: (nextPrompt: string) => void;
 }
 
@@ -226,6 +231,7 @@ export function TemplateAIInlinePromptEditor({
   catalogNodes,
   catalogLoading = false,
   catalogError = null,
+  collectionContext = null,
   onChange,
 }: TemplateAIInlinePromptEditorProps) {
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
@@ -241,16 +247,25 @@ export function TemplateAIInlinePromptEditor({
 
   return (
     <div className="space-y-3">
+      {collectionContext && (
+        <div className="flex items-center gap-2 rounded-lg border border-primary/10 bg-primary/5 px-3 py-2">
+          <Database size={12} className="shrink-0 text-primary/60" />
+          <div className="min-w-0 flex-1">
+            <span className="text-[11px] font-semibold text-primary/80">
+              {collectionContext.name}
+            </span>
+            {collectionContext.description && (
+              <span className="ml-1.5 text-[10px] text-muted-foreground/60">
+                — {collectionContext.description}
+              </span>
+            )}
+          </div>
+          <span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-primary/50">
+            Contexto Auto
+          </span>
+        </div>
+      )}
       <div className="flex flex-wrap items-center gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-7 rounded-lg border-border/40 text-[11px] font-semibold uppercase tracking-[0.12em]"
-          onClick={() => insertPromptToken(textareaRef.current, value, "{{root}}", handleChange)}
-        >
-          Usar Registro
-        </Button>
         <VariableSelector
           nodes={catalogNodes}
           loading={catalogLoading}
@@ -279,8 +294,8 @@ export function TemplateAIInlinePromptEditor({
         className="min-h-[96px] resize-none rounded-xl border-border/40 bg-background/70 text-sm leading-6"
       />
       <p className="text-[11px] leading-5 text-muted-foreground">
-        Inserta variables como {`{{root}}`} o {`{{cliente.nombre}}`} para anclar el prompt al
-        registro actual. La cuenta define proveedor, modelo, temperatura y tokens.
+        El registro completo ({`{{root}}`}) y el contexto de la colección se envían automáticamente.
+        Inserta variables como {`{{cliente.nombre}}`} para refinar el prompt.
       </p>
     </div>
   );
@@ -433,6 +448,7 @@ export function TemplateAIElement(props: PlateElementProps<TemplateAIElementNode
     nodes: variableCatalog,
     loading: variableCatalogLoading,
     error: variableCatalogError,
+    collectionContext,
   } = useTemplateVariableCatalog();
   const editor = useEditorRef();
   const promptValue = element.promptTemplate?.trim().length
@@ -454,6 +470,7 @@ export function TemplateAIElement(props: PlateElementProps<TemplateAIElementNode
           catalogNodes={variableCatalog}
           catalogLoading={variableCatalogLoading}
           catalogError={variableCatalogError}
+          collectionContext={collectionContext}
           onChange={(nextPrompt) => onSave({ promptTemplate: nextPrompt })}
         />
       </BlockShell>

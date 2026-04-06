@@ -88,7 +88,8 @@ async function getLocalSupabaseEnv() {
   }
 
   try {
-    const output = execFileSync("npx", ["supabase", "status", "-o", "env"], {
+    const npxCommand = process.platform === "win32" ? "npx.cmd" : "npx";
+    const output = execFileSync(npxCommand, ["supabase", "status", "-o", "env"], {
       cwd: process.cwd(),
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
@@ -181,6 +182,7 @@ function runCommand(command, args, env) {
   const child = spawn(command, args, {
     stdio: "inherit",
     env,
+    shell: process.platform === "win32",
   });
 
   child.on("exit", (code, signal) => {

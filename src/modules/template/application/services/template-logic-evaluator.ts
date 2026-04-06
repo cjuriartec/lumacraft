@@ -327,6 +327,7 @@ async function evaluateBlock(
         locals: scope.locals,
         fieldMetadataByPath: params.context.fieldMetadataByPath,
         systemInstruction: params.aiSystemInstruction,
+        collectionContext: block.collectionContext ?? null,
       });
 
       if (groundedPrompt.truncated) {

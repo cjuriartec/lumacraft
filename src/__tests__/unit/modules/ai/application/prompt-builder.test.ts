@@ -34,9 +34,11 @@ describe("buildGroundedPrompt", () => {
     });
 
     expect(result.usedPaths).toEqual(["cliente.nombre", "cliente.estado"]);
+    // root is always included in context even if not explicitly in the prompt
     expect(result.contextSnapshot).toContain('"nombre": "Ana"');
     expect(result.contextSnapshot).toContain('"estado": "ACTIVO"');
-    expect(result.contextSnapshot).not.toContain('"edad"');
+    // root context means full data is available (including edad, total, etc.)
+    expect(result.contextSnapshot).toContain('"edad"');
     expect(result.metadataSnapshot).toContain("Nombre");
     expect(result.metadataSnapshot).toContain("ENUM");
     expect(result.prompt).toContain("Resume a Ana con estado ACTIVO");
@@ -62,7 +64,7 @@ describe("buildGroundedPrompt", () => {
     expect(result.prompt).toContain("Item actual: Laptop");
   });
 
-  it("does not include full context when prompt has no variable tokens", () => {
+  it("always includes root context even when prompt has no variable tokens", () => {
     const result = buildGroundedPrompt({
       promptTemplate: "Escribe un resumen ejecutivo.",
       context: {
@@ -72,7 +74,34 @@ describe("buildGroundedPrompt", () => {
     });
 
     expect(result.usedPaths).toEqual([]);
-    expect(result.contextSnapshot).toBe("{}");
-    expect(result.metadataSnapshot).toBe("[]");
+    // root context is always injected for AI grounding
+    expect(result.contextSnapshot).toContain('"cliente"');
+    expect(result.contextSnapshot).toContain('"Ana"');
+  });
+
+  it("includes collection context in the prompt when provided", () => {
+    const result = buildGroundedPrompt({
+      promptTemplate: "Resume {{root}}",
+      context: { nombre: "Test" },
+      collectionContext: {
+        id: "col-123",
+        name: "Clientes",
+        description: "Gestión de clientes y contactos",
+      },
+    });
+
+    expect(result.prompt).toContain("# Collection Context");
+    expect(result.prompt).toContain("Name: Clientes");
+    expect(result.prompt).toContain("Description: Gestión de clientes y contactos");
+    expect(result.prompt).toContain("ID: col-123");
+  });
+
+  it("omits collection context section when not provided", () => {
+    const result = buildGroundedPrompt({
+      promptTemplate: "Resume {{root}}",
+      context: { nombre: "Test" },
+    });
+
+    expect(result.prompt).not.toContain("# Collection Context");
   });
 });

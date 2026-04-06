@@ -61,9 +61,16 @@ export interface TemplateSwitchLogicBlock {
   defaultBlocks?: TemplateLogicBlock[];
 }
 
+export interface TemplateAICollectionContext {
+  id: string;
+  name: string;
+  description?: string;
+}
+
 export interface TemplateAILogicBlock {
   type: "ai";
   prompt: string;
+  collectionContext?: TemplateAICollectionContext | null;
 }
 
 export type TemplateLogicBlock =
@@ -125,6 +132,13 @@ const logicBlockSchema: z.ZodType<TemplateLogicBlock> = z.lazy(() =>
     z.object({
       type: z.literal("ai"),
       prompt: z.string().min(1),
+      collectionContext: z
+        .object({
+          id: z.string(),
+          name: z.string(),
+          description: z.string().optional(),
+        })
+        .nullish(),
     }),
   ]),
 );

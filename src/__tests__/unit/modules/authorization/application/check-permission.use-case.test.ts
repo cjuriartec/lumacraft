@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import { SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it, vi } from "vitest";
 
 import { CheckPermissionUseCase } from "@/modules/authorization/application/use-cases/check-permission.use-case";
@@ -36,7 +36,7 @@ function createMockSupabase(
       };
       return chain;
     }),
-  } as any;
+  } as unknown as SupabaseClient;
 }
 
 function createMockRepository(

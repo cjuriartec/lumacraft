@@ -30,6 +30,10 @@ class StaticAIProvider implements AIProviderPort {
   ): AsyncGenerator<Result<AIGenerationChunk, DomainError>, void, void> {
     yield ok({ provider: this.id, model: "gemini-test", index: 0, text: "AI text" });
   }
+
+  public async testConnection(): Promise<Result<void, DomainError>> {
+    return ok(undefined);
+  }
 }
 
 class StaticAIProviderFactory implements AIProviderFactoryPort {

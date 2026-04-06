@@ -103,7 +103,7 @@ export function useAccountAISettings(accountId?: string | null): UseAccountAISet
     },
     [accountId],
   );
-  
+
   const testConnection = useCallback(
     async (providerId: string, apiKey?: string) => {
       if (!accountId) {
@@ -124,9 +124,7 @@ export function useAccountAISettings(accountId?: string | null): UseAccountAISet
         );
       } catch (requestError) {
         const message =
-          requestError instanceof Error
-            ? requestError.message
-            : "Error al validar la conexión";
+          requestError instanceof Error ? requestError.message : "Error al validar la conexión";
         setError(message);
         throw requestError;
       }

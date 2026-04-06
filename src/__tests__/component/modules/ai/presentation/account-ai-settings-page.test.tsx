@@ -33,6 +33,7 @@ vi.mock("@/modules/ai/presentation/hooks/use-account-ai-settings", () => ({
     error: hookState.error,
     refresh: vi.fn(),
     save: hookState.save,
+    testConnection: vi.fn(),
   }),
 }));
 
@@ -110,18 +111,18 @@ describe("AccountAISettingsPage", () => {
     };
   });
 
-  it("shows masked provider secret metadata without prefilling the input", () => {
+  it("shows masked provider secret metadata without prefilling the input", async () => {
     render(<AccountAISettingsPage />);
 
-    expect(screen.getByText("Terminada en 1234")).toBeInTheDocument();
-    const passwordInputs = screen.getAllByPlaceholderText(/key/i) as HTMLInputElement[];
-    expect(passwordInputs[0].value).toBe("");
+    expect(await screen.findByText("Terminada en 1234")).toBeInTheDocument();
+    const passwordInputs = await screen.findAllByPlaceholderText(/key/i);
+    expect((passwordInputs[0] as HTMLInputElement).value).toBe("");
   });
 
   it("submits write-only secret updates together with the current draft", async () => {
     render(<AccountAISettingsPage />);
 
-    const passwordInputs = screen.getAllByPlaceholderText(/key/i) as HTMLInputElement[];
+    const passwordInputs = await screen.findAllByPlaceholderText(/key/i);
     fireEvent.change(passwordInputs[0], {
       target: { value: "nueva-key-9999" },
     });

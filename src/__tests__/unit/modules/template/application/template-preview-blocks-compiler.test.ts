@@ -45,6 +45,9 @@ class StructuredAIProvider implements AIProviderPort {
       text: '{"type":"bullet_list","items":["Revisión inicial","Plan de ejecución"]}]}',
     });
   }
+  async testConnection(): Promise<Result<void, DomainError>> {
+    return ok(undefined);
+  }
 }
 
 class StructuredAIProviderFactory implements AIProviderFactoryPort {

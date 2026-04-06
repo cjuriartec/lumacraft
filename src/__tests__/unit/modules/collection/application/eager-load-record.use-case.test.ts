@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, expect, it, vi } from "vitest";
 
 import { EagerLoadRecordUseCase } from "@/modules/collection/application/use-cases/eager-load-record.use-case";
@@ -8,7 +7,10 @@ import { DomainError, fail, ok } from "@/shared/domain/result";
 function createMockRepository(data: {
   collections?: Record<string, { name: string; display_name: string }>;
   records?: Record<string, { id: string; data: Record<string, unknown> }>;
-  fields?: Record<string, Array<{ id: string; name: string; field_type: string; config: any }>>;
+  fields?: Record<
+    string,
+    Array<{ id: string; name: string; field_type: string; config: Record<string, unknown> }>
+  >;
   relations?: Record<string, Array<{ target_record_id: string }>>;
 }) {
   const repo: IEagerLoadRepository = {

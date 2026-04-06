@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, type Mocked, vi } from "vitest";
 
 import {
   makeWorkspace,
@@ -11,8 +11,8 @@ import { DomainError, ok } from "../../../../../../shared/domain/result";
 
 describe("ManageMembersUseCase", () => {
   let useCase: ManageMembersUseCase;
-  let memberRepository: any; // eslint-disable-line @typescript-eslint/no-explicit-any
-  let workspaceRepository: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  let memberRepository: Mocked<IWorkspaceMemberRepository>;
+  let workspaceRepository: Mocked<IWorkspaceRepository>;
 
   beforeEach(() => {
     memberRepository = {
@@ -22,6 +22,7 @@ describe("ManageMembersUseCase", () => {
       updateMemberRole: vi.fn(),
       removeMember: vi.fn(),
       findByUserAndWorkspace: vi.fn(),
+      findUserIdByEmail: vi.fn(),
     };
 
     workspaceRepository = {
@@ -30,10 +31,7 @@ describe("ManageMembersUseCase", () => {
       create: vi.fn(),
     };
 
-    useCase = new ManageMembersUseCase(
-      memberRepository as IWorkspaceMemberRepository,
-      workspaceRepository as IWorkspaceRepository,
-    );
+    useCase = new ManageMembersUseCase(memberRepository, workspaceRepository);
   });
 
   describe("removeMember", () => {
@@ -55,10 +53,8 @@ describe("ManageMembersUseCase", () => {
         ownerId: userId,
       });
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (memberRepository as any).findById.mockResolvedValue(ok(member));
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (workspaceRepository as any).findById.mockResolvedValue(ok(workspace));
+      memberRepository.findById.mockResolvedValue(ok(member));
+      workspaceRepository.findById.mockResolvedValue(ok(workspace));
 
       const result = await useCase.removeMember(memberId);
 

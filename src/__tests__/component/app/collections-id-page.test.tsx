@@ -32,7 +32,7 @@ describe("dashboard collection detail entrypoint", () => {
   it("redirects to login when there is no active session", async () => {
     serverMocks.createClient.mockResolvedValue({
       auth: {
-        getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
+        getUser: vi.fn().mockResolvedValue({ data: { user: null } }),
       },
     });
 
@@ -44,7 +44,7 @@ describe("dashboard collection detail entrypoint", () => {
   it("redirects to collections when the collection does not exist", async () => {
     serverMocks.createClient.mockResolvedValue({
       auth: {
-        getSession: vi.fn().mockResolvedValue({ data: { session: { user: { id: "user-1" } } } }),
+        getUser: vi.fn().mockResolvedValue({ data: { user: { id: "user-1" } } }),
       },
       from: vi.fn().mockReturnValue({
         select: vi.fn().mockReturnValue({
@@ -63,7 +63,7 @@ describe("dashboard collection detail entrypoint", () => {
   it("renders the collection detail page with fetched display data", async () => {
     serverMocks.createClient.mockResolvedValue({
       auth: {
-        getSession: vi.fn().mockResolvedValue({ data: { session: { user: { id: "user-1" } } } }),
+        getUser: vi.fn().mockResolvedValue({ data: { user: { id: "user-1" } } }),
       },
       from: vi.fn().mockReturnValue({
         select: vi.fn().mockReturnValue({

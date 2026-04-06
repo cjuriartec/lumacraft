@@ -109,6 +109,10 @@ export function useVariableFields(value?: string | null | UseVariableFieldsOptio
   const collectionFactory = useMemo(() => CollectionUseCaseFactory.create(supabase), [supabase]);
   const listFieldsUseCase = useMemo(() => collectionFactory.listFields(), [collectionFactory]);
   const eagerLoadUseCase = useMemo(() => collectionFactory.eagerLoadRecord(), [collectionFactory]);
+  const getCollectionUseCase = useMemo(
+    () => collectionFactory.getCollection(),
+    [collectionFactory],
+  );
 
   useEffect(() => {
     const listFields = listFieldsUseCase;
@@ -135,17 +139,50 @@ export function useVariableFields(value?: string | null | UseVariableFieldsOptio
       return [];
     };
 
+    const fetchCollectionMeta = async (
+      collectionId: string,
+      collectionMetaCache: Map<string, { name: string; description?: string }>,
+      discoveredErrors: string[],
+    ): Promise<{ name: string; description?: string } | null> => {
+      if (collectionMetaCache.has(collectionId)) {
+        return collectionMetaCache.get(collectionId) ?? null;
+      }
+
+      const result = await getCollectionUseCase.execute(collectionId);
+      if (!result.ok) {
+        discoveredErrors.push(result.error.message);
+        return null;
+      }
+
+      if (!result.value) {
+        return null;
+      }
+
+      const meta = {
+        name: result.value.displayName || result.value.name,
+        description: result.value.description,
+      };
+      collectionMetaCache.set(collectionId, meta);
+      return meta;
+    };
+
     const resolveNodes = async (
       targetCollectionId: string,
       currentPath: string,
       currentDepth: number,
       sampleRoot: Record<string, unknown> | null,
       metadataCache: Map<string, ResolvedFieldMetadata[]>,
+      collectionMetaCache: Map<string, { name: string; description?: string }>,
       discoveredErrors: string[],
     ): Promise<VariableNode[]> => {
       if (currentDepth >= 5) return [];
 
       const fields = await fetchFields(targetCollectionId, metadataCache, discoveredErrors);
+      const collectionMeta = await fetchCollectionMeta(
+        targetCollectionId,
+        collectionMetaCache,
+        discoveredErrors,
+      );
       const fieldNodes: VariableNode[] = [];
 
       for (const field of fields) {
@@ -156,6 +193,8 @@ export function useVariableFields(value?: string | null | UseVariableFieldsOptio
           displayName: field.displayName,
           fieldType: field.fieldType,
           collectionId: targetCollectionId,
+          collectionName: collectionMeta?.name,
+          collectionDescription: collectionMeta?.description,
           cardinality: field.cardinality,
           enumOptions: field.enumOptions,
           sampleValue: readPath(sampleRoot, fieldPath),
@@ -168,6 +207,7 @@ export function useVariableFields(value?: string | null | UseVariableFieldsOptio
             currentDepth + 1,
             sampleRoot,
             metadataCache,
+            collectionMetaCache,
             discoveredErrors,
           );
 
@@ -216,6 +256,7 @@ export function useVariableFields(value?: string | null | UseVariableFieldsOptio
         0,
         sampleRoot,
         new Map<string, ResolvedFieldMetadata[]>(),
+        new Map<string, { name: string; description?: string }>(),
         discoveredErrors,
       );
 
@@ -233,6 +274,7 @@ export function useVariableFields(value?: string | null | UseVariableFieldsOptio
     };
   }, [
     eagerLoadUseCase,
+    getCollectionUseCase,
     listFieldsUseCase,
     options.collectionId,
     options.depth,

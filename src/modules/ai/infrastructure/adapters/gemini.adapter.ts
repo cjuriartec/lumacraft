@@ -214,7 +214,9 @@ export class GeminiAdapter implements AIProviderPort {
       }
 
       const message = error instanceof Error ? error.message : "Internal Gemini Error";
-      return fail(new DomainError(`Gemini connection failed: ${message}`, "AI_PROVIDER_UPSTREAM_ERROR"));
+      return fail(
+        new DomainError(`Gemini connection failed: ${message}`, "AI_PROVIDER_UPSTREAM_ERROR"),
+      );
     } finally {
       abortScope.dispose();
     }

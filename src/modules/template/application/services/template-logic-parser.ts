@@ -335,9 +335,25 @@ function parseCustomTemplateNode(
       const prompt = asString(node.promptTemplate) ?? asString(node.prompt);
       if (!prompt) return null;
 
+      const rawCollectionContext = node.collectionContext;
+      const collectionContext =
+        isRecord(rawCollectionContext) &&
+        typeof rawCollectionContext.id === "string" &&
+        typeof rawCollectionContext.name === "string"
+          ? {
+              id: rawCollectionContext.id,
+              name: rawCollectionContext.name,
+              description:
+                typeof rawCollectionContext.description === "string"
+                  ? rawCollectionContext.description
+                  : undefined,
+            }
+          : null;
+
       return {
         type: "ai",
         prompt,
+        ...(collectionContext ? { collectionContext } : {}),
       };
     }
 

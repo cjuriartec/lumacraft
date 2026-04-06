@@ -64,21 +64,7 @@ export const switchDraftSchema = z
   });
 
 export const aiDraftSchema = z.object({
-  promptTemplate: z
-    .string()
-    .min(1, "El prompt de IA es obligatorio.")
-    .superRefine((value, ctx) => {
-      if (/\{\{\s*[\w.-]+\s*\}\}/.test(value)) {
-        return;
-      }
-
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: [],
-        message:
-          "Incluye al menos una variable como {{root}} o {{campo}} para anclar el bloque IA.",
-      });
-    }),
+  promptTemplate: z.string().min(1, "El prompt de IA es obligatorio."),
 });
 
 export type ConditionalDraft = z.infer<typeof conditionalDraftSchema>;
