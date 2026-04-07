@@ -3,9 +3,6 @@ import "./globals.css";
 import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 
-import AuthProvider from "@/modules/auth/presentation/providers/auth-provider";
-import WorkspaceProvider from "@/modules/workspace/presentation/providers/workspace-provider";
-import SupabaseProvider from "@/shared/presentation/providers/supabase-provider";
 import { ThemeProvider } from "@/shared/presentation/providers/theme-provider";
 
 const poppins = Poppins({
@@ -37,11 +34,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <SupabaseProvider>
-            <AuthProvider>
-              <WorkspaceProvider>{children}</WorkspaceProvider>
-            </AuthProvider>
-          </SupabaseProvider>
+          {children}
         </ThemeProvider>
       </body>
     </html>

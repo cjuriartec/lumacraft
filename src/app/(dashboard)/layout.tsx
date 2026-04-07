@@ -16,74 +16,90 @@ import { useState } from "react";
 
 import AuthGuard from "@/modules/auth/presentation/components/auth-guard";
 import UserMenu from "@/modules/auth/presentation/components/user-menu";
+import AuthProvider from "@/modules/auth/presentation/providers/auth-provider";
 import {
   PermissionProvider,
   usePermissions,
 } from "@/modules/authorization/presentation/providers/permission-provider";
 import { WorkspaceSwitcher } from "@/modules/workspace/presentation/components/workspace-switcher";
+import WorkspaceProvider from "@/modules/workspace/presentation/providers/workspace-provider";
+import { getMissingPublicSupabaseEnv } from "@/shared/infrastructure/supabase/env";
+import SupabaseConfigMissingState from "@/shared/presentation/components/supabase-config-missing-state";
 import {
   BreadcrumbItem,
   BreadcrumbProvider,
   useBreadcrumbItems,
 } from "@/shared/presentation/providers/breadcrumb-provider";
+import SupabaseProvider from "@/shared/presentation/providers/supabase-provider";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const missingEnvVars = getMissingPublicSupabaseEnv();
+
+  if (missingEnvVars.length > 0) {
+    return <SupabaseConfigMissingState missingEnvVars={missingEnvVars} />;
+  }
 
   return (
-    <AuthGuard>
-      <BreadcrumbProvider>
-        <PermissionProvider>
-          <div className="flex h-screen overflow-hidden bg-background text-foreground">
-            {/* Mobile overlay */}
-            {sidebarOpen && (
-              <div
-                className="fixed inset-0 bg-black/60 z-30 lg:hidden"
-                onClick={() => setSidebarOpen(false)}
-              />
-            )}
+    <SupabaseProvider>
+      <AuthProvider>
+        <WorkspaceProvider>
+          <AuthGuard>
+            <BreadcrumbProvider>
+              <PermissionProvider>
+                <div className="flex h-screen overflow-hidden bg-background text-foreground">
+                  {/* Mobile overlay */}
+                  {sidebarOpen && (
+                    <div
+                      className="fixed inset-0 bg-black/60 z-30 lg:hidden"
+                      onClick={() => setSidebarOpen(false)}
+                    />
+                  )}
 
-            {/* Sidebar */}
-            <aside
-              className={`fixed lg:static inset-y-0 left-0 z-40 flex flex-col w-60 transition-transform duration-300 ease-out lg:translate-x-0 bg-sidebar ${
-                sidebarOpen ? "translate-x-0" : "-translate-x-full"
-              }`}
-            >
-              {/* Brand + Workspace Switcher */}
-              <div className="px-3 py-4">
-                <WorkspaceSwitcher />
-              </div>
-
-              {/* Nav */}
-              <SidebarNav setSidebarOpen={setSidebarOpen} />
-            </aside>
-
-            {/* Main Content */}
-            <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-              {/* Header */}
-              <header className="h-14 flex items-center justify-between px-6 shrink-0 bg-background">
-                <div className="flex items-center gap-3">
-                  <button
-                    className="lg:hidden p-1.5 rounded-lg transition-colors text-foreground/70 hover:bg-surface"
-                    onClick={() => setSidebarOpen(true)}
+                  {/* Sidebar */}
+                  <aside
+                    className={`fixed lg:static inset-y-0 left-0 z-40 flex flex-col w-60 transition-transform duration-300 ease-out lg:translate-x-0 bg-sidebar ${
+                      sidebarOpen ? "translate-x-0" : "-translate-x-full"
+                    }`}
                   >
-                    <PanelLeft size={18} />
-                  </button>
-                  <Breadcrumb />
-                </div>
+                    {/* Brand + Workspace Switcher */}
+                    <div className="px-3 py-4">
+                      <WorkspaceSwitcher />
+                    </div>
 
-                <div className="flex items-center gap-3">
-                  <UserMenu />
-                </div>
-              </header>
+                    {/* Nav */}
+                    <SidebarNav setSidebarOpen={setSidebarOpen} />
+                  </aside>
 
-              {/* Page Body */}
-              <main className="flex-1 overflow-y-auto bg-background">{children}</main>
-            </div>
-          </div>
-        </PermissionProvider>
-      </BreadcrumbProvider>
-    </AuthGuard>
+                  {/* Main Content */}
+                  <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+                    {/* Header */}
+                    <header className="h-14 flex items-center justify-between px-6 shrink-0 bg-background">
+                      <div className="flex items-center gap-3">
+                        <button
+                          className="lg:hidden p-1.5 rounded-lg transition-colors text-foreground/70 hover:bg-surface"
+                          onClick={() => setSidebarOpen(true)}
+                        >
+                          <PanelLeft size={18} />
+                        </button>
+                        <Breadcrumb />
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <UserMenu />
+                      </div>
+                    </header>
+
+                    {/* Page Body */}
+                    <main className="flex-1 overflow-y-auto bg-background">{children}</main>
+                  </div>
+                </div>
+              </PermissionProvider>
+            </BreadcrumbProvider>
+          </AuthGuard>
+        </WorkspaceProvider>
+      </AuthProvider>
+    </SupabaseProvider>
   );
 }
 

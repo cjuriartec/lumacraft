@@ -1,6 +1,8 @@
 import { BrainCircuit, Shield, Users } from "lucide-react";
 import Link from "next/link";
 
+export const dynamic = "force-dynamic";
+
 export default function SettingsPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-8 px-8 py-10">

@@ -1,7 +1,12 @@
 {
   "name": "lumacraft",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "private": true,
+  "packageManager": "npm@10.9.3",
+  "engines": {
+    "node": ">=22.20.0 <23",
+    "npm": ">=10.9.3 <11"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -122,5 +127,9 @@
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.2"
+  },
+  "overrides": {
+    "react": "$react",
+    "react-dom": "$react-dom"
   }
 }

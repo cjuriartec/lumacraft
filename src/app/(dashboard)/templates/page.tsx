@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "Plantillas | Lumacraft",
   description: "Las plantillas ahora viven dentro de cada colección.",

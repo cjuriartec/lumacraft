@@ -82,8 +82,10 @@ export function MediaToolbarButton({
   const { openFilePicker } = useFilePicker({
     accept: currentConfig.accept,
     multiple: true,
-    onFilesSelected: ({ plainFiles: updatedFiles }) => {
-      updatedFiles.forEach((file: File) => {
+    onFilesSelected: (data: { plainFiles?: File[]; errors?: unknown[] }) => {
+      if (!data.plainFiles) return;
+
+      data.plainFiles.forEach((file: File) => {
         const id = crypto.randomUUID();
         placeholderFileStore.add(id, file);
         toast.info(`Uploading ${file.name}...`);
