@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.2](https://github.com/cjuriartec/lumacraft/compare/v0.1.1...v0.1.2) (2026-04-07)
+
+
+### 📦 Miscellaneous
+
+* exclude husky internals in .gitignore ([0c0bf43](https://github.com/cjuriartec/lumacraft/commit/0c0bf43fb1909a92a2faf0cfde5655930e8af4d3))
+
+
+### ✨ Features
+
+* login page and supabase integration ([a3418a7](https://github.com/cjuriartec/lumacraft/commit/a3418a7c792307fba4b5b281cfeec05bbdbf99e2))
+
 ### 0.1.1 (2026-04-06)
 
 
