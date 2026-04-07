@@ -92,7 +92,7 @@ Este proyecto implementa **Screaming Architecture** (las carpetas gritan el domi
     ```bash
     npm run supabase:local
     ```
-    *Este script levantará los contenedores de Docker, aplicará las migraciones y te mostrará las variables para tu `.env.local`.*
+    *Este script levantará los contenedores de Docker, aplicará las migraciones y te mostrará las variables para tu `.env.local` (incluyendo `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY` y `AI_SETTINGS_MASTER_KEY`).*
 
 4.  **Ejecutar el servidor de desarrollo**:
     ```bash
