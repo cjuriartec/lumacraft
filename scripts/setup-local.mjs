@@ -1,22 +1,13 @@
 #!/usr/bin/env node
 /**
- * 🚀 Lumacraft — Setup Local Supabase
- *
- * Levanta el entorno local completo de Supabase:
- *   1. Inicia los contenedores Docker de Supabase
- *   2. Espera a que la API esté disponible
- *   3. Aplica todas las migraciones pendientes
- *   4. Ejecuta el seed inicial
- *   5. Imprime un resumen con las credenciales locales
- *
- * Uso:
- *   node scripts/setup-local.mjs
- *   npm run supabase:local
+ * 🚀 Lumacraft — Setup Local Supabase (Ironclad Version)
  */
 
 import { execFileSync } from "node:child_process";
 import { createHmac } from "node:crypto";
 import { readFileSync } from "node:fs";
+import http from "node:http";
+import https from "node:https";
 import path from "node:path";
 
 // ─── Colores para la terminal ─────────────────────────────────────────────────
@@ -81,18 +72,48 @@ function readConfig() {
   };
 }
 
-async function waitForSupabase(apiUrl, maxAttempts = 30) {
+async function checkService(url) {
+  return new Promise((resolve) => {
+    const lib = url.startsWith("https") ? https : http;
+    const req = lib.get(url, (res) => {
+      const isRest = url.includes("/rest/v1");
+      const ok = isRest ? res.statusCode < 500 : res.statusCode >= 200 && res.statusCode < 300;
+      resolve({ ok, status: res.statusCode });
+    });
+    req.on("error", (err) => resolve({ ok: false, error: err.message }));
+    req.setTimeout(5000, () => {
+      req.destroy();
+      resolve({ ok: false, error: "timeout" });
+    });
+    req.end();
+  });
+}
+
+async function waitForSupabase(apiUrl, maxAttempts = 60) {
+  const services = [
+    { name: "Auth", url: `${apiUrl}/auth/v1/health` },
+    { name: "Storage", url: `${apiUrl}/storage/v1/health` },
+    { name: "Rest", url: `${apiUrl}/rest/v1/` },
+  ];
+
   for (let i = 1; i <= maxAttempts; i++) {
     try {
-      const res = await fetch(`${apiUrl}/auth/v1/health`);
-      if (res.ok) return true;
-    } catch {}
-    if (i < maxAttempts) {
-      process.stdout.write(`\r    ${C.gray}Esperando Supabase... (${i}/${maxAttempts})${C.reset}`);
-      await new Promise((r) => setTimeout(r, 2000));
+      const results = await Promise.all(
+        services.map((s) => checkService(s.url).then((r) => ({ ...s, ...r }))),
+      );
+
+      if (results.every((r) => r.ok)) return true;
+
+      const failures = results.filter((r) => !r.ok);
+      const failMsg = failures.map((f) => `${f.name}:${f.status || f.error}`).join(", ");
+      console.log(`    ${C.gray}[${i}/${maxAttempts}] Esperando: ${failMsg}...${C.reset}`);
+    } catch (e) {
+      console.log(
+        `    ${C.gray}[${i}/${maxAttempts}] Error en health check: ${e.message}${C.reset}`,
+      );
     }
+    await new Promise((r) => setTimeout(r, 2000));
   }
-  process.stdout.write("\n");
   return false;
 }
 
@@ -117,64 +138,64 @@ async function main() {
   log.separator();
 
   const { apiPort, studioPort } = readConfig();
-  const apiUrl = `http://127.0.0.1:${apiPort}`;
   const jwtSecret = "super-secret-jwt-token-with-at-least-32-characters-long";
 
   // ── Paso 1: Iniciar Supabase ───────────────────────────────────────────────
   log.step(1, "Iniciando contenedores Docker de Supabase...");
-  try {
-    // Intenta iniciar silenciosamente para detectar si ya está corriendo
-    const status = runCLI(["status", "-o", "env"], { silent: true });
-    if (status.includes("API_URL")) {
-      log.ok("Supabase ya está corriendo. Continuando...");
-    }
-  } catch {
+  let env = getEnvFromStatus();
+
+  if (env?.API_URL) {
+    log.ok("Supabase ya está corriendo. Continuando...");
+  } else {
     log.info("Levantando contenedores (puede tardar 30-60s la primera vez)...");
     try {
       runCLI(["start"]);
       log.ok("Contenedores iniciados.");
     } catch {
       log.err("Error al iniciar Supabase. ¿Está Docker corriendo?");
-      log.info("Ejecuta: open -a Docker  /  (o inicia Docker Desktop manualmente)");
       process.exit(1);
     }
+    env = getEnvFromStatus();
   }
+
+  const apiUrl = env?.API_URL || `http://127.0.0.1:${apiPort}`;
 
   // ── Paso 2: Esperar API ────────────────────────────────────────────────────
-  log.step(2, `Esperando que la API responda en ${apiUrl}...`);
+  log.step(2, `Esperando servicios en ${apiUrl}...`);
   const ready = await waitForSupabase(apiUrl);
   if (!ready) {
-    log.err(`La API no respondió después de 60 segundos.`);
-    log.info("Verifica Docker o intenta: npx supabase start");
+    log.err(`La API no respondió correctamente.`);
+    log.info("Intenta: npx supabase stop --no-backup && npm run supabase:local");
     process.exit(1);
   }
-  console.log("");
-  log.ok(`API disponible en ${apiUrl}`);
+  log.ok(`Servicios disponibles en ${apiUrl}`);
 
   // ── Paso 3: Aplicar migraciones ───────────────────────────────────────────
-  log.step(3, "Aplicando migraciones de base de datos...");
+  log.step(3, "Aplicando migraciones y preparando base de datos...");
   try {
+    // Intentar reset normal primero
     runCLI(["db", "reset", "--local"], { silent: false });
-    log.ok("Migraciones aplicadas y base de datos reseteada.");
+    log.ok("Base de datos reseteada y poblada.");
   } catch {
-    log.warn("No se pudo resetear. Intentando solo push de migraciones...");
+    log.warn("El reset falló. Intentando recuperación manual...");
     try {
-      execFileSync("npx", ["supabase", "db", "push", "--local"], {
-        cwd: process.cwd(),
-        stdio: "inherit",
-      });
-      log.ok("Migraciones aplicadas.");
-    } catch (err) {
-      log.err("Error aplicando migraciones:");
-      console.error(err.message);
+      // Forzar push de migraciones
+      runCLI(["db", "push", "--local"], { silent: false });
+      log.ok("Migraciones aplicadas (push).");
+      // Intentar reset parcial solo para seeds (esto a veces funciona mejor tras el push)
+      log.info("Reintentando reset para cargar semillas...");
+      runCLI(["db", "reset", "--local"], { silent: true });
+      log.ok("Semillas cargadas.");
+    } catch {
+      log.err("No se pudo completar la inicialización de la BD.");
     }
   }
 
   // ── Paso 4: Resumen de credenciales ───────────────────────────────────────
-  log.step(4, "Obteniendo credenciales locales...");
+  log.step(4, "Obteniendo credenciales finales...");
   log.separator();
 
-  const env = getEnvFromStatus();
+  env = getEnvFromStatus();
   const anonKey =
     env?.ANON_KEY ?? signJwt({ iss: "supabase-demo", role: "anon", exp: 1983812996 }, jwtSecret);
   const serviceKey =
@@ -195,12 +216,7 @@ ${C.bold}🌐 Interfaces:${C.reset}
 `);
 
   log.separator();
-  console.log(`${C.bold}${C.green}✅ Entorno local listo. Ahora puedes ejecutar:${C.reset}`);
-  console.log(`\n   ${C.cyan}npm run dev${C.reset}\n`);
-  console.log(`${C.dim}   Tip: Para resetear datos: npm run supabase:clean${C.reset}`);
-  console.log(
-    `${C.dim}   Usa el Studio en http://127.0.0.1:${studioPort} para explorar la BD${C.reset}\n`,
-  );
+  console.log(`${C.bold}${C.green}✅ Entorno listo.${C.reset}\n`);
 }
 
 main().catch((err) => {

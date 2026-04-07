@@ -101,6 +101,7 @@ describeIfLocalSupabase("Supabase repositories integration", () => {
         name: `template_${crypto.randomUUID().slice(0, 6)}`,
         collectionId: null,
         blocks: [{ type: "p", children: [{ text: "Documento base" }] }],
+        createdBy: owner.id,
       }),
     );
 
@@ -117,6 +118,7 @@ describeIfLocalSupabase("Supabase repositories integration", () => {
         accountId,
         name: `forbidden_template_${crypto.randomUUID().slice(0, 6)}`,
         collectionId: null,
+        createdBy: outsider.id,
       }),
     );
 
