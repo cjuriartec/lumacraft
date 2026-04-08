@@ -659,8 +659,72 @@ function toSerializableBlocks(blocks: PlateElementNode[]): Result<TemplateBlocks
   return ok(serializable);
 }
 
+function asTemplateBlocks(value: unknown): TemplateBlocks | null {
+  if (!Array.isArray(value)) {
+    return null;
+  }
+
+  const serializable = JSON.parse(JSON.stringify(value)) as unknown;
+  return isTemplateBlocks(serializable) ? serializable : null;
+}
+
+function resolveCollectionContext(
+  compileContext: CompileContext,
+  rawCollectionContext: unknown,
+): { id: string; name: string; description?: string } | null {
+  if (
+    rawCollectionContext &&
+    typeof rawCollectionContext === "object" &&
+    typeof (rawCollectionContext as { id?: unknown }).id === "string" &&
+    typeof (rawCollectionContext as { name?: unknown }).name === "string"
+  ) {
+    const collectionContext = rawCollectionContext as {
+      id: string;
+      name: string;
+      description?: string;
+    };
+
+    return {
+      id: collectionContext.id,
+      name: collectionContext.name,
+      ...(collectionContext.description ? { description: collectionContext.description } : {}),
+    };
+  }
+
+  const { collectionId, collectionName, collectionDescription } = compileContext.context;
+  if (!collectionId || !collectionName) {
+    return null;
+  }
+
+  return {
+    id: collectionId,
+    name: collectionName,
+    ...(collectionDescription ? { description: collectionDescription } : {}),
+  };
+}
+
 function emitPreviewEvent(compileContext: CompileContext, event: TemplatePreviewEvent) {
   compileContext.onEvent?.(event);
+}
+
+async function compileStructuredSubtreeBlocks(
+  blocks: TemplateBlocks,
+  scope: TemplateRuntimeScope,
+  compileContext: CompileContext,
+  warnings: string[],
+  blockMeta: TemplatePreviewBlockMeta,
+): Promise<PlateElementNode[]> {
+  const compiled: PlateElementNode[] = [];
+
+  for (const block of blocks) {
+    if (!isElementNode(block)) {
+      continue;
+    }
+
+    compiled.push(...(await compileNode(block, scope, compileContext, warnings, blockMeta)));
+  }
+
+  return compiled;
 }
 
 async function compileTemplateAiNodeStreamed(
@@ -692,10 +756,7 @@ async function compileTemplateAiNodeStreamed(
     return [toParagraph(`AI no disponible: ${providerResult.error.message}`, "justify")];
   }
 
-  const collectionContext =
-    node.collectionContext && typeof node.collectionContext === "object"
-      ? (node.collectionContext as { id: string; name: string; description?: string })
-      : null;
+  const collectionContext = resolveCollectionContext(compileContext, node.collectionContext);
 
   const groundedPrompt = buildGroundedPrompt({
     promptTemplate,
@@ -871,6 +932,7 @@ async function compileTemplateConditionalNode(
   node: PlateElementNode,
   scope: TemplateRuntimeScope,
   compileContext: CompileContext,
+  warnings: string[],
   blockMeta: TemplatePreviewBlockMeta,
 ): Promise<PlateElementNode[]> {
   const fieldPath =
@@ -904,14 +966,25 @@ async function compileTemplateConditionalNode(
     : typeof node.elseTemplate === "string"
       ? node.elseTemplate
       : "";
+  const structuredBlocks = asTemplateBlocks(matches ? node.thenBlocks : node.elseBlocks);
+  if (structuredBlocks !== null) {
+    return await compileStructuredSubtreeBlocks(
+      structuredBlocks,
+      scope,
+      compileContext,
+      warnings,
+      blockMeta,
+    );
+  }
 
-  return await renderTemplateToBlocks(selectedTemplate, scope, compileContext, []);
+  return await renderTemplateToBlocks(selectedTemplate, scope, compileContext, warnings);
 }
 
 async function compileTemplateSwitchNode(
   node: PlateElementNode,
   scope: TemplateRuntimeScope,
   compileContext: CompileContext,
+  warnings: string[],
   blockMeta: TemplatePreviewBlockMeta,
 ): Promise<PlateElementNode[]> {
   const fieldPath =
@@ -924,6 +997,23 @@ async function compileTemplateSwitchNode(
 
   const value = resolveTemplatePath(scope, fieldPath);
   const selectedTemplate = getSwitchTemplate(node, value);
+  const matchedCase = Array.isArray(node.cases)
+    ? node.cases.find((switchCase) => {
+        if (!isRecord(switchCase)) return false;
+
+        if (Object.is(value, switchCase.equals)) {
+          return true;
+        }
+
+        return (
+          (typeof value === "string" || typeof value === "number" || typeof value === "boolean") &&
+          (typeof switchCase.equals === "string" ||
+            typeof switchCase.equals === "number" ||
+            typeof switchCase.equals === "boolean") &&
+          String(value) === String(switchCase.equals)
+        );
+      })
+    : undefined;
 
   emitPreviewEvent(compileContext, {
     type: "branch_selected",
@@ -931,18 +1021,32 @@ async function compileTemplateSwitchNode(
     blockId: blockMeta.blockId,
     blockIndex: blockMeta.blockIndex,
     blockType: blockMeta.blockType,
-    branch: selectedTemplate.length > 0 ? "case" : "default",
+    branch: matchedCase ? "case" : "default",
     path: fieldPath,
     matchedValue: stringifyTemplateValue(value),
   });
+  const structuredBlocks =
+    asTemplateBlocks(matchedCase && isRecord(matchedCase) ? matchedCase.blocks : undefined) ??
+    (matchedCase ? null : asTemplateBlocks(node.defaultBlocks));
 
-  return await renderTemplateToBlocks(selectedTemplate, scope, compileContext, []);
+  if (structuredBlocks !== null) {
+    return await compileStructuredSubtreeBlocks(
+      structuredBlocks,
+      scope,
+      compileContext,
+      warnings,
+      blockMeta,
+    );
+  }
+
+  return await renderTemplateToBlocks(selectedTemplate, scope, compileContext, warnings);
 }
 
 async function compileTemplateListNode(
   node: PlateElementNode,
   scope: TemplateRuntimeScope,
   compileContext: CompileContext,
+  warnings: string[],
   blockMeta: TemplatePreviewBlockMeta,
 ): Promise<PlateElementNode[]> {
   const sourcePath = typeof node.sourcePath === "string" ? node.sourcePath : "";
@@ -963,13 +1067,14 @@ async function compileTemplateListNode(
 
   if (!Array.isArray(sourceValue) || sourceValue.length === 0) {
     const emptyText = typeof node.emptyText === "string" ? node.emptyText : "";
-    return renderTemplateToBlocks(emptyText, scope, compileContext, []);
+    return renderTemplateToBlocks(emptyText, scope, compileContext, warnings);
   }
 
   const itemAlias =
     typeof node.itemAlias === "string" && node.itemAlias.length > 0 ? node.itemAlias : "item";
   const itemTemplate = typeof node.itemTemplate === "string" ? node.itemTemplate : "{{item}}";
   const listStyle = typeof node.listStyle === "string" ? node.listStyle : "none";
+  const structuredBlocks = asTemplateBlocks(node.blocks);
 
   const blocks: PlateElementNode[] = [];
   for (let i = 0; i < sourceValue.length; i += 1) {
@@ -982,7 +1087,16 @@ async function compileTemplateListNode(
       },
     };
 
-    const itemBlocks = await renderTemplateToBlocks(itemTemplate, itemScope, compileContext, []);
+    const itemBlocks =
+      structuredBlocks !== null
+        ? await compileStructuredSubtreeBlocks(
+            structuredBlocks,
+            itemScope,
+            compileContext,
+            warnings,
+            blockMeta,
+          )
+        : await renderTemplateToBlocks(itemTemplate, itemScope, compileContext, warnings);
 
     if (listStyle === "bullet" || listStyle === "number") {
       itemBlocks.forEach((block, blockIndex) => {
@@ -1030,11 +1144,11 @@ async function compileNode(
       ];
     }
     case "template_conditional":
-      return compileTemplateConditionalNode(node, scope, compileContext, blockMeta);
+      return compileTemplateConditionalNode(node, scope, compileContext, warnings, blockMeta);
     case "template_switch":
-      return compileTemplateSwitchNode(node, scope, compileContext, blockMeta);
+      return compileTemplateSwitchNode(node, scope, compileContext, warnings, blockMeta);
     case "template_list":
-      return compileTemplateListNode(node, scope, compileContext, blockMeta);
+      return compileTemplateListNode(node, scope, compileContext, warnings, blockMeta);
     case "template_ai":
       return compileTemplateAiNodeStreamed(node, scope, compileContext, warnings, blockMeta);
     case "p":

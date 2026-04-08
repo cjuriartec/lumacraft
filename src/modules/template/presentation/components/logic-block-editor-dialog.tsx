@@ -34,6 +34,10 @@ import {
   switchDraftSchema,
 } from "../lib/logic-block-drafts";
 import {
+  plainTextToTemplateBlocks,
+  templateBlocksToPlainText,
+} from "../lib/template-blocks.adapter";
+import {
   flattenCatalog,
   getFieldSemantics,
   getNodeByPath,
@@ -117,6 +121,39 @@ function validateDialogData(type: BlockNode["type"], value: Partial<BlockNode>) 
   }
 }
 
+function toEditableConditionalElement(
+  element: TemplateConditionalElementNode,
+): Partial<TemplateConditionalElementNode> {
+  return {
+    ...element,
+    thenTemplate: templateBlocksToPlainText(element.thenBlocks, element.thenTemplate ?? ""),
+    elseTemplate: templateBlocksToPlainText(element.elseBlocks, element.elseTemplate ?? ""),
+  };
+}
+
+function toEditableListElement(element: TemplateListElementNode): Partial<TemplateListElementNode> {
+  return {
+    ...element,
+    itemTemplate: templateBlocksToPlainText(element.blocks, element.itemTemplate ?? ""),
+  };
+}
+
+function toEditableSwitchElement(
+  element: TemplateSwitchElementNode,
+): Partial<TemplateSwitchElementNode> {
+  return {
+    ...element,
+    cases: (element.cases ?? []).map((switchCase) => ({
+      ...switchCase,
+      template: templateBlocksToPlainText(switchCase.blocks, switchCase.template),
+    })),
+    defaultTemplate: templateBlocksToPlainText(
+      element.defaultBlocks,
+      element.defaultTemplate ?? "",
+    ),
+  };
+}
+
 export function LogicBlockEditorDialog<T extends BlockNode>({
   open,
   onOpenChange,
@@ -135,16 +172,31 @@ export function LogicBlockEditorDialog<T extends BlockNode>({
     if (!open) return;
 
     setValidationError(null);
-    if (element.type === TEMPLATE_AI_TYPE) {
-      const aiElement = element as TemplateAIElementNode;
-      setFormData({
-        ...aiElement,
-        promptTemplate:
-          aiElement.promptTemplate?.trim().length > 0
-            ? aiElement.promptTemplate
-            : DEFAULT_TEMPLATE_AI_PROMPT,
-      } as Partial<T>);
-      return;
+    switch (element.type) {
+      case TEMPLATE_AI_TYPE: {
+        const aiElement = element as TemplateAIElementNode;
+        setFormData({
+          ...aiElement,
+          promptTemplate:
+            aiElement.promptTemplate?.trim().length > 0
+              ? aiElement.promptTemplate
+              : DEFAULT_TEMPLATE_AI_PROMPT,
+        } as Partial<T>);
+        return;
+      }
+      case TEMPLATE_CONDITIONAL_TYPE:
+        setFormData(
+          toEditableConditionalElement(element as TemplateConditionalElementNode) as Partial<T>,
+        );
+        return;
+      case TEMPLATE_LIST_TYPE:
+        setFormData(toEditableListElement(element as TemplateListElementNode) as Partial<T>);
+        return;
+      case TEMPLATE_SWITCH_TYPE:
+        setFormData(toEditableSwitchElement(element as TemplateSwitchElementNode) as Partial<T>);
+        return;
+      default:
+        break;
     }
 
     setFormData({ ...element });
@@ -194,7 +246,48 @@ export function LogicBlockEditorDialog<T extends BlockNode>({
       return;
     }
 
-    onSave(validationResult.data as Partial<T>);
+    switch (element.type) {
+      case TEMPLATE_CONDITIONAL_TYPE: {
+        const nextData = validationResult.data as Partial<TemplateConditionalElementNode>;
+        const thenBlocks = plainTextToTemplateBlocks(nextData.thenTemplate ?? "");
+        const elseBlocks = plainTextToTemplateBlocks(nextData.elseTemplate ?? "");
+
+        onSave({
+          ...nextData,
+          thenBlocks,
+          ...(elseBlocks.length > 0 ? { elseBlocks } : {}),
+        } as Partial<T>);
+        break;
+      }
+      case TEMPLATE_LIST_TYPE: {
+        const nextData = validationResult.data as Partial<TemplateListElementNode>;
+        const blocks = plainTextToTemplateBlocks(nextData.itemTemplate ?? "");
+
+        onSave({
+          ...nextData,
+          blocks,
+        } as Partial<T>);
+        break;
+      }
+      case TEMPLATE_SWITCH_TYPE: {
+        const nextData = validationResult.data as Partial<TemplateSwitchElementNode>;
+        const cases = (nextData.cases ?? []).map((switchCase) => ({
+          ...switchCase,
+          blocks: plainTextToTemplateBlocks(switchCase.template),
+        }));
+        const defaultBlocks = plainTextToTemplateBlocks(nextData.defaultTemplate ?? "");
+
+        onSave({
+          ...nextData,
+          cases,
+          ...(defaultBlocks.length > 0 ? { defaultBlocks } : {}),
+        } as Partial<T>);
+        break;
+      }
+      default:
+        onSave(validationResult.data as Partial<T>);
+        break;
+    }
     onOpenChange(false);
   };
 

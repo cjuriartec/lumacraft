@@ -12,6 +12,7 @@ import {
 import type { ReactNode } from "react";
 import * as React from "react";
 
+import { TemplateBlocks } from "@/modules/template/domain/types/template-blocks";
 import { Button } from "@/shared/presentation/components/ui/button";
 import { Textarea } from "@/shared/presentation/components/ui/textarea";
 
@@ -49,6 +50,8 @@ export interface TemplateConditionalElementNode extends TElement {
   value?: string | number | boolean | null;
   thenTemplate?: string;
   elseTemplate?: string;
+  thenBlocks?: TemplateBlocks;
+  elseBlocks?: TemplateBlocks;
 }
 
 export interface TemplateListElementNode extends TElement {
@@ -57,6 +60,7 @@ export interface TemplateListElementNode extends TElement {
   sourcePath: string;
   itemAlias?: string;
   itemTemplate?: string;
+  blocks?: TemplateBlocks;
   listStyle?: "none" | "bullet" | "number";
   emptyText?: string;
 }
@@ -64,6 +68,7 @@ export interface TemplateListElementNode extends TElement {
 export interface TemplateSwitchCaseElement {
   equals: string | number | boolean | null;
   template: string;
+  blocks?: TemplateBlocks;
 }
 
 export interface TemplateSwitchElementNode extends TElement {
@@ -72,6 +77,7 @@ export interface TemplateSwitchElementNode extends TElement {
   fieldPath: string;
   cases: TemplateSwitchCaseElement[];
   defaultTemplate?: string;
+  defaultBlocks?: TemplateBlocks;
 }
 
 export interface TemplateAIElementNode extends TElement {

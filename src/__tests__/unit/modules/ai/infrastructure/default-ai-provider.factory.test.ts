@@ -19,7 +19,7 @@ describe("DefaultAIProviderFactory", () => {
     }
   });
 
-  it("returns NOT_IMPLEMENTED for OPENAI stub", async () => {
+  it("returns AI_PROVIDER_NOT_CONFIGURED for OPENAI when API key is missing", async () => {
     const factory = new DefaultAIProviderFactory({
       defaultProvider: "OPENAI",
     });
@@ -35,7 +35,7 @@ describe("DefaultAIProviderFactory", () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error.code).toBe("NOT_IMPLEMENTED");
+      expect(result.error.code).toBe("AI_PROVIDER_NOT_CONFIGURED");
     }
   });
 });

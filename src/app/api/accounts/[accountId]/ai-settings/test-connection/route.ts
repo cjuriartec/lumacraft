@@ -3,9 +3,7 @@ import { z } from "zod";
 
 import { TestAIProviderConnectionUseCase } from "@/modules/ai/application/use-cases/test-ai-provider-connection.use-case";
 import { AI_PROVIDER_IDS } from "@/modules/ai/domain/types/ai-provider.types";
-import { AnthropicAdapterStub } from "@/modules/ai/infrastructure/adapters/anthropic.adapter.stub";
-import { GeminiAdapter } from "@/modules/ai/infrastructure/adapters/gemini.adapter";
-import { OpenAIAdapterStub } from "@/modules/ai/infrastructure/adapters/openai.adapter.stub";
+import { DefaultAIProviderFactory } from "@/modules/ai/infrastructure/factories/default-ai-provider.factory";
 import { SupabaseAccountAISettingsRepository } from "@/modules/ai/infrastructure/repositories/supabase-account-ai-settings.repository";
 import { decryptSecret } from "@/modules/ai/infrastructure/security/account-ai-settings-crypto";
 import { resolveAccountAccess } from "@/shared/infrastructure/supabase/account-access";
@@ -56,20 +54,22 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   }
 
   let finalApiKey = inputApiKey;
+  let currentSettings = null;
+  const adminClient = createAdminClientOrNull() ?? supabase;
+  const repository = new SupabaseAccountAISettingsRepository(adminClient);
+  const settingsResult = await repository.findByAccountId(accountId);
+
+  if (settingsResult.ok) {
+    currentSettings = settingsResult.value;
+  }
 
   // If no API key is provided, try to use the stored one
-  if (!finalApiKey) {
-    const adminClient = createAdminClientOrNull() ?? supabase;
-    const repository = new SupabaseAccountAISettingsRepository(adminClient);
-    const settingsResult = await repository.findByAccountId(accountId);
-
-    if (settingsResult.ok && settingsResult.value) {
-      const encrypted = settingsResult.value.providerSecrets[providerId];
-      if (encrypted) {
-        const decrypted = decryptSecret(encrypted);
-        if (decrypted.ok) {
-          finalApiKey = decrypted.value;
-        }
+  if (!finalApiKey && currentSettings) {
+    const encrypted = currentSettings.providerSecrets[providerId];
+    if (encrypted) {
+      const decrypted = decryptSecret(encrypted);
+      if (decrypted.ok) {
+        finalApiKey = decrypted.value;
       }
     }
   }
@@ -81,27 +81,50 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     );
   }
 
-  // Create adapter based on provider
-  let adapter;
-  switch (providerId) {
-    case "GEMINI":
-      adapter = new GeminiAdapter({ apiKey: finalApiKey });
-      break;
-    case "OPENAI":
-      adapter = new OpenAIAdapterStub();
-      break;
-    case "ANTHROPIC":
-      adapter = new AnthropicAdapterStub();
-      break;
-    default:
-      return NextResponse.json(
-        { error: { code: "INVALID_PROVIDER", message: "Invalid provider" } },
-        { status: 400 },
-      );
+  const decryptedSecrets = {
+    GEMINI: undefined as string | undefined,
+    OPENAI: undefined as string | undefined,
+    ANTHROPIC: undefined as string | undefined,
+  };
+
+  if (currentSettings) {
+    for (const currentProviderId of AI_PROVIDER_IDS) {
+      const encrypted = currentSettings.providerSecrets[currentProviderId];
+      if (!encrypted) {
+        continue;
+      }
+
+      const decrypted = decryptSecret(encrypted);
+      if (decrypted.ok) {
+        decryptedSecrets[currentProviderId] = decrypted.value;
+      }
+    }
+  }
+
+  decryptedSecrets[providerId] = finalApiKey;
+
+  const factory = new DefaultAIProviderFactory({
+    defaultProvider: currentSettings?.defaultProvider ?? providerId,
+    defaultModel: currentSettings?.defaultModel,
+    defaultTemperature: currentSettings?.defaultTemperature,
+    defaultMaxTokens: currentSettings?.defaultMaxTokens,
+    requestTimeoutMs: currentSettings?.requestTimeoutMs,
+    providerOptions: currentSettings?.providerOptions,
+    geminiApiKey: decryptedSecrets.GEMINI,
+    openaiApiKey: decryptedSecrets.OPENAI,
+    anthropicApiKey: decryptedSecrets.ANTHROPIC,
+  });
+
+  const adapterResult = factory.create(providerId);
+  if (!adapterResult.ok) {
+    return NextResponse.json(
+      { error: { code: adapterResult.error.code, message: adapterResult.error.message } },
+      { status: 400 },
+    );
   }
 
   const useCase = new TestAIProviderConnectionUseCase();
-  const result = await useCase.execute(adapter);
+  const result = await useCase.execute(adapterResult.value);
 
   if (!result.ok) {
     return NextResponse.json(

@@ -6,6 +6,7 @@ import { composeAccountAISystemPrompt } from "@/modules/ai/application/services/
 import { AccountScopedAISettingsResolver } from "@/modules/ai/application/services/account-scoped-ai-settings-resolver";
 import { GetAccountAISettingsUseCase } from "@/modules/ai/application/use-cases/get-account-ai-settings.use-case";
 import { SaveAccountAISettingsUseCase } from "@/modules/ai/application/use-cases/save-account-ai-settings.use-case";
+import { EdgeFunctionAIProviderFactory } from "@/modules/ai/infrastructure/factories/edge-function-ai-provider.factory";
 import { SupabaseAccountAISettingsRepository } from "@/modules/ai/infrastructure/repositories/supabase-account-ai-settings.repository";
 import { CollectionUseCaseFactory } from "@/modules/collection/application/collection-use-case.factory";
 import { TEMPLATE_PREVIEW_MAX_EAGER_DEPTH } from "@/modules/template/application/constants/template-preview.constants";
@@ -64,6 +65,21 @@ function encodeSseEvent(event: TemplatePreviewEvent): string {
 
 function createRepositoryClient(supabase: SupabaseClient) {
   return createAdminClientOrNull() ?? supabase;
+}
+
+function resolveEdgeFunctionUrl(functionName: string): string | null {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!supabaseUrl) {
+    return null;
+  }
+
+  return `${supabaseUrl.replace(/\/$/, "")}/functions/v1/${functionName}`;
+}
+
+function resolveEdgeFunctionKey(): string | null {
+  return (
+    process.env.SUPABASE_SECRET_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? null
+  );
 }
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
@@ -126,9 +142,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   const collectionFactory = CollectionUseCaseFactory.create(supabase);
   const eagerLoadUseCase = collectionFactory.eagerLoadRecord();
   const listFieldsUseCase = collectionFactory.listFields();
+  const getCollectionUseCase = collectionFactory.getCollection();
   const contextResolver = new EagerLoadTemplateContextResolverAdapter(
     eagerLoadUseCase,
     listFieldsUseCase,
+    getCollectionUseCase,
   );
   const assetUrlResolver = new SupabaseTemplateAssetUrlResolverAdapter(supabase);
   const accountAISettingsRepository = new SupabaseAccountAISettingsRepository(
@@ -155,8 +173,34 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     );
   }
 
-  const aiProviderFactory = resolvedAccountAISettings.value.providerFactory;
   const accountAISettings = resolvedAccountAISettings.value.settings;
+  const edgeFunctionUrl = resolveEdgeFunctionUrl("ai-provider");
+  const edgeFunctionKey = resolveEdgeFunctionKey();
+
+  if (!edgeFunctionUrl || !edgeFunctionKey) {
+    return NextResponse.json(
+      {
+        error: {
+          code: "AI_EDGE_FUNCTION_NOT_CONFIGURED",
+          message: "Missing Supabase Edge Function configuration",
+        },
+      },
+      { status: 500 },
+    );
+  }
+
+  const aiProviderFactory = new EdgeFunctionAIProviderFactory({
+    accountId: bodyResult.data.accountId,
+    functionUrl: edgeFunctionUrl,
+    functionKey: edgeFunctionKey,
+    defaultProvider: accountAISettings.defaultProvider,
+    defaultModel: accountAISettings.defaultModel,
+    defaultTemperature: accountAISettings.defaultTemperature,
+    defaultMaxTokens: accountAISettings.defaultMaxTokens,
+    requestTimeoutMs: accountAISettings.requestTimeoutMs,
+    providerOptions: accountAISettings.providerOptions,
+    providerApiKeys: resolvedAccountAISettings.value.decryptedSecrets,
+  });
   const aiSystemInstruction = composeAccountAISystemPrompt({
     settings: accountAISettings,
     mode: "structured_preview",

@@ -78,6 +78,10 @@ export function createAdminSupabaseClient() {
   );
 }
 
+export function createServiceRoleSupabaseClient() {
+  return createAdminSupabaseClient();
+}
+
 export interface TestUserSession {
   id: string;
   email: string;
