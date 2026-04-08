@@ -110,16 +110,23 @@ async function* parseSseData(body: ReadableStream<Uint8Array>): AsyncGenerator<s
       buffer += decoder.decode(value, { stream: true });
 
       while (true) {
-        const separatorIndex = buffer.indexOf("\n\n");
-        if (separatorIndex < 0) {
+        let separatorIndex = buffer.indexOf("\n\n");
+        let separatorLength = 2;
+
+        if (separatorIndex === -1) {
+          separatorIndex = buffer.indexOf("\r\n\r\n");
+          separatorLength = 4;
+        }
+
+        if (separatorIndex === -1) {
           break;
         }
 
         const rawEvent = buffer.slice(0, separatorIndex);
-        buffer = buffer.slice(separatorIndex + 2);
+        buffer = buffer.slice(separatorIndex + separatorLength);
 
         const data = rawEvent
-          .split("\n")
+          .split(/\r?\n/)
           .filter((line) => line.startsWith("data:"))
           .map((line) => line.slice(5).trim())
           .join("\n");
@@ -127,6 +134,18 @@ async function* parseSseData(body: ReadableStream<Uint8Array>): AsyncGenerator<s
         if (data) {
           yield data;
         }
+      }
+    }
+
+    if (buffer.trim()) {
+      const data = buffer
+        .split(/\r?\n/)
+        .filter((line) => line.startsWith("data:"))
+        .map((line) => line.slice(5).trim())
+        .join("\n");
+
+      if (data) {
+        yield data;
       }
     }
   } finally {
@@ -142,15 +161,18 @@ function extractOpenAIText(payload: unknown): string {
   if (
     payload &&
     typeof payload === "object" &&
-    "output" in payload &&
-    Array.isArray(payload.output)
+    "choices" in payload &&
+    Array.isArray(payload.choices)
   ) {
-    return payload.output
-      .flatMap((item) =>
-        item && typeof item === "object" && Array.isArray(item.content) ? item.content : [],
-      )
-      .map((part) =>
-        part && typeof part === "object" && typeof part.text === "string" ? part.text : "",
+    return payload.choices
+      .map((choice) =>
+        choice &&
+        typeof choice === "object" &&
+        choice.message &&
+        typeof choice.message === "object" &&
+        typeof choice.message.content === "string"
+          ? choice.message.content
+          : "",
       )
       .join("");
   }
@@ -213,7 +235,7 @@ function buildOpenAIPayload(body: AIRequestBody, stream: boolean) {
   }
 
   if (typeof body.maxTokens === "number") {
-    payload.max_output_tokens = body.maxTokens;
+    payload.max_tokens = body.maxTokens;
   }
 
   if (body.responseFormat?.mimeType === "application/json" && body.responseFormat.schema) {
@@ -247,7 +269,7 @@ function buildAnthropicPrompt(body: AIRequestBody) {
 function buildAnthropicPayload(body: AIRequestBody, stream: boolean) {
   const payload: Record<string, unknown> = {
     model: body.model ?? "claude-3-7-sonnet",
-    max_tokens: typeof body.maxTokens === "number" ? body.maxTokens : 300,
+    max_tokens: typeof body.maxTokens === "number" ? body.maxTokens : 4096,
     stream,
     messages: [
       {
@@ -297,7 +319,7 @@ function buildGeminiPayload(body: AIRequestBody) {
 async function generateWithProvider(body: AIRequestBody, apiKey: string, signal: AbortSignal) {
   switch (body.providerId) {
     case "OPENAI": {
-      const response = await fetch("https://api.openai.com/v1/responses", {
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${apiKey}`,
@@ -414,7 +436,7 @@ function buildStreamResponse(body: AIRequestBody, apiKey: string, signal: AbortS
         try {
           switch (body.providerId) {
             case "OPENAI": {
-              const response = await fetch("https://api.openai.com/v1/responses", {
+              const response = await fetch("https://api.openai.com/v1/chat/completions", {
                 method: "POST",
                 headers: {
                   Authorization: `Bearer ${apiKey}`,
@@ -446,16 +468,14 @@ function buildStreamResponse(body: AIRequestBody, apiKey: string, signal: AbortS
                   continue;
                 }
 
-                const chunk = payload as { type?: string; delta?: string };
+                const chunk = payload as { choices?: Array<{ delta?: { content?: string } }> };
                 const text =
                   chunk &&
-                  typeof chunk === "object" &&
-                  chunk.type === "response.output_text.delta" &&
-                  typeof chunk.delta === "string"
-                    ? chunk.delta
-                    : typeof chunk?.delta === "string"
-                      ? chunk.delta
-                      : "";
+                  Array.isArray(chunk.choices) &&
+                  chunk.choices.length > 0 &&
+                  typeof chunk.choices[0].delta?.content === "string"
+                    ? chunk.choices[0].delta.content
+                    : "";
 
                 if (!text) {
                   continue;

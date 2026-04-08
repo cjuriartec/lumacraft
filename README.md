@@ -49,8 +49,9 @@ Este proyecto implementa **Screaming Architecture** (las carpetas gritan el domi
 | Capa               | Tecnología                                         |
 | :----------------- | :------------------------------------------------- |
 | **Frontend**       | Next.js 16 (App Router), React 19, Tailwind CSS 4  |
-| **Backend (BaaS)** | Supabase (PostgreSQL, Auth, Storage, RLs Granular) |
+| **Backend (BaaS)** | Supabase (PostgreSQL, Auth, Storage, RLS Granular) |
 | **IA Engine**      | Google Gemini (Contextual Generation)              |
+| **PDF Export**     | @react-pdf/renderer (High-Fidelity Document Rendering) |
 | **Editor**         | Plate.js (Highly Extensible WYSIWYG)               |
 | **Validación**     | Domain VOs (Internal), Zod (API/Form Boundaries)   |
 | **Testing**        | Vitest (Unit/Integration), Playwright (E2E)        |
@@ -62,6 +63,7 @@ Este proyecto implementa **Screaming Architecture** (las carpetas gritan el domi
 
 - **Data Engine Hardened**: Motor de datos con validación estricta de esquemas a nivel de dominio y base de datos (PostgreSQL).
 - **Smart Template Editor**: Editor visual avanzado basado en Plate.js con soporte para bloques lógicos, tablas dinámicas y redimensionamiento inteligente.
+- **High-Fidelity PDF Export**: Exportación de templates a PDF con fidelidad visual total — headings, listas, tablas, imágenes, colores, fuentes y alineación — usando `@react-pdf/renderer` directamente en el proceso de Next.js.
 - **AI-Powered Context**: Integración profunda con Gemini para generación de contenido basada en el contexto de los datos de la colección.
 - **Relaciones Avanzadas Engine**: Soporte robusto para relaciones 1:1, 1:N y N:M con integridad referencial y resolución eficiente de datos.
 - **Zero-Trust Authz**: Sistema de permisos granulares basado en roles persistidos en DB y forzados mediante RLS.
@@ -92,7 +94,18 @@ Este proyecto implementa **Screaming Architecture** (las carpetas gritan el domi
     ```bash
     npm run supabase:local
     ```
-    *Este script levantará los contenedores de Docker, aplicará las migraciones y te mostrará las variables para tu `.env.local` (incluyendo `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY` y `AI_SETTINGS_MASTER_KEY`).*
+    *Este script levantará los contenedores de Docker, aplicará las migraciones y generará las variables para tu `.env.local`.*
+
+    Las variables requeridas son:
+
+    | Variable | Descripción | Requerida para |
+    | --- | --- | --- |
+    | `NEXT_PUBLIC_SUPABASE_URL` | URL pública del proyecto Supabase | Todo |
+    | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Clave anónima (segura para el cliente) | Auth, DB queries |
+    | `SUPABASE_SECRET_KEY` | Service role key — bypasea RLS | **PDF Export**, admin ops |
+    | `AI_SETTINGS_MASTER_KEY` | Clave de cifrado para secrets de IA | AI Engine |
+
+    > **Importante**: `SUPABASE_SECRET_KEY` es obligatoria para que la exportación de PDF funcione. Sin ella, el servidor no puede subir archivos al bucket `exports` de Storage (bloqueado por RLS).
 
 4.  **Ejecutar el servidor de desarrollo**:
     ```bash
@@ -117,7 +130,7 @@ Este proyecto implementa **Screaming Architecture** (las carpetas gritan el domi
 - [x] **Fase 1**: Fundación - Data Engine (Setup, Auth Google, CRUD dinámico).
 - [x] **Fase 2**: Relaciones y Permisos (Sistema de relaciones complex, RLS granular).
 - [x] **Fase 3**: Template Engine Visual (Editor Plate.js, bloques dinámicos).
-- [x] **Fase 4**: Context Engine + AI Engine (Integración Gemini contextual).
+- [x] **Fase 4**: Context Engine + AI Engine + PDF Export (Integración Gemini contextual, exportación de alta fidelidad con `@react-pdf/renderer`).
 - [ ] **Fase 5**: Automatizaciones y Workflows (Triggers on-create/update).
 
 ---
