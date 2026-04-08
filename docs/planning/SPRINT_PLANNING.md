@@ -74,7 +74,7 @@ _Objetivo: Implementar el lienzo de Plate para armar documentos interactivos._
 
 ## 🤖 Iteración 3: La Capa de IA y Refinamiento (Sprints 6-7)
 
-### **Sprint 6: Lógica Avanzada y Bloque IA** 🔄 _En Progreso_
+### **Sprint 6: Lógica Avanzada y Bloque IA** ✅ _Completado_
 
 _Objetivo: Finalizar la generación de documentos e integrar Gemini._
 
