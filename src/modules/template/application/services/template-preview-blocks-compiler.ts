@@ -15,6 +15,7 @@ import type {
 } from "../../domain/types/template-runtime-context";
 import type { TemplateAssetUrlResolverPort } from "../ports/template-asset-url-resolver.port";
 import {
+  applyTextTransform,
   interpolateTemplateString,
   isEmptyValue,
   resolveTemplatePath,
@@ -153,15 +154,33 @@ function isElementNode(value: unknown): value is PlateElementNode {
   return isRecord(value) && typeof value.type === "string" && Array.isArray(value.children);
 }
 
-function toPlateText(text: string): PlateTextNode {
-  return { text };
+function toPlateText(
+  text: string,
+  marks?: { bold?: boolean; italic?: boolean; color?: string },
+): PlateTextNode {
+  return {
+    text,
+    bold: !!marks?.bold,
+    italic: !!marks?.italic,
+    color: marks?.color,
+  };
 }
 
-function toParagraph(text: string, align?: string): PlateElementNode {
+function toParagraph(
+  text: string,
+  options?: {
+    align?: string;
+    lineHeight?: number;
+    indent?: number;
+    marks?: { bold?: boolean; italic?: boolean; color?: string };
+  },
+): PlateElementNode {
   return {
     type: "p",
-    ...(align ? { align } : {}),
-    children: [toPlateText(text)],
+    ...(options?.align ? { align: options.align } : {}),
+    ...(options?.lineHeight ? { lineHeight: options.lineHeight } : {}),
+    ...(options?.indent ? { indent: options.indent } : {}),
+    children: [toPlateText(text, options?.marks)],
   };
 }
 
@@ -472,50 +491,58 @@ async function parseLineToBlock(
   line: string,
   compileContext: CompileContext,
   warnings: string[],
+  options?: { align?: string; lineHeight?: number; indent?: number },
 ): Promise<PlateElementNode> {
   const trimmed = line.trim();
-  if (trimmed.length === 0) return toParagraph("", "justify");
+  const align = options?.align ?? "left";
+  const lineHeight = options?.lineHeight;
+  const baseIndent = options?.indent ?? 0;
+
+  if (trimmed.length === 0) return toParagraph("", { align, lineHeight });
 
   const headingMatch = /^(#{1,3})\s+(.+)$/.exec(trimmed);
   if (headingMatch) {
     const level = Math.min(3, Math.max(1, headingMatch[1].length));
     return {
       type: `h${level}`,
+      ...(align !== "left" ? { align } : {}),
+      ...(lineHeight ? { lineHeight } : {}),
+      ...(baseIndent > 0 ? { indent: baseIndent } : {}),
       children: [toPlateText(headingMatch[2])],
     };
   }
-
   const unorderedMatch = /^[-*]\s+(.+)$/.exec(trimmed);
   if (unorderedMatch) {
     return {
       type: "p",
-      align: "justify",
+      align,
+      ...(lineHeight ? { lineHeight } : {}),
       listStyleType: "disc",
-      indent: 1,
+      indent: baseIndent + 1,
       children: [toPlateText(unorderedMatch[1])],
     };
   }
-
   const orderedMatch = /^\d+\.\s+(.+)$/.exec(trimmed);
   if (orderedMatch) {
     return {
       type: "p",
-      align: "justify",
+      align,
+      ...(lineHeight ? { lineHeight } : {}),
       listStyleType: "decimal",
-      indent: 1,
+      indent: baseIndent + 1,
       children: [toPlateText(orderedMatch[1])],
     };
   }
-
   const quoteMatch = /^>\s+(.+)$/.exec(trimmed);
   if (quoteMatch) {
     return {
       type: "blockquote",
-      align: "justify",
+      align,
+      ...(lineHeight ? { lineHeight } : {}),
+      ...(baseIndent > 0 ? { indent: baseIndent } : {}),
       children: [toPlateText(quoteMatch[1])],
     };
   }
-
   const imageMatch = /^!\[([^\]]*)\]\(([^)]+)\)$/.exec(trimmed);
   if (imageMatch) {
     const path = imageMatch[2];
@@ -524,10 +551,10 @@ async function parseLineToBlock(
     return toImage(imageUrl, imageMatch[1] || metadata?.name || "image", {
       bucket: metadata?.bucket,
       path,
+      align: align as "left" | "center" | "right" | "justify",
     });
   }
-
-  return toParagraph(trimmed, "justify");
+  return toParagraph(trimmed, { align, lineHeight });
 }
 
 async function renderTemplateToBlocks(
@@ -535,6 +562,7 @@ async function renderTemplateToBlocks(
   scope: TemplateRuntimeScope,
   compileContext: CompileContext,
   warnings: string[],
+  options?: { align?: string; lineHeight?: number; indent?: number },
 ): Promise<PlateElementNode[]> {
   const rendered = interpolateTemplateString(template, scope);
   if (rendered.trim().length === 0) return [];
@@ -542,7 +570,7 @@ async function renderTemplateToBlocks(
   const lines = rendered.split("\n");
   const blocks: PlateElementNode[] = [];
   for (const line of lines) {
-    blocks.push(await parseLineToBlock(line, compileContext, warnings));
+    blocks.push(await parseLineToBlock(line, compileContext, warnings, options));
   }
   return blocks;
 }
@@ -566,14 +594,22 @@ async function structuredBlockToPlate(
   block: StructuredAIDocumentBlock,
   compileContext: CompileContext,
   warnings: string[],
+  options?: { align?: string; lineHeight?: number; indent?: number },
 ): Promise<PlateElementNode[]> {
+  const align = options?.align ?? "left";
+  const lineHeight = options?.lineHeight;
+  const baseIndent = options?.indent ?? 0;
+
   switch (block.type) {
     case "paragraph":
-      return [toParagraph(block.text, "justify")];
+      return [toParagraph(block.text, { align, lineHeight })];
     case "heading":
       return [
         {
           type: `h${Math.min(3, Math.max(1, block.level ?? 2))}`,
+          ...(align !== "left" ? { align } : {}),
+          ...(lineHeight ? { lineHeight } : {}),
+          ...(baseIndent > 0 ? { indent: baseIndent } : {}),
           children: [toPlateText(block.text)],
         },
       ];
@@ -581,24 +617,28 @@ async function structuredBlockToPlate(
       return [
         {
           type: "blockquote",
-          align: "justify",
+          align,
+          ...(lineHeight ? { lineHeight } : {}),
+          ...(baseIndent > 0 ? { indent: baseIndent } : {}),
           children: [toPlateText(block.text)],
         },
       ];
     case "bullet_list":
       return block.items.map((item) => ({
         type: "p",
-        align: "justify",
+        align,
+        ...(lineHeight ? { lineHeight } : {}),
         listStyleType: "disc",
-        indent: 1,
+        indent: baseIndent + 1,
         children: [toPlateText(item)],
       }));
     case "ordered_list":
       return block.items.map((item) => ({
         type: "p",
-        align: "justify",
+        align,
+        ...(lineHeight ? { lineHeight } : {}),
         listStyleType: "decimal",
-        indent: 1,
+        indent: baseIndent + 1,
         children: [toPlateText(item)],
       }));
     case "image": {
@@ -614,6 +654,7 @@ async function structuredBlockToPlate(
         toImage(imageUrl, block.alt || metadata?.name || "image", {
           bucket: metadata?.bucket,
           path,
+          align: align as "left" | "center" | "right" | "justify",
         }),
       ];
     }
@@ -626,6 +667,7 @@ async function parseStructuredAIDocument(
   raw: string,
   compileContext: CompileContext,
   warnings: string[],
+  options?: { align?: string; lineHeight?: number; indent?: number },
 ): Promise<PlateElementNode[] | null> {
   const candidate = extractJsonCandidate(raw);
   if (!candidate) return null;
@@ -637,7 +679,7 @@ async function parseStructuredAIDocument(
 
     const blocks: PlateElementNode[] = [];
     for (const block of result.data.blocks) {
-      blocks.push(...(await structuredBlockToPlate(block, compileContext, warnings)));
+      blocks.push(...(await structuredBlockToPlate(block, compileContext, warnings, options)));
     }
     return blocks;
   } catch {
@@ -753,7 +795,7 @@ async function compileTemplateAiNodeStreamed(
   const providerResult = compileContext.aiProviderFactory.create();
   if (!providerResult.ok) {
     warnings.push(providerResult.error.message);
-    return [toParagraph(`AI no disponible: ${providerResult.error.message}`, "justify")];
+    return [toParagraph(`AI no disponible: ${providerResult.error.message}`, { align: "justify" })];
   }
 
   const collectionContext = resolveCollectionContext(compileContext, node.collectionContext);
@@ -802,14 +844,23 @@ async function compileTemplateAiNodeStreamed(
 
   if (streamError && aiText.trim().length === 0) {
     warnings.push(streamError.message);
-    return [toParagraph(`AI error: ${streamError.message}`, "justify")];
+    return [
+      toParagraph(`AI error: ${streamError.message}`, {
+        align: typeof node.align === "string" ? node.align : undefined,
+        lineHeight: typeof node.lineHeight === "number" ? node.lineHeight : undefined,
+      }),
+    ];
   }
 
   if (streamError) {
     warnings.push(`${streamError.message}. Se mostrara el contenido parcial recibido.`);
   }
 
-  const structuredBlocks = await parseStructuredAIDocument(aiText, compileContext, warnings);
+  const structuredBlocks = await parseStructuredAIDocument(aiText, compileContext, warnings, {
+    align: typeof node.align === "string" ? node.align : undefined,
+    lineHeight: typeof node.lineHeight === "number" ? node.lineHeight : undefined,
+    indent: typeof node.indent === "number" ? node.indent : undefined,
+  });
   if (structuredBlocks && structuredBlocks.length > 0) {
     return structuredBlocks;
   }
@@ -817,12 +868,23 @@ async function compileTemplateAiNodeStreamed(
   const lines = aiText ? aiText.split("\n") : [];
   const fallbackBlocks: PlateElementNode[] = [];
   for (const line of lines) {
-    fallbackBlocks.push(await parseLineToBlock(line, compileContext, warnings));
+    fallbackBlocks.push(
+      await parseLineToBlock(line, compileContext, warnings, {
+        align: typeof node.align === "string" ? node.align : undefined,
+        lineHeight: typeof node.lineHeight === "number" ? node.lineHeight : undefined,
+        indent: typeof node.indent === "number" ? node.indent : undefined,
+      }),
+    );
   }
 
   return fallbackBlocks.length > 0
     ? fallbackBlocks
-    : [toParagraph("AI no devolvio contenido para este bloque.", "justify")];
+    : [
+        toParagraph("AI no devolvio contenido para este bloque.", {
+          align: typeof node.align === "string" ? node.align : undefined,
+          lineHeight: typeof node.lineHeight === "number" ? node.lineHeight : undefined,
+        }),
+      ];
 }
 
 async function compileParagraphNode(
@@ -859,7 +921,17 @@ async function compileParagraphNode(
     if (child.type === "variable") {
       const fieldPath = typeof child.fieldPath === "string" ? child.fieldPath : "";
       const value = fieldPath ? resolveTemplatePath(scope, fieldPath) : undefined;
-      compiledChildren.push(toPlateText(resolveVariableText(value)));
+      const rawText = resolveVariableText(value);
+      const transform = typeof child.textTransform === "string" ? child.textTransform : undefined;
+      const transformedText = applyTextTransform(rawText, transform);
+
+      compiledChildren.push(
+        toPlateText(transformedText, {
+          bold: !!child.bold,
+          italic: !!child.italic,
+          color: typeof child.color === "string" ? child.color : undefined,
+        }),
+      );
       continue;
     }
 
@@ -922,7 +994,7 @@ async function compileParagraphNode(
   return [
     {
       ...node,
-      align: "justify",
+      align: typeof node.align === "string" ? node.align : "justify",
       children: compiledChildren.length > 0 ? compiledChildren : [toPlateText("")],
     },
   ];
@@ -977,7 +1049,11 @@ async function compileTemplateConditionalNode(
     );
   }
 
-  return await renderTemplateToBlocks(selectedTemplate, scope, compileContext, warnings);
+  return await renderTemplateToBlocks(selectedTemplate, scope, compileContext, warnings, {
+    align: typeof node.align === "string" ? node.align : undefined,
+    lineHeight: typeof node.lineHeight === "number" ? node.lineHeight : undefined,
+    indent: typeof node.indent === "number" ? node.indent : undefined,
+  });
 }
 
 async function compileTemplateSwitchNode(
@@ -1039,7 +1115,11 @@ async function compileTemplateSwitchNode(
     );
   }
 
-  return await renderTemplateToBlocks(selectedTemplate, scope, compileContext, warnings);
+  return await renderTemplateToBlocks(selectedTemplate, scope, compileContext, warnings, {
+    align: typeof node.align === "string" ? node.align : undefined,
+    lineHeight: typeof node.lineHeight === "number" ? node.lineHeight : undefined,
+    indent: typeof node.indent === "number" ? node.indent : undefined,
+  });
 }
 
 async function compileTemplateListNode(
@@ -1067,7 +1147,11 @@ async function compileTemplateListNode(
 
   if (!Array.isArray(sourceValue) || sourceValue.length === 0) {
     const emptyText = typeof node.emptyText === "string" ? node.emptyText : "";
-    return renderTemplateToBlocks(emptyText, scope, compileContext, warnings);
+    return renderTemplateToBlocks(emptyText, scope, compileContext, warnings, {
+      align: typeof node.align === "string" ? node.align : undefined,
+      lineHeight: typeof node.lineHeight === "number" ? node.lineHeight : undefined,
+      indent: typeof node.indent === "number" ? node.indent : undefined,
+    });
   }
 
   const itemAlias =
@@ -1096,7 +1180,11 @@ async function compileTemplateListNode(
             warnings,
             blockMeta,
           )
-        : await renderTemplateToBlocks(itemTemplate, itemScope, compileContext, warnings);
+        : await renderTemplateToBlocks(itemTemplate, itemScope, compileContext, warnings, {
+            align: typeof node.align === "string" ? node.align : undefined,
+            lineHeight: typeof node.lineHeight === "number" ? node.lineHeight : undefined,
+            indent: typeof node.indent === "number" ? node.indent : undefined,
+          });
 
     if (listStyle === "bullet" || listStyle === "number") {
       itemBlocks.forEach((block, blockIndex) => {
@@ -1176,7 +1264,22 @@ async function compileNode(
         ];
       }
 
-      return [toParagraph(resolveVariableText(value), "justify")];
+      const rawText = resolveVariableText(value);
+      const transform = typeof node.textTransform === "string" ? node.textTransform : undefined;
+      const transformedText = applyTextTransform(rawText, transform);
+
+      return [
+        toParagraph(transformedText, {
+          align: typeof node.align === "string" ? node.align : "justify",
+          lineHeight: typeof node.lineHeight === "number" ? node.lineHeight : undefined,
+          indent: typeof node.indent === "number" ? node.indent : undefined,
+          marks: {
+            bold: !!node.bold,
+            italic: !!node.italic,
+            color: typeof node.color === "string" ? node.color : undefined,
+          },
+        }),
+      ];
     }
     default: {
       const children = Array.isArray(node.children) ? node.children : [];

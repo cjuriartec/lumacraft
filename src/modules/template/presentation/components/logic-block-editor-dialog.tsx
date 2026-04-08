@@ -321,7 +321,7 @@ export function LogicBlockEditorDialog<T extends BlockNode>({
               });
             }}
           >
-            <SelectTrigger className="bg-surface border-border/40 rounded-xl">
+            <SelectTrigger className="bg-muted/10 border-border/40 rounded-xl focus:bg-background transition-colors">
               <SelectValue placeholder="Seleccionar campo..." />
             </SelectTrigger>
             <SelectContent>
@@ -410,7 +410,7 @@ export function LogicBlockEditorDialog<T extends BlockNode>({
             value={data.thenTemplate ?? ""}
             onChange={(event) => update({ thenTemplate: event.target.value })}
             placeholder="Contenido a mostrar..."
-            className="min-h-[100px] bg-surface border-border/40 rounded-xl resize-none"
+            className="min-h-[100px] bg-muted/10 border-border/40 rounded-xl resize-none focus:bg-background transition-colors"
           />
         </div>
 
@@ -448,7 +448,7 @@ export function LogicBlockEditorDialog<T extends BlockNode>({
             value={data.elseTemplate ?? ""}
             onChange={(event) => update({ elseTemplate: event.target.value })}
             placeholder="Contenido alternativo..."
-            className="min-h-[60px] bg-surface border-border/40 rounded-xl resize-none"
+            className="min-h-[60px] bg-muted/10 border-border/40 rounded-xl resize-none focus:bg-background transition-colors"
           />
         </div>
       </div>
@@ -495,7 +495,7 @@ export function LogicBlockEditorDialog<T extends BlockNode>({
               value={data.itemAlias ?? "item"}
               onChange={(event) => update({ itemAlias: event.target.value })}
               placeholder="ej. item, prod"
-              className="bg-surface border-border/40 rounded-xl"
+              className="bg-muted/10 border-border/40 rounded-xl focus:bg-background transition-colors"
             />
           </div>
         </div>
@@ -557,7 +557,7 @@ export function LogicBlockEditorDialog<T extends BlockNode>({
             value={data.itemTemplate ?? ""}
             onChange={(event) => update({ itemTemplate: event.target.value })}
             placeholder="ej. - {{item.nombre}}"
-            className="min-h-[120px] bg-surface border-border/40 rounded-xl resize-none font-mono text-xs"
+            className="min-h-[120px] bg-muted/10 border-border/40 rounded-xl resize-none font-mono text-xs focus:bg-background transition-colors"
           />
         </div>
 
@@ -569,7 +569,7 @@ export function LogicBlockEditorDialog<T extends BlockNode>({
             value={data.emptyText ?? ""}
             onChange={(event) => update({ emptyText: event.target.value })}
             placeholder="No se encontraron elementos."
-            className="bg-surface border-border/40 rounded-xl"
+            className="bg-muted/10 border-border/40 rounded-xl focus:bg-background transition-colors"
           />
         </div>
       </div>
@@ -635,7 +635,7 @@ export function LogicBlockEditorDialog<T extends BlockNode>({
             value={data.fieldPath ?? ""}
             onValueChange={(nextPath) => update({ fieldPath: nextPath, cases: [] })}
           >
-            <SelectTrigger className="bg-surface border-border/40 rounded-xl">
+            <SelectTrigger className="bg-muted/10 border-border/40 rounded-xl focus:bg-background transition-colors">
               <SelectValue placeholder="Seleccionar campo comparable..." />
             </SelectTrigger>
             <SelectContent>
@@ -689,7 +689,7 @@ export function LogicBlockEditorDialog<T extends BlockNode>({
             {(data.cases ?? []).map((switchCase, index) => (
               <div
                 key={`${String(switchCase.equals)}-${index}`}
-                className="grid gap-3 rounded-xl border border-border/40 bg-surface/50 p-3"
+                className="grid gap-3 rounded-xl border border-border/40 bg-muted/5 p-3"
               >
                 <div className="flex items-center gap-3">
                   <div className="flex-1">
@@ -748,7 +748,7 @@ export function LogicBlockEditorDialog<T extends BlockNode>({
                     value={switchCase.template}
                     onChange={(event) => updateCase(index, { template: event.target.value })}
                     placeholder="Contenido para este caso..."
-                    className="min-h-[60px] bg-surface border-border/20 rounded-lg resize-none"
+                    className="min-h-[60px] bg-muted/10 border-border/20 rounded-lg resize-none focus:bg-background transition-colors"
                   />
                 </div>
               </div>
@@ -790,7 +790,7 @@ export function LogicBlockEditorDialog<T extends BlockNode>({
             value={data.defaultTemplate ?? ""}
             onChange={(event) => update({ defaultTemplate: event.target.value })}
             placeholder="Si ningún caso coincide..."
-            className="min-h-[80px] bg-surface border-border/40 rounded-xl resize-none"
+            className="min-h-[80px] bg-muted/10 border-border/40 rounded-xl resize-none focus:bg-background transition-colors"
           />
         </div>
       </div>
@@ -838,7 +838,7 @@ export function LogicBlockEditorDialog<T extends BlockNode>({
             value={promptValue}
             onChange={(event) => update({ promptTemplate: event.target.value })}
             placeholder="Describe lo que quieres que la IA genere..."
-            className="min-h-[100px] bg-surface border-border/40 rounded-xl resize-none font-light"
+            className="min-h-[100px] bg-muted/10 border-border/40 rounded-xl resize-none font-light focus:bg-background transition-colors"
           />
           <p className="text-xs text-muted-foreground ml-1">
             El registro completo ({`{{root}}`}) y el contexto de la colección se envían
@@ -880,7 +880,7 @@ export function LogicBlockEditorDialog<T extends BlockNode>({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[560px] bg-popover border-border/50 max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[560px] bg-popover border-border/60 shadow-sm max-h-[90vh] overflow-y-auto">
         <form onSubmit={handleSave}>
           <DialogHeader>
             <div className="flex items-center gap-2 mb-1">

@@ -25,6 +25,7 @@ import {
 import type { Style } from "@react-pdf/types";
 import * as React from "react";
 
+import { applyTextTransform } from "../../application/services/template-path-resolver";
 import type { TemplateBlocks } from "../../domain/types/template-blocks";
 
 // ---------------------------------------------------------------------------
@@ -32,35 +33,30 @@ import type { TemplateBlocks } from "../../domain/types/template-blocks";
 // ---------------------------------------------------------------------------
 
 // Attempt to register Inter for production environments where network is available.
-// Falls back to Helvetica (built-in PDF font) when fonts cannot be fetched.
-try {
-  Font.register({
-    family: "Inter",
-    fonts: [
-      {
-        src: "https://fonts.gstatic.com/s/inter/v13/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZ9hiJ-Ek-_EeA.woff",
-        fontWeight: 400,
-        fontStyle: "normal",
-      },
-      {
-        src: "https://fonts.gstatic.com/s/inter/v13/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZ9hiJ-Ek-_EeA.woff",
-        fontWeight: 400,
-        fontStyle: "italic",
-      },
-      {
-        src: "https://fonts.gstatic.com/s/inter/v13/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuI6fAZ9hiJ-Ek-_EeA.woff",
-        fontWeight: 700,
-        fontStyle: "normal",
-      },
-      {
-        src: "https://fonts.gstatic.com/s/inter/v13/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuI6fAZ9hiJ-Ek-_EeA.woff",
-        fontWeight: 700,
-        fontStyle: "italic",
-      },
-    ],
-  });
-} catch {
-  // Font registration errors are non-fatal; react-pdf will fall back to Helvetica.
+// Skip during unit tests to avoid network-dependent failures.
+if (typeof process === "undefined" || process.env.NODE_ENV !== "test") {
+  try {
+    Font.register({
+      family: "Inter",
+      fonts: [
+        {
+          src: "https://cdnjs.cloudflare.com/ajax/libs/inter-ui/3.19.3/Inter/Inter-Regular.woff",
+          fontWeight: 400,
+        },
+        {
+          src: "https://cdnjs.cloudflare.com/ajax/libs/inter-ui/3.19.3/Inter/Inter-Italic.woff",
+          fontWeight: 400,
+          fontStyle: "italic",
+        },
+        {
+          src: "https://cdnjs.cloudflare.com/ajax/libs/inter-ui/3.19.3/Inter/Inter-Bold.woff",
+          fontWeight: 700,
+        },
+      ],
+    });
+  } catch (e) {
+    console.warn("Failed to register Inter font, falling back to system fonts.", e);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -345,7 +341,20 @@ function renderInlineChildren(children: PlateNode[]): React.ReactElement[] {
       // variable node — already resolved to text by the preview use case
       if (child.type === "variable") {
         const rawText = (child.children[0] as PlateTextNode | undefined)?.text ?? "";
-        return <Text key={i}>{rawText}</Text>;
+        const transform = child.textTransform as string | undefined;
+        const text = applyTextTransform(rawText, transform);
+
+        const varStyle: Style = {
+          ...(child.bold ? { fontWeight: "bold" } : {}),
+          ...(child.italic ? { fontStyle: "italic" } : {}),
+          ...(child.color ? { color: child.color as string } : {}),
+        };
+
+        return (
+          <Text key={i} style={varStyle}>
+            {text}
+          </Text>
+        );
       }
 
       // Nested inline element

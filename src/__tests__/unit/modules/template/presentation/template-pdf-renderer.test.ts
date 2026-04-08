@@ -256,4 +256,40 @@ describe("renderTemplateToPdfBuffer", () => {
     const result = await renderTemplateToPdfBuffer(blocks);
     expect(getPdfHeader(result)).toContain(PDF_MAGIC_BYTES);
   });
+
+  it("handles variable formatting (bold, italic, color, textTransform)", async () => {
+    const blocks: TemplateBlocks = [
+      {
+        type: "p",
+        children: [
+          {
+            type: "variable",
+            fieldPath: "nombre",
+            bold: true,
+            italic: true,
+            color: "#ff0000",
+            textTransform: "uppercase",
+            children: [{ text: "JUAN" }],
+          },
+        ],
+      },
+    ];
+    const result = await renderTemplateToPdfBuffer(blocks);
+    expect(getPdfHeader(result)).toContain(PDF_MAGIC_BYTES);
+  });
+
+  it("handles logic block styles (compiled)", async () => {
+    // Compiled logic blocks are standard nodes with inherited styles
+    const blocks: TemplateBlocks = [
+      {
+        type: "p",
+        align: "right",
+        lineHeight: 2.0,
+        indent: 1,
+        children: [{ text: "Generated content" }],
+      },
+    ];
+    const result = await renderTemplateToPdfBuffer(blocks);
+    expect(getPdfHeader(result)).toContain(PDF_MAGIC_BYTES);
+  });
 });

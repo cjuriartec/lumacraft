@@ -1,6 +1,17 @@
 "use client";
 
-import { Braces, BrainCircuit, GitBranch, ListTree, Split } from "lucide-react";
+import { debounce } from "lodash";
+import {
+  AlignCenter,
+  AlignJustify,
+  AlignLeft,
+  AlignRight,
+  Braces,
+  BrainCircuit,
+  GitBranch,
+  ListTree,
+  Split,
+} from "lucide-react";
 import { Descendant, TElement } from "platejs";
 import {
   createPlatePlugin,
@@ -13,14 +24,17 @@ import type { ReactNode } from "react";
 import * as React from "react";
 
 import { TemplateBlocks } from "@/modules/template/domain/types/template-blocks";
+import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/presentation/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/shared/presentation/components/ui/popover";
 import { Textarea } from "@/shared/presentation/components/ui/textarea";
 
 import { useTemplateVariableCatalog } from "../contexts/template-variable-catalog-context";
-import {
-  TemplateCollectionContext,
-  TemplateVariableCatalogNode,
-} from "../types/template-variable-catalog";
+import { TemplateCollectionContext } from "../types/template-variable-catalog";
 import { LogicBlockEditorDialog } from "./logic-block-editor-dialog";
 import { VariableSelector } from "./variable-selector";
 
@@ -85,6 +99,9 @@ export interface TemplateAIElementNode extends TElement {
   children: LogicNodeChildren;
   promptTemplate: string;
   collectionContext?: TemplateCollectionContext | null;
+  align?: "left" | "center" | "right" | "justify";
+  lineHeight?: number;
+  indent?: number;
 }
 
 function baseChildren(): LogicNodeChildren {
@@ -176,46 +193,33 @@ function BlockShell({
   children,
   icon,
   title,
+  style,
+  actions,
 }: {
   icon: ReactNode;
   title: string;
   children: ReactNode;
+  style?: React.CSSProperties;
+  actions?: ReactNode;
 }) {
   return (
     <div
       contentEditable={false}
-      className="my-3 rounded-xl border border-border/60 bg-surface/70 p-3 shadow-sm"
+      className="my-2 rounded-lg border border-border/40 bg-card p-2.5 transition-all hover:border-border/60"
+      style={style}
     >
-      <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-        {icon}
-        {title}
+      <div className="mb-2 flex items-center justify-between px-0.5">
+        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/50">
+          <div className="flex h-5 w-5 items-center justify-center rounded-md bg-muted/10 text-foreground/40">
+            {icon}
+          </div>
+          {title}
+        </div>
+        <div className="flex items-center gap-1.5">{actions}</div>
       </div>
-      {children}
+      <div className="px-0.5">{children}</div>
     </div>
   );
-}
-
-function insertPromptToken(
-  textarea: HTMLTextAreaElement | null,
-  currentValue: string,
-  token: string,
-  onChange: (nextValue: string) => void,
-) {
-  if (!textarea) {
-    onChange(`${currentValue}${token}`);
-    return;
-  }
-
-  const start = textarea.selectionStart;
-  const end = textarea.selectionEnd;
-  const nextValue = `${currentValue.slice(0, start)}${token}${currentValue.slice(end)}`;
-  onChange(nextValue);
-
-  window.requestAnimationFrame(() => {
-    textarea.focus();
-    const nextCursor = start + token.length;
-    textarea.setSelectionRange(nextCursor, nextCursor);
-  });
 }
 
 function autoResizeTextarea(textarea: HTMLTextAreaElement | null) {
@@ -225,63 +229,43 @@ function autoResizeTextarea(textarea: HTMLTextAreaElement | null) {
   textarea.style.height = `${Math.max(textarea.scrollHeight, 96)}px`;
 }
 
-interface TemplateAIInlinePromptEditorProps {
-  value: string;
-  catalogNodes: TemplateVariableCatalogNode[];
-  catalogLoading?: boolean;
-  catalogError?: string | null;
-  onChange: (nextPrompt: string) => void;
-}
-
 export function TemplateAIInlinePromptEditor({
   value,
-  catalogNodes,
-  catalogLoading = false,
-  catalogError = null,
   onChange,
-}: TemplateAIInlinePromptEditorProps) {
+}: {
+  value: string;
+  onChange: (nextPrompt: string) => void;
+}) {
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
+  const [localValue, setLocalValue] = React.useState(value);
+
+  React.useEffect(() => {
+    setLocalValue(value);
+  }, [value]);
+
+  const debouncedOnChange = React.useMemo(
+    () => debounce((nextValue: string) => onChange(nextValue), 300),
+    [onChange],
+  );
 
   React.useLayoutEffect(() => {
     autoResizeTextarea(textareaRef.current);
-  }, [value]);
+  }, [localValue]);
 
   const handleChange = (nextValue: string) => {
-    onChange(nextValue);
+    setLocalValue(nextValue);
+    debouncedOnChange(nextValue);
     autoResizeTextarea(textareaRef.current);
   };
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2 justify-end">
-        <VariableSelector
-          nodes={catalogNodes}
-          loading={catalogLoading}
-          onSelect={(node) =>
-            insertPromptToken(textareaRef.current, value, `{{${node.path}}}`, handleChange)
-          }
-          trigger={
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-7 gap-1.5 rounded-lg border-border/40 text-[11px] font-semibold uppercase tracking-[0.12em]"
-            >
-              <Braces size={12} />
-              Variables
-            </Button>
-          }
-        />
-        {catalogError && <span className="text-[11px] text-destructive">{catalogError}</span>}
-      </div>
-      <Textarea
-        ref={textareaRef}
-        value={value}
-        onChange={(event) => handleChange(event.target.value)}
-        placeholder="Describe lo que la IA debe generar para este bloque..."
-        className="min-h-[96px] resize-none rounded-xl border-border/40 bg-background/70 text-sm leading-6"
-      />
-    </div>
+    <Textarea
+      ref={textareaRef}
+      value={localValue}
+      onChange={(event) => handleChange(event.target.value)}
+      placeholder="Escribe tu prompt aquí..."
+      className="min-h-[64px] resize-none border-none bg-transparent p-2 text-sm leading-6 focus-visible:ring-0"
+    />
   );
 }
 
@@ -428,12 +412,13 @@ export function TemplateSwitchElement(props: PlateElementProps<TemplateSwitchEle
 
 export function TemplateAIElement(props: PlateElementProps<TemplateAIElementNode>) {
   const { attributes, children, element } = props;
-  const {
-    nodes: variableCatalog,
-    loading: variableCatalogLoading,
-    error: variableCatalogError,
-  } = useTemplateVariableCatalog();
+  const { nodes: variableCatalog, loading: variableCatalogLoading } = useTemplateVariableCatalog();
   const editor = useEditorRef();
+
+  const align = element.align ?? "left";
+  const lineHeight = element.lineHeight ?? 1.5;
+  const indent = element.indent ?? 0;
+
   const promptValue = element.promptTemplate?.trim().length
     ? element.promptTemplate
     : DEFAULT_TEMPLATE_AI_PROMPT;
@@ -445,14 +430,119 @@ export function TemplateAIElement(props: PlateElementProps<TemplateAIElementNode
     editor.tf.setNodes(updatedElement, { at: path });
   };
 
+  const aiActions = (
+    <div className="flex items-center gap-0.5">
+      <VariableSelector
+        nodes={variableCatalog}
+        loading={variableCatalogLoading}
+        onSelect={(node) => {
+          const nextPrompt = `${promptValue} {{${node.path}}}`;
+          onSave({ promptTemplate: nextPrompt });
+        }}
+        trigger={
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1.5 rounded-md px-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 hover:bg-muted/10 hover:text-foreground"
+          >
+            <Braces size={12} />
+            Variables
+          </Button>
+        }
+      />
+
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1.5 rounded-md px-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 hover:bg-muted/10 hover:text-foreground"
+          >
+            <AlignCenter size={12} />
+            Estilos
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent
+          className="w-52 border-border/60 bg-surface-hover p-3 shadow-md"
+          side="top"
+          align="end"
+        >
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
+                Alineación
+              </span>
+              <div className="grid grid-cols-4 gap-1">
+                {[
+                  { value: "left", icon: <AlignLeft size={16} /> },
+                  { value: "center", icon: <AlignCenter size={16} /> },
+                  { value: "right", icon: <AlignRight size={16} /> },
+                  { value: "justify", icon: <AlignJustify size={16} /> },
+                ].map((opt) => (
+                  <Button
+                    key={opt.value}
+                    size="icon"
+                    variant={align === opt.value ? "secondary" : "ghost"}
+                    className={cn(
+                      "h-9 w-full rounded-md",
+                      align === opt.value &&
+                        "bg-primary/10 text-primary border border-primary/20 shadow-sm",
+                    )}
+                    onClick={() =>
+                      onSave({
+                        align: opt.value as "left" | "center" | "right" | "justify",
+                      })
+                    }
+                  >
+                    {opt.icon}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2 border-t border-border/40 pt-3">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
+                Interlineado
+              </span>
+              <div className="grid grid-cols-4 gap-1">
+                {[1, 1.2, 1.5, 2].map((val) => (
+                  <Button
+                    key={val}
+                    size="sm"
+                    variant={lineHeight === val ? "secondary" : "ghost"}
+                    className={cn(
+                      "h-8 text-[11px] font-bold",
+                      lineHeight === val &&
+                        "bg-primary/10 text-primary border border-primary/20 shadow-sm",
+                    )}
+                    onClick={() => onSave({ lineHeight: val })}
+                  >
+                    {val}x
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+
   return (
     <PlateElement {...props} as="div" attributes={attributes}>
-      <BlockShell icon={<BrainCircuit size={14} />} title="AI Block">
+      <BlockShell
+        icon={<BrainCircuit size={14} />}
+        title="AI Block"
+        actions={aiActions}
+        style={{
+          textAlign: align,
+          lineHeight,
+          marginLeft: indent ? `${indent * 24}px` : undefined,
+        }}
+      >
         <TemplateAIInlinePromptEditor
           value={promptValue}
-          catalogNodes={variableCatalog}
-          catalogLoading={variableCatalogLoading}
-          catalogError={variableCatalogError}
           onChange={(nextPrompt) => onSave({ promptTemplate: nextPrompt })}
         />
       </BlockShell>

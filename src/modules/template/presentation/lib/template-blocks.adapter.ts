@@ -166,13 +166,28 @@ function parsePlainTextLine(line: string): TElement {
 }
 
 export function templateBlocksToPlateValue(blocks: TemplateBlocks | null | undefined): Value {
-  if (!isTemplateBlocks(blocks)) return [];
+  if (!isTemplateBlocks(blocks)) {
+    return [toParagraph("")];
+  }
 
   const value: TElement[] = [];
   for (const block of blocks) {
     if (isPlateElementNode(block)) {
       value.push(block);
     }
+  }
+
+  // Ensure trailing empty paragraph if the last block is a logic block or document is empty
+  const lastBlock = value[value.length - 1];
+  const LOGIC_TYPES = new Set([
+    "template_ai",
+    "template_conditional",
+    "template_switch",
+    "template_list",
+  ]);
+
+  if (!lastBlock || LOGIC_TYPES.has(lastBlock.type)) {
+    value.push(toParagraph(""));
   }
 
   return value;

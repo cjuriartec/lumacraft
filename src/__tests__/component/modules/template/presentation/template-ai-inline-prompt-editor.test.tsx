@@ -53,14 +53,7 @@ vi.mock("@/modules/template/presentation/components/variable-selector", () => ({
 function Wrapper() {
   const [value, setValue] = React.useState("Resume ");
 
-  return (
-    <TemplateAIInlinePromptEditor
-      value={value}
-      onChange={setValue}
-      catalogNodes={[]}
-      catalogLoading={false}
-    />
-  );
+  return <TemplateAIInlinePromptEditor value={value} onChange={setValue} />;
 }
 
 describe("TemplateAIInlinePromptEditor", () => {
@@ -77,14 +70,7 @@ describe("TemplateAIInlinePromptEditor", () => {
   });
 
   it("auto-grows the textarea based on scrollHeight", () => {
-    render(
-      <TemplateAIInlinePromptEditor
-        value="Prompt inicial"
-        onChange={() => {}}
-        catalogNodes={[]}
-        catalogLoading={false}
-      />,
-    );
+    render(<TemplateAIInlinePromptEditor value="Prompt inicial" onChange={() => {}} />);
 
     const textarea = screen.getByRole("textbox") as HTMLTextAreaElement;
     Object.defineProperty(textarea, "scrollHeight", {
