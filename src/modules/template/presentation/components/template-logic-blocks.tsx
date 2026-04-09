@@ -34,6 +34,7 @@ import {
 import { Textarea } from "@/shared/presentation/components/ui/textarea";
 
 import { useTemplateVariableCatalog } from "../contexts/template-variable-catalog-context";
+import { VariableNode } from "../hooks/use-variable-fields";
 import { TemplateCollectionContext } from "../types/template-variable-catalog";
 import { LogicBlockEditorDialog } from "./logic-block-editor-dialog";
 import { VariableSelector } from "./variable-selector";
@@ -256,9 +257,13 @@ function autoResizeTextarea(textarea: HTMLTextAreaElement | null) {
 export function TemplateAIInlinePromptEditor({
   value,
   onChange,
+  nodes = [],
+  loading = false,
 }: {
   value: string;
   onChange: (nextPrompt: string) => void;
+  nodes?: VariableNode[];
+  loading?: boolean;
 }) {
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
   const [localValue, setLocalValue] = React.useState(value);
@@ -282,14 +287,56 @@ export function TemplateAIInlinePromptEditor({
     autoResizeTextarea(textareaRef.current);
   };
 
+  const handleVariableSelect = (node: { path: string }) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const token = `{{${node.path}}}`;
+
+    const newValue = localValue.substring(0, start) + token + localValue.substring(end);
+
+    setLocalValue(newValue);
+    debouncedOnChange(newValue);
+
+    // Reposition cursor after the token
+    window.requestAnimationFrame(() => {
+      textarea.focus();
+      const nextPos = start + token.length;
+      textarea.setSelectionRange(nextPos, nextPos);
+      autoResizeTextarea(textarea);
+    });
+  };
+
   return (
-    <Textarea
-      ref={textareaRef}
-      value={localValue}
-      onChange={(event) => handleChange(event.target.value)}
-      placeholder="Escribe tu prompt aquí..."
-      className="min-h-[64px] resize-none border-none bg-transparent p-2 text-sm leading-6 focus-visible:ring-0"
-    />
+    <div className="relative">
+      <Textarea
+        ref={textareaRef}
+        value={localValue}
+        onChange={(event) => handleChange(event.target.value)}
+        placeholder="Escribe tu prompt aquí..."
+        className="min-h-[96px] w-full resize-none border-none bg-transparent p-2 text-sm leading-6 focus-visible:ring-0"
+      />
+      <div className="absolute bottom-1 right-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+        <VariableSelector
+          nodes={nodes}
+          loading={loading}
+          onSelect={handleVariableSelect}
+          trigger={
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 rounded-md p-0 text-muted-foreground/40 hover:bg-muted/10 hover:text-primary"
+              title="Insertar variable"
+            >
+              <Braces size={14} />
+            </Button>
+          }
+        />
+      </div>
+    </div>
   );
 }
 
@@ -456,26 +503,6 @@ export function TemplateAIElement(props: PlateElementProps<TemplateAIElementNode
 
   const aiActions = (
     <div className="flex items-center gap-0.5">
-      <VariableSelector
-        nodes={variableCatalog}
-        loading={variableCatalogLoading}
-        onSelect={(node) => {
-          const nextPrompt = `${promptValue} {{${node.path}}}`;
-          onSave({ promptTemplate: nextPrompt });
-        }}
-        trigger={
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-7 gap-1.5 rounded-md px-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 hover:bg-muted/10 hover:text-foreground"
-          >
-            <Braces size={12} />
-            Variables
-          </Button>
-        }
-      />
-
       <Popover>
         <PopoverTrigger asChild>
           <Button
@@ -567,6 +594,8 @@ export function TemplateAIElement(props: PlateElementProps<TemplateAIElementNode
       >
         <TemplateAIInlinePromptEditor
           value={promptValue}
+          nodes={variableCatalog}
+          loading={variableCatalogLoading}
           onChange={(nextPrompt) => onSave({ promptTemplate: nextPrompt })}
         />
       </BlockShell>

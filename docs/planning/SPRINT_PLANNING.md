@@ -83,7 +83,7 @@ _Objetivo: Finalizar la generación de documentos e integrar Gemini._
 - **US-6.02 (8 SP)**: UI del "Bloque IA" en el builder, Grounding de datos y streaming.
 - **Total Estimado**: 21 SP.
 
-### **Sprint 7: Exportaciones y Control de IA**
+### **Sprint 7: Exportaciones y Control de IA** ✅ _Completado_
 
 _Objetivo: Entregar el valor tangible (PDFs) y estabilizar el sistema de modelos._
 

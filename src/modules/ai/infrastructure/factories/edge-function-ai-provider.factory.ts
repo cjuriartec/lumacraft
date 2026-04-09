@@ -5,6 +5,7 @@ import { AIProviderFactoryPort } from "../../domain/ports/ai-provider-factory.po
 import { AccountAIProviderOptions } from "../../domain/types/account-ai-settings.types";
 import { AIProviderId } from "../../domain/types/ai-provider.types";
 import { EdgeFunctionAIProviderAdapter } from "../adapters/edge-function-ai-provider.adapter";
+import { FallbackAIProviderDecorator } from "../decorators/fallback-ai-provider.decorator";
 
 interface EdgeFunctionAIProviderFactoryOptions {
   accountId: string;
@@ -17,13 +18,21 @@ interface EdgeFunctionAIProviderFactoryOptions {
   requestTimeoutMs?: number;
   providerOptions?: AccountAIProviderOptions;
   providerApiKeys?: Partial<Record<AIProviderId, string>>;
+  enableFallback?: boolean;
+  fallbackProvider?: AIProviderId;
+  fallbackModel?: string;
 }
 
 function resolveProviderModel(
   providerId: AIProviderId,
   options: EdgeFunctionAIProviderFactoryOptions,
+  isFallback: boolean = false,
 ): string | undefined {
-  if (providerId === options.defaultProvider && options.defaultModel) {
+  if (isFallback && options.fallbackProvider === providerId && options.fallbackModel) {
+    return options.fallbackModel;
+  }
+
+  if (!isFallback && providerId === options.defaultProvider && options.defaultModel) {
     return options.defaultModel;
   }
 
@@ -32,18 +41,29 @@ function resolveProviderModel(
 
 export class EdgeFunctionAIProviderFactory implements AIProviderFactoryPort {
   private readonly providers: Record<AIProviderId, AIProviderPort>;
+  private readonly fallbackProviders: Record<AIProviderId, AIProviderPort>;
   private readonly defaultProviderId: AIProviderId;
 
   constructor(private readonly options: EdgeFunctionAIProviderFactoryOptions) {
     this.defaultProviderId = options.defaultProvider;
-    this.providers = {
+
+    // Initialize primary providers
+    this.providers = this.createProviders(false);
+
+    // Initialize fallback providers (they might have different model overrides)
+    this.fallbackProviders = options.enableFallback ? this.createProviders(true) : this.providers;
+  }
+
+  private createProviders(isFallback: boolean): Record<AIProviderId, AIProviderPort> {
+    const { options } = this;
+    return {
       GEMINI: new EdgeFunctionAIProviderAdapter({
         accountId: options.accountId,
         providerId: "GEMINI",
         apiKey: options.providerApiKeys?.GEMINI,
         functionUrl: options.functionUrl,
         functionKey: options.functionKey,
-        defaultModel: resolveProviderModel("GEMINI", options),
+        defaultModel: resolveProviderModel("GEMINI", options, isFallback),
         defaultTemperature: options.defaultTemperature,
         defaultMaxTokens: options.defaultMaxTokens,
         timeoutMs: options.requestTimeoutMs,
@@ -54,7 +74,7 @@ export class EdgeFunctionAIProviderFactory implements AIProviderFactoryPort {
         apiKey: options.providerApiKeys?.OPENAI,
         functionUrl: options.functionUrl,
         functionKey: options.functionKey,
-        defaultModel: resolveProviderModel("OPENAI", options),
+        defaultModel: resolveProviderModel("OPENAI", options, isFallback),
         defaultTemperature: options.defaultTemperature,
         defaultMaxTokens: options.defaultMaxTokens,
         timeoutMs: options.requestTimeoutMs,
@@ -65,7 +85,7 @@ export class EdgeFunctionAIProviderFactory implements AIProviderFactoryPort {
         apiKey: options.providerApiKeys?.ANTHROPIC,
         functionUrl: options.functionUrl,
         functionKey: options.functionKey,
-        defaultModel: resolveProviderModel("ANTHROPIC", options),
+        defaultModel: resolveProviderModel("ANTHROPIC", options, isFallback),
         defaultTemperature: options.defaultTemperature,
         defaultMaxTokens: options.defaultMaxTokens,
         timeoutMs: options.requestTimeoutMs,
@@ -85,6 +105,28 @@ export class EdgeFunctionAIProviderFactory implements AIProviderFactoryPort {
       return fail(
         new DomainError(`Unsupported AI provider: ${resolvedId}`, "AI_PROVIDER_NOT_SUPPORTED"),
       );
+    }
+
+    // Wrap in fallback decorator if enabled and we are using the default provider
+    if (
+      this.options.enableFallback &&
+      this.options.fallbackProvider &&
+      resolvedId === this.defaultProviderId
+    ) {
+      const fallbackProvider = this.fallbackProviders[this.options.fallbackProvider];
+      if (fallbackProvider && fallbackProvider !== provider) {
+        return ok(
+          new FallbackAIProviderDecorator(provider, fallbackProvider, {
+            enableFallback: true,
+            onFallback: (err, id) => {
+              console.warn(
+                `[AI] Primary provider ${resolvedId} failed. Falling back to ${id}. Error:`,
+                err,
+              );
+            },
+          }),
+        );
+      }
     }
 
     return ok(provider);

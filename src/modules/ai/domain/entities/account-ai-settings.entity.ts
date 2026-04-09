@@ -31,6 +31,9 @@ interface AccountAISettingsProps {
   templatePreviewTimeoutMs: number;
   templatePreviewMaxAIBlocks: number;
   systemPrompt: string | null;
+  enableFallback: boolean;
+  fallbackProvider: AIProviderId;
+  fallbackModel: string;
   providerOptions: AccountAIProviderOptions;
   providerSecrets: AccountAIProviderSecrets;
   createdAt?: Date;
@@ -48,6 +51,9 @@ export interface AccountAISettingsPatch {
   templatePreviewTimeoutMs?: number;
   templatePreviewMaxAIBlocks?: number;
   systemPrompt?: string | null;
+  enableFallback?: boolean;
+  fallbackProvider?: AIProviderId;
+  fallbackModel?: string;
   providerOptions?: AccountAIProviderOptions;
   providerSecrets?: AccountAIProviderSecrets;
   updatedAt?: Date;
@@ -168,6 +174,18 @@ export class AccountAISettings extends BaseEntity {
     return this.props.providerSecrets;
   }
 
+  public get enableFallback(): boolean {
+    return this.props.enableFallback;
+  }
+
+  public get fallbackProvider(): AIProviderId {
+    return this.props.fallbackProvider;
+  }
+
+  public get fallbackModel(): string {
+    return this.props.fallbackModel;
+  }
+
   public withPatch(patch: AccountAISettingsPatch): Result<AccountAISettings, DomainError> {
     return AccountAISettings.create({
       accountId: this.accountId,
@@ -182,6 +200,9 @@ export class AccountAISettings extends BaseEntity {
       templatePreviewMaxAIBlocks:
         patch.templatePreviewMaxAIBlocks ?? this.templatePreviewMaxAIBlocks,
       systemPrompt: patch.systemPrompt !== undefined ? patch.systemPrompt : this.systemPrompt,
+      enableFallback: patch.enableFallback ?? this.enableFallback,
+      fallbackProvider: patch.fallbackProvider ?? this.fallbackProvider,
+      fallbackModel: patch.fallbackModel ?? this.fallbackModel,
       providerOptions: patch.providerOptions ?? this.providerOptions,
       providerSecrets: patch.providerSecrets ?? this.providerSecrets,
       createdAt: this.createdAt,
@@ -201,6 +222,9 @@ export class AccountAISettings extends BaseEntity {
     templatePreviewTimeoutMs?: number;
     templatePreviewMaxAIBlocks?: number;
     systemPrompt?: string | null;
+    enableFallback?: boolean;
+    fallbackProvider?: AIProviderId;
+    fallbackModel?: string;
     providerOptions?: AccountAIProviderOptions;
     providerSecrets?: AccountAIProviderSecrets;
     createdAt?: Date;
@@ -223,6 +247,9 @@ export class AccountAISettings extends BaseEntity {
     const templatePreviewMaxAIBlocks = Math.round(
       props.templatePreviewMaxAIBlocks ?? ACCOUNT_AI_DEFAULT_TEMPLATE_PREVIEW_MAX_AI_BLOCKS,
     );
+    const enableFallback = props.enableFallback ?? false;
+    const fallbackProvider = props.fallbackProvider ?? "OPENAI";
+    const fallbackModel = props.fallbackModel?.trim() || "gpt-5.4-mini";
 
     if (defaultTemperature < 0 || defaultTemperature > 2) {
       return fail(
@@ -276,14 +303,29 @@ export class AccountAISettings extends BaseEntity {
     );
 
     const providerCatalog = providerOptions[defaultProvider]?.allowedModels ?? [];
-    const fallbackCatalog = ACCOUNT_AI_PROVIDER_MODEL_CATALOG[defaultProvider] ?? [];
-    const supportedModels = providerCatalog.length > 0 ? providerCatalog : fallbackCatalog;
+    const providerSourceCatalog = ACCOUNT_AI_PROVIDER_MODEL_CATALOG[defaultProvider] ?? [];
+    const supportedModels = providerCatalog.length > 0 ? providerCatalog : providerSourceCatalog;
 
     if (supportedModels.length > 0 && !supportedModels.includes(defaultModel)) {
       return fail(
         new DomainError(
           `Default model "${defaultModel}" is not enabled for provider ${defaultProvider}`,
           "ACCOUNT_AI_SETTINGS_INVALID_MODEL",
+        ),
+      );
+    }
+
+    // Fallback model validation
+    const fallbackCatalog = providerOptions[fallbackProvider]?.allowedModels ?? [];
+    const fallbackSourceCatalog = ACCOUNT_AI_PROVIDER_MODEL_CATALOG[fallbackProvider] ?? [];
+    const supportedFallbackModels =
+      fallbackCatalog.length > 0 ? fallbackCatalog : fallbackSourceCatalog;
+
+    if (supportedFallbackModels.length > 0 && !supportedFallbackModels.includes(fallbackModel)) {
+      return fail(
+        new DomainError(
+          `Fallback model "${fallbackModel}" is not enabled for provider ${fallbackProvider}`,
+          "ACCOUNT_AI_SETTINGS_INVALID_FALLBACK_MODEL",
         ),
       );
     }
@@ -300,6 +342,9 @@ export class AccountAISettings extends BaseEntity {
         featureTemplateLogic: props.featureTemplateLogic ?? true,
         templatePreviewTimeoutMs,
         templatePreviewMaxAIBlocks,
+        enableFallback,
+        fallbackProvider,
+        fallbackModel,
         systemPrompt:
           props.systemPrompt === undefined
             ? ACCOUNT_AI_DEFAULT_SYSTEM_PROMPT
@@ -327,6 +372,9 @@ export class AccountAISettings extends BaseEntity {
       templatePreviewTimeoutMs: this.templatePreviewTimeoutMs,
       templatePreviewMaxAIBlocks: this.templatePreviewMaxAIBlocks,
       systemPrompt: this.systemPrompt,
+      enableFallback: this.enableFallback,
+      fallbackProvider: this.fallbackProvider,
+      fallbackModel: this.fallbackModel,
       providerOptions: this.providerOptions,
       providerSecrets: this.providerSecrets,
       createdAt: this.createdAt,

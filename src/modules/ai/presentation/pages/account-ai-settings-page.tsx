@@ -1,8 +1,16 @@
 "use client";
 
-import { BrainCircuit, KeyRound, RotateCw, Save } from "lucide-react";
+import { debounce } from "lodash";
+import {
+  AlertCircle,
+  BrainCircuit,
+  CheckCircle2,
+  CloudUpload,
+  KeyRound,
+  RotateCw,
+} from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   AccountAISettingsDto,
@@ -46,6 +54,9 @@ function cloneSettingsToDraft(settings: AccountAISettingsDto): UpdateAccountAISe
     templatePreviewTimeoutMs: settings.templatePreviewTimeoutMs,
     templatePreviewMaxAIBlocks: settings.templatePreviewMaxAIBlocks,
     systemPrompt: settings.systemPrompt,
+    enableFallback: settings.enableFallback,
+    fallbackProvider: settings.fallbackProvider,
+    fallbackModel: settings.fallbackModel,
     providerOptions: JSON.parse(JSON.stringify(settings.providerOptions)),
   };
 }
@@ -99,7 +110,52 @@ export default function AccountAISettingsPage() {
     };
   }, [settings]);
 
+  const [lastSavedDraft, setLastSavedDraft] = useState<string | null>(null);
+  const [lastSavedSecrets, setLastSavedSecrets] = useState<string | null>(null);
+
   const canEdit = isOwner || isSuperAdmin;
+
+  const handleSave = useCallback(
+    async (currentDraft: UpdateAccountAISettingsDto, currentSecrets: Record<string, string>) => {
+      const payload = normalizeDraftModel({
+        ...currentDraft,
+        providerSecretsInput: currentSecrets,
+      });
+
+      try {
+        await save(payload);
+        setLastSavedDraft(JSON.stringify(currentDraft));
+        setLastSavedSecrets(JSON.stringify(currentSecrets));
+        setSuccessMessage("Configuración guardada");
+        window.setTimeout(() => setSuccessMessage(null), 2500);
+      } catch {
+        // Error is handled by useAccountAISettings
+      }
+    },
+    [save],
+  );
+
+  const debouncedSave = useMemo(() => debounce(handleSave, 500), [handleSave]);
+
+  useEffect(() => {
+    if (!draft || !settings) return;
+
+    // Initial load: set the baseline for what's already saved
+    if (lastSavedDraft === null) {
+      setLastSavedDraft(JSON.stringify(draft));
+      setLastSavedSecrets(JSON.stringify(secretInputs));
+      return;
+    }
+
+    const currentDraftStr = JSON.stringify(draft);
+    const currentSecretsStr = JSON.stringify(secretInputs);
+
+    // Only save if something actually changed from the last saved state
+    if (currentDraftStr !== lastSavedDraft || currentSecretsStr !== lastSavedSecrets) {
+      void debouncedSave(draft, secretInputs as Record<string, string>);
+    }
+  }, [draft, secretInputs, debouncedSave, settings, lastSavedDraft, lastSavedSecrets]);
+
   const currentProviderModels = useMemo(() => {
     if (!draft) return [];
     return draft.providerOptions[draft.defaultProvider]?.allowedModels ?? [];
@@ -168,36 +224,40 @@ export default function AccountAISettingsPage() {
         <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-primary">
           Workspace AI
         </p>
-        <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="text-[2.5rem] font-bold tracking-[-0.02em] text-foreground">
+            <h1 className="text-[2.5rem] font-bold tracking-[-0.02em] text-foreground/90">
               Configuración de IA
             </h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-foreground/70">
-              Gestiona proveedor, modelos, timeouts, flags y secrets cifrados para{" "}
-              <strong>{currentWorkspace.name}</strong>. Gemini queda activo hoy; OpenAI y Anthropic
-              pueden dejarse preparados para adapters futuros.
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-foreground/60">
+              Gestiona proveedor, modelos, timeouts, y secrets cifrados para{" "}
+              <strong>{currentWorkspace.name}</strong>.
             </p>
           </div>
-          <Button
-            type="button"
-            onClick={async () => {
-              const payload = normalizeDraftModel({
-                ...draft,
-                providerSecretsInput: secretInputs,
-              });
-
-              await save(payload);
-              setSecretInputs({});
-              setSuccessMessage("Configuración guardada");
-              window.setTimeout(() => setSuccessMessage(null), 2500);
-            }}
-            disabled={saving}
-            className="h-10 rounded-xl px-5"
-          >
-            {saving ? <RotateCw className="animate-spin" size={16} /> : <Save size={16} />}
-            Guardar
-          </Button>
+          <div className="flex items-center gap-3 rounded-2xl border border-border/40 bg-surface/50 px-4 py-2 shadow-sm backdrop-blur-sm">
+            {saving ? (
+              <>
+                <CloudUpload className="animate-bounce text-primary" size={16} />
+                <span className="text-[11px] font-bold uppercase tracking-wider text-primary">
+                  Sincronizando...
+                </span>
+              </>
+            ) : error ? (
+              <>
+                <AlertCircle className="text-destructive" size={16} />
+                <span className="text-[11px] font-bold uppercase tracking-wider text-destructive">
+                  Error de guardado
+                </span>
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="text-primary/70" size={16} />
+                <span className="text-[11px] font-bold uppercase tracking-wider text-foreground/50">
+                  Todo guardado
+                </span>
+              </>
+            )}
+          </div>
         </div>
         {error && (
           <p className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
@@ -405,6 +465,101 @@ export default function AccountAISettingsPage() {
             className="min-h-[140px] rounded-xl border-border/40 bg-background/70"
           />
         </div>
+      </section>
+
+      <section className="grid gap-6 rounded-2xl border border-border/50 bg-surface p-6">
+        <div className="flex items-center justify-between gap-4">
+          <div className="space-y-1">
+            <h2 className="text-lg font-semibold text-foreground">Estabilidad y Fallback</h2>
+            <p className="text-xs text-foreground/60">
+              Configura un proveedor de respaldo en caso de que el principal falle o supere el
+              timeout.
+            </p>
+          </div>
+          <Switch
+            checked={draft.enableFallback}
+            onCheckedChange={(checked) =>
+              setDraft((current) => (current ? { ...current, enableFallback: checked } : current))
+            }
+          />
+        </div>
+
+        {draft.enableFallback && (
+          <div className="grid gap-6 border-t border-border/30 pt-6 animate-in fade-in slide-in-from-top-2 duration-300">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-2">
+                <Label>Proveedor de Fallback</Label>
+                <Select
+                  value={draft.fallbackProvider}
+                  onValueChange={(nextValue) =>
+                    setDraft((current) => {
+                      if (!current) return current;
+
+                      const providerId = nextValue as AIProviderId;
+                      const allowedModels =
+                        current.providerOptions[providerId]?.allowedModels ?? [];
+                      const fallbackModel = allowedModels[0] || "";
+
+                      return {
+                        ...current,
+                        fallbackProvider: providerId,
+                        fallbackModel,
+                      };
+                    })
+                  }
+                >
+                  <SelectTrigger className="border-border/40 bg-background/50">
+                    <SelectValue placeholder="Selecciona proveedor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {AI_PROVIDER_IDS.filter((id) => id !== draft.defaultProvider).map(
+                      (providerId) => (
+                        <SelectItem key={providerId} value={providerId}>
+                          {PROVIDER_LABELS[providerId]}
+                        </SelectItem>
+                      ),
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label>Modelo de Fallback</Label>
+                <Select
+                  value={draft.fallbackModel}
+                  onValueChange={(nextValue) =>
+                    setDraft((current) =>
+                      current ? { ...current, fallbackModel: nextValue } : current,
+                    )
+                  }
+                >
+                  <SelectTrigger className="border-border/40 bg-background/50">
+                    <SelectValue placeholder="Selecciona modelo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(draft.providerOptions[draft.fallbackProvider]?.allowedModels ?? []).map(
+                      (model) => (
+                        <SelectItem key={model} value={model}>
+                          {model}
+                        </SelectItem>
+                      ),
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+              <p className="text-xs leading-relaxed text-foreground/70">
+                <span className="font-semibold text-primary">Nota de A/B Testing:</span> Al activar
+                el fallback, Lumacraft monitoriza la tasa de éxito de{" "}
+                <strong>{PROVIDER_LABELS[draft.defaultProvider]}</strong>. Si se detectan errores
+                consecutivos o latencia excesiva, el tráfico se redirigirá automáticamente a
+                <strong> {PROVIDER_LABELS[draft.fallbackProvider]}</strong> ({draft.fallbackModel})
+                para garantizar la continuidad del servicio.
+              </p>
+            </div>
+          </div>
+        )}
       </section>
 
       <section className="grid gap-4">
