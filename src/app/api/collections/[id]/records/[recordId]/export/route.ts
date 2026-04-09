@@ -185,11 +185,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: { message } }, { status: 500 });
     }
 
-    const fileName = `${accountId}/${crypto.randomUUID()}.pdf`;
+    const fileName = `${accountId}/${templateId}/${recordId}.pdf`;
 
     const { error: uploadError } = await adminClient.storage
       .from("exports")
-      .upload(fileName, pdfBuffer, { contentType: "application/pdf" });
+      .upload(fileName, pdfBuffer, {
+        contentType: "application/pdf",
+        upsert: true,
+      });
 
     if (uploadError) {
       console.error("[export] Storage upload error:", uploadError);
@@ -226,6 +229,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       format,
       title: templateName || "export",
       accountId,
+      templateId,
+      recordId,
       blocks: previewResult.value.blocks,
     },
   });

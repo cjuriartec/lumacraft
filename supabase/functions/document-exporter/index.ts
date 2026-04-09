@@ -166,14 +166,21 @@ Deno.serve(async (req) => {
   try {
     const rawBody = await req.text();
     console.log("Incoming request body length:", rawBody.length);
-    const { format, accountId, blocks, text } = JSON.parse(rawBody);
-    console.log("Request fields:", { format, accountId, hasBlocks: !!blocks, hasText: !!text });
+    const { format, accountId, templateId, recordId, blocks, text } = JSON.parse(rawBody);
+    console.log("Request fields:", {
+      format,
+      accountId,
+      templateId,
+      recordId,
+      hasBlocks: !!blocks,
+      hasText: !!text,
+    });
 
-    if (!format || !accountId || (!blocks && !text)) {
+    if (!format || !accountId || !templateId || !recordId || (!blocks && !text)) {
       return new Response(
         JSON.stringify({
           isError: true,
-          error: `Missing required fields. Format: ${!!format}, Blocks: ${!!blocks}, AccountId: ${!!accountId}`,
+          error: `Missing required fields. Format: ${!!format}, Blocks: ${!!blocks}, AccountId: ${!!accountId}, TemplateId: ${!!templateId}, RecordId: ${!!recordId}`,
         }),
         {
           status: 200,
@@ -236,12 +243,13 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const fileName = `${accountId}/${crypto.randomUUID()}.${extension}`;
+    const fileName = `${accountId}/${templateId}/${recordId}.${extension}`;
 
     const { error: uploadError } = await supabase.storage
       .from("exports")
       .upload(fileName, fileBytes, {
         contentType: mimeType,
+        upsert: true,
       });
 
     if (uploadError) {
