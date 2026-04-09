@@ -226,6 +226,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       format,
       title: templateName || "export",
       accountId,
+      blocks: previewResult.value.blocks,
     },
   });
 
