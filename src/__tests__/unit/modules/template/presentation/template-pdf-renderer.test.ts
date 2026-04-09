@@ -153,6 +153,23 @@ describe("renderTemplateToPdfBuffer", () => {
     expect(getPdfHeader(result)).toContain(PDF_MAGIC_BYTES);
   });
 
+  it("handles lineHeight in table cells", async () => {
+    const blocks: TemplateBlocks = [
+      {
+        type: "table",
+        lineHeight: 2.5,
+        children: [
+          {
+            type: "tr",
+            children: [{ type: "td", children: [{ text: "Tall row content" }] }],
+          },
+        ],
+      },
+    ];
+    const result = await renderTemplateToPdfBuffer(blocks);
+    expect(getPdfHeader(result)).toContain(PDF_MAGIC_BYTES);
+  });
+
   it("skips image block if src is missing (no error thrown)", async () => {
     const blocks: TemplateBlocks = [
       { type: "img", children: [{ text: "" }] }, // no url/path

@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingBottom: 60,
     paddingHorizontal: 72,
-    lineHeight: 1.55,
+    lineHeight: 1.5,
     backgroundColor: "#ffffff",
   },
   h1: {
@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
   },
   paragraph: {
     marginBottom: 8,
-    lineHeight: 1.65,
+    lineHeight: 1.5,
   },
   blockquote: {
     borderLeftWidth: 3,
@@ -518,7 +518,7 @@ function renderBlock(
                 const inlines = renderInlineChildren(cell.children);
                 return (
                   <View key={cIdx} style={[cellStyle, borderRight]}>
-                    <Text>{inlines}</Text>
+                    <Text style={blockTextStyle}>{inlines}</Text>
                   </View>
                 );
               })}
@@ -537,7 +537,7 @@ function renderBlock(
   if (listStyleType === "disc") {
     return (
       <View key={key} style={[styles.listItem, { paddingLeft }]}>
-        <Text style={styles.listBullet}>{"•  "}</Text>
+        <Text style={[styles.listBullet, blockTextStyle]}>{"•  "}</Text>
         <Text style={[styles.listContent, blockTextStyle]}>{inlines}</Text>
       </View>
     );
@@ -551,7 +551,7 @@ function renderBlock(
     const number = precedingIdx + 1;
     return (
       <View key={key} style={[styles.listItem, { paddingLeft }]}>
-        <Text style={styles.listBullet}>{`${number}.  `}</Text>
+        <Text style={[styles.listBullet, blockTextStyle]}>{`${number}.  `}</Text>
         <Text style={[styles.listContent, blockTextStyle]}>{inlines}</Text>
       </View>
     );
