@@ -2,6 +2,49 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.3](https://github.com/cjuriartec/lumacraft/compare/v0.1.2...v0.1.3) (2026-04-09)
+
+
+### 📦 Miscellaneous
+
+* enable legacy-peer-deps for CI installation ([e5f5cfd](https://github.com/cjuriartec/lumacraft/commit/e5f5cfdb40f1b5be7e2d6dd53b4f189a45aedb8c))
+* stabilize CI with Supabase wait and optimize React 19 overrides ([03c3e67](https://github.com/cjuriartec/lumacraft/commit/03c3e676d86a1060a14903f2a198dcf9d4764145))
+* synchronize lock file from clean install ([bb25f47](https://github.com/cjuriartec/lumacraft/commit/bb25f47cb7c7fa91c0255e2ce3eb0a9f6e85ddf3))
+
+
+### 🐛 Bug Fixes
+
+* **ui:** properly type useFilePicker callback and fix build error ([2fbeb68](https://github.com/cjuriartec/lumacraft/commit/2fbeb68666c5b99d622c13da9eba00541060538e))
+
+
+### ✅ Tests
+
+* log error details when template creation fails in integration tests ([5d24f4a](https://github.com/cjuriartec/lumacraft/commit/5d24f4ae8c698b74d33d2ceff3038de2a299268a))
+
+
+### ♻️ Code Refactoring
+
+* standardize Supabase admin to use SUPABASE_SECRET_KEY and add setup-local unit tests ([4fa9c93](https://github.com/cjuriartec/lumacraft/commit/4fa9c938da12d326755f82d96d76e9b26b83855e))
+
+
+### 📝 Documentation
+
+* update README with Next.js 16, new architectural components, and revised setup instructions ([55a7120](https://github.com/cjuriartec/lumacraft/commit/55a7120909ea055cfcf6effcf7a536c2ea781c03))
+* update Sprint 6 status to completed in sprint planning document ([6d888bf](https://github.com/cjuriartec/lumacraft/commit/6d888bf2d4232f6bf44d37cf2ef35650738a0907))
+
+
+### ✨ Features
+
+* add DocumentNormalizationPlugin to ensure trailing paragraph after logic blocks ([1d0578d](https://github.com/cjuriartec/lumacraft/commit/1d0578ddc9cfa4297207f50823c677f61e004669))
+* add text formatting and transformation support to variable blocks in PDF renderer and editor ([33eda64](https://github.com/cjuriartec/lumacraft/commit/33eda64145f48949c926b6ae67bf6dc6b73237db))
+* edge AI provider architecture; migrate adapters for serverless execution ([51914a2](https://github.com/cjuriartec/lumacraft/commit/51914a24b1bd09683d8d758505d87d733787db88))
+* enhance export record modal with animated progress states and refined UI design ([94c32d4](https://github.com/cjuriartec/lumacraft/commit/94c32d4173073ae9d2c86e1619119284cf3eee98))
+* implement AI provider fallback mechanism with database schema updates and auto-saving UI ([de0d9ab](https://github.com/cjuriartec/lumacraft/commit/de0d9abd6a1a4a5b49d82f753511951d73943471))
+* implement native DOCX generation in document-exporter and allow text/plain in exports bucket ([061d52f](https://github.com/cjuriartec/lumacraft/commit/061d52f0dd31c9b2aa92a36daed1f4f5b30e27f7))
+* support custom lineHeight in table cells and standardize global text styling ([245fd31](https://github.com/cjuriartec/lumacraft/commit/245fd31a45b42a5da9652d634554ff30147167d6))
+* **template:** high-fidelity PDF export with @react-pdf/renderer ([2ce1899](https://github.com/cjuriartec/lumacraft/commit/2ce1899d704e547720a9cd59058f1c15932ce33b))
+* update export file naming to use template and record IDs with upsert support ([d976ff8](https://github.com/cjuriartec/lumacraft/commit/d976ff862fd9bf09a84e95d50c376ee115eaf33b))
+
 ### [0.1.2](https://github.com/cjuriartec/lumacraft/compare/v0.1.1...v0.1.2) (2026-04-07)
 
 

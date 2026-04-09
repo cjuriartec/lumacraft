@@ -57,7 +57,7 @@ export default function LoginPage() {
         </div>
 
         <div className="relative z-10 flex items-center gap-4 text-muted text-[10px] font-bold uppercase tracking-widest opacity-60">
-          <span>v0.1.0</span>
+          <span>v{process.env.NEXT_PUBLIC_APP_VERSION}</span>
           <span className="w-1 h-1 rounded-full bg-border" />
           <span>Sprint 1</span>
         </div>

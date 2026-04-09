@@ -26,6 +26,8 @@ describe("FallbackAIProviderDecorator", () => {
     const successResponse = {
       text: "Success",
       usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+      provider: "GEMINI" as const,
+      model: "gemini-2.5-flash",
     };
 
     vi.mocked(mockPrimary.generate).mockResolvedValueOnce(ok(successResponse));
@@ -45,6 +47,8 @@ describe("FallbackAIProviderDecorator", () => {
     const fallbackResponse = {
       text: "Fallback",
       usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+      provider: "OPENAI" as const,
+      model: "gpt-4o",
     };
 
     vi.mocked(mockPrimary.generate).mockResolvedValueOnce(
