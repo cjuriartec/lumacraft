@@ -80,6 +80,9 @@ describe("AccountAISettingsPage", () => {
       templatePreviewTimeoutMs: 45000,
       templatePreviewMaxAIBlocks: 3,
       systemPrompt: "Enfoca la respuesta en contratos.",
+      enableFallback: false,
+      fallbackProvider: "OPENAI",
+      fallbackModel: "gpt-4o-mini",
       providerOptions: {
         GEMINI: {
           allowedModels: ["gemini-2.5-flash", "gemini-2.5-pro"],
@@ -126,8 +129,6 @@ describe("AccountAISettingsPage", () => {
     fireEvent.change(passwordInputs[0], {
       target: { value: "nueva-key-9999" },
     });
-
-    fireEvent.click(screen.getByRole("button", { name: /guardar/i }));
 
     await waitFor(() => {
       expect(hookState.save).toHaveBeenCalledWith(
