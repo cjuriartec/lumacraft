@@ -180,6 +180,30 @@ export const TemplateSwitchPlugin = createPlatePlugin({
   },
 });
 
+export const LOGIC_TYPES = new Set([
+  TEMPLATE_AI_TYPE,
+  TEMPLATE_CONDITIONAL_TYPE,
+  TEMPLATE_LIST_TYPE,
+  TEMPLATE_SWITCH_TYPE,
+]);
+
+export const DocumentNormalizationPlugin = createPlatePlugin({
+  key: "document_normalization",
+  handlers: {
+    onChange: ({ editor }) => {
+      const children = editor.children;
+      if (!children || children.length === 0) return;
+
+      const lastNode = children[children.length - 1] as TElement;
+      if (lastNode && lastNode.type && LOGIC_TYPES.has(lastNode.type as string)) {
+        // Appending a paragraph is safe as it doesn't trigger a recursive loop
+        // because the 'lastNode' condition will fail in the next execution.
+        editor.tf.insertNodes({ type: "p", children: [{ text: "" }] }, { at: [children.length] });
+      }
+    },
+  },
+});
+
 export const TemplateAIPlugin = createPlatePlugin({
   key: TEMPLATE_AI_TYPE,
 }).extend({
@@ -556,6 +580,7 @@ export const TemplateLogicBlocksPluginKit = [
   TemplateListPlugin,
   TemplateSwitchPlugin,
   TemplateAIPlugin,
+  DocumentNormalizationPlugin,
 ];
 
 export interface TemplateLogicSlashItem {
