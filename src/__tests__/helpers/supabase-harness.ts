@@ -7,8 +7,7 @@ const publishableKey =
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
   process.env.PUBLISHABLE_KEY ??
   process.env.ANON_KEY;
-const serviceRoleKey =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SECRET_KEY ?? process.env.SERVICE_ROLE_KEY;
+const privilegedKey = process.env.SUPABASE_SECRET_KEY ?? process.env.SECRET_KEY;
 const databaseUrl =
   process.env.DB_URL ??
   (supabaseUrl && isLocalUrl(supabaseUrl)
@@ -20,7 +19,7 @@ function isLocalUrl(url: string) {
 }
 
 export const canRunLocalSupabaseTests =
-  Boolean(supabaseUrl && publishableKey && serviceRoleKey) &&
+  Boolean(supabaseUrl && publishableKey && privilegedKey) &&
   (process.env.ENABLE_REMOTE_SUPABASE_TESTS === "true" || isLocalUrl(supabaseUrl!));
 
 function requireEnv(name: string, value: string | undefined) {
@@ -66,10 +65,10 @@ export function createAnonSupabaseClient() {
   );
 }
 
-export function createServiceRoleSupabaseClient() {
+export function createAdminSupabaseClient() {
   return createClient(
     requireEnv("NEXT_PUBLIC_SUPABASE_URL", supabaseUrl),
-    requireEnv("SUPABASE_SERVICE_ROLE_KEY", serviceRoleKey),
+    requireEnv("SUPABASE_SECRET_KEY", privilegedKey),
     {
       auth: {
         autoRefreshToken: false,
@@ -77,6 +76,10 @@ export function createServiceRoleSupabaseClient() {
       },
     },
   );
+}
+
+export function createServiceRoleSupabaseClient() {
+  return createAdminSupabaseClient();
 }
 
 export interface TestUserSession {
@@ -125,7 +128,7 @@ export async function createTestUser(label: string): Promise<TestUserSession> {
 }
 
 export async function getPersonalAccountId(userId: string) {
-  const service = createServiceRoleSupabaseClient();
+  const service = createAdminSupabaseClient();
 
   for (let attempt = 0; attempt < 10; attempt += 1) {
     const { data, error } = await service
@@ -149,7 +152,7 @@ export async function getPersonalAccountId(userId: string) {
 }
 
 export async function addMemberToAccount(accountId: string, userId: string) {
-  const service = createServiceRoleSupabaseClient();
+  const service = createAdminSupabaseClient();
 
   // Get the Superadmin role for this account
   const { data: roleData, error: roleError } = await service

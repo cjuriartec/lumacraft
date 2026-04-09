@@ -14,6 +14,7 @@ export interface TemplateRuntimeContext {
   recordId: string;
   collectionId: string;
   collectionName: string;
+  collectionDescription?: string | null;
   root: Record<string, unknown>;
   fieldMetadataByPath?: Record<string, TemplateRuntimeFieldMetadata>;
 }

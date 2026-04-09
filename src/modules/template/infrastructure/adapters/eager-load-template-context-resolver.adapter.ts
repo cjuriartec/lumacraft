@@ -1,4 +1,5 @@
 import { EagerLoadRecordUseCase } from "@/modules/collection/application/use-cases/eager-load-record.use-case";
+import { GetCollectionUseCase } from "@/modules/collection/application/use-cases/get-collection.use-case";
 import { ListFieldsUseCase } from "@/modules/collection/application/use-cases/list-fields.use-case";
 import { Field } from "@/modules/collection/domain/entities/field.entity";
 import { DomainError, fail, ok, Result } from "@/shared/domain/result";
@@ -22,6 +23,7 @@ export class EagerLoadTemplateContextResolverAdapter implements TemplateRuntimeC
   constructor(
     private readonly eagerLoadRecordUseCase: EagerLoadRecordUseCase,
     private readonly listFieldsUseCase: ListFieldsUseCase,
+    private readonly getCollectionUseCase: GetCollectionUseCase,
   ) {}
 
   private getFieldEnumOptions(field: Field): string[] {
@@ -119,6 +121,11 @@ export class EagerLoadTemplateContextResolverAdapter implements TemplateRuntimeC
     recordId: string;
     depth?: number;
   }): Promise<Result<TemplateRuntimeContext>> {
+    const collectionResult = await this.getCollectionUseCase.execute(params.collectionId);
+    if (!collectionResult.ok) {
+      return fail(new DomainError(collectionResult.error.message, "TEMPLATE_CONTEXT_NOT_FOUND"));
+    }
+
     const eagerResult = await this.eagerLoadRecordUseCase.execute({
       collectionId: params.collectionId,
       recordId: params.recordId,
@@ -143,6 +150,7 @@ export class EagerLoadTemplateContextResolverAdapter implements TemplateRuntimeC
       recordId: eagerResult.value.id,
       collectionId: eagerResult.value.collectionId,
       collectionName: eagerResult.value.collectionName,
+      collectionDescription: collectionResult.value?.description ?? null,
       root,
       fieldMetadataByPath,
     });

@@ -22,6 +22,9 @@ interface AccountAISettingsRow {
   template_preview_timeout_ms: number;
   template_preview_max_ai_blocks: number;
   system_prompt: string | null;
+  enable_fallback: boolean;
+  fallback_provider: "GEMINI" | "OPENAI" | "ANTHROPIC";
+  fallback_model: string;
   provider_options: unknown;
   provider_secrets: unknown;
   created_at: string | null;
@@ -76,6 +79,9 @@ export class SupabaseAccountAISettingsRepository
       template_preview_timeout_ms: settings.templatePreviewTimeoutMs,
       template_preview_max_ai_blocks: settings.templatePreviewMaxAIBlocks,
       system_prompt: settings.systemPrompt,
+      enable_fallback: settings.enableFallback,
+      fallback_provider: settings.fallbackProvider,
+      fallback_model: settings.fallbackModel,
       provider_options: settings.providerOptions,
       provider_secrets: settings.providerSecrets,
       updated_at: new Date().toISOString(),
@@ -106,6 +112,9 @@ export class SupabaseAccountAISettingsRepository
       templatePreviewTimeoutMs: row.template_preview_timeout_ms,
       templatePreviewMaxAIBlocks: row.template_preview_max_ai_blocks,
       systemPrompt: row.system_prompt,
+      enableFallback: row.enable_fallback,
+      fallbackProvider: row.fallback_provider,
+      fallbackModel: row.fallback_model,
       providerOptions: (row.provider_options ?? {}) as AccountAIProviderOptions,
       providerSecrets: (row.provider_secrets ?? {}) as AccountAIProviderSecrets,
       createdAt: row.created_at ? new Date(row.created_at) : undefined,

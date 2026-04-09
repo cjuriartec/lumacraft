@@ -219,6 +219,7 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
             <div className="space-y-4">
               <div className="rounded-2xl bg-surface overflow-hidden shadow-xs">
                 <DataGrid
+                  collectionId={collectionId}
                   fields={fields}
                   records={records}
                   total={total}

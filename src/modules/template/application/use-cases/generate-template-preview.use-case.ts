@@ -65,6 +65,34 @@ function countAiBlocks(blocks: TemplateBlocks, enableAI: boolean, enableLogic: b
     if (Array.isArray(block.children)) {
       count += countAiBlocks(block.children as TemplateBlocks, enableAI, enableLogic);
     }
+
+    if (block.type === "template_conditional") {
+      if (Array.isArray(block.thenBlocks)) {
+        count += countAiBlocks(block.thenBlocks as TemplateBlocks, enableAI, enableLogic);
+      }
+
+      if (Array.isArray(block.elseBlocks)) {
+        count += countAiBlocks(block.elseBlocks as TemplateBlocks, enableAI, enableLogic);
+      }
+    }
+
+    if (block.type === "template_list" && Array.isArray(block.blocks)) {
+      count += countAiBlocks(block.blocks as TemplateBlocks, enableAI, enableLogic);
+    }
+
+    if (block.type === "template_switch") {
+      if (Array.isArray(block.defaultBlocks)) {
+        count += countAiBlocks(block.defaultBlocks as TemplateBlocks, enableAI, enableLogic);
+      }
+
+      if (Array.isArray(block.cases)) {
+        for (const switchCase of block.cases) {
+          if (isRecord(switchCase) && Array.isArray(switchCase.blocks)) {
+            count += countAiBlocks(switchCase.blocks as TemplateBlocks, enableAI, enableLogic);
+          }
+        }
+      }
+    }
   }
 
   return count;

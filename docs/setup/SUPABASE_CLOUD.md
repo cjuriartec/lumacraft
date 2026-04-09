@@ -32,20 +32,24 @@ Una vez creado el proyecto:
 1. Ve a **Settings** → **API** en el sidebar del dashboard
 2. Copia los siguientes valores:
 
-| Campo en Dashboard         | Variable en `.env.local`               |
-| -------------------------- | -------------------------------------- |
-| **Project URL**            | `NEXT_PUBLIC_SUPABASE_URL`             |
-| **Publishable key** (anon) | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` |
+| Campo en Dashboard         | Variable en `.env.local`               | Descripción |
+| -------------------------- | -------------------------------------- | --- |
+| **Project URL**            | `NEXT_PUBLIC_SUPABASE_URL`             | URL del proyecto |
+| **Publishable key** (anon) | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Clave segura para el cliente |
+| **Secret key** (service_role) | `SUPABASE_SECRET_KEY`               | Clave de servicio — bypasea RLS |
 
 3. Pega los valores en tu archivo `.env.local`:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://abc123xyz.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=eyJhbGciOiJIUzI1NiIs...
+SUPABASE_SECRET_KEY=eyJhbGciOiJIUzI1NiIs...service_role...
 ```
 
-> **Nota**: La **Publishable key** (antes llamada `anon key`) es segura para usar en el cliente.
-> La **Secret key** (antes `service_role`) **nunca** debe exponerse en el frontend.
+> [!WARNING]
+> La **Secret key** (`service_role`) **nunca** debe exponerse en el frontend ni en variables con prefijo `NEXT_PUBLIC_`.
+> Sin embargo, **es obligatoria en el servidor** para que el PDF export funcione correctamente:
+> el bucket `exports` de Storage está protegido por RLS y solo el cliente con service role puede subir archivos.
 
 ---
 
@@ -116,6 +120,29 @@ npx supabase migration list
 
 ---
 
+## 5.1 Crear el Bucket de Storage `exports`
+
+Lumacraft necesita un bucket en Supabase Storage para almacenar los archivos exportados (PDFs). Cómo crearlo:
+
+1. Ve al **Dashboard** → **Storage** en el sidebar
+2. Click en **"New bucket"**
+3. Configura:
+   - **Name**: `exports`
+   - **Public**: No (privado — los archivos se sirven via signed URLs de 1 hora)
+4. Click en **"Save"**
+
+> [!IMPORTANT]
+> El bucket `exports` debe existir antes de que cualquier exportación pueda ejecutarse.
+> Si no existe, el upload fallará con un error de Storage.
+
+Alternativamente, puedes crearlo vía CLI:
+
+```bash
+npx supabase storage create exports --project-ref TU-PROJECT-REF
+```
+
+---
+
 ## 6. Configurar Google OAuth
 
 Para que el login con Google funcione:
@@ -172,6 +199,8 @@ lumacraft/
 | `db push` dice "no migrations" | Verifica que estés en la raíz del proyecto y que exista `supabase/migrations/`                           |
 | Google OAuth no redirige       | Comprueba que el Redirect URI en Google Cloud Console coincida exactamente con tu URL de Supabase        |
 | Error CORS en el browser       | Agrega `http://localhost:3000` en **Authentication → URL Configuration → Redirect URLs** en el dashboard |
+| PDF export → error 500 (Storage) | El bucket `exports` no existe o `SUPABASE_SECRET_KEY` no está configurada en `.env.local`. Crea el bucket y agrega la service role key. |
+| PDF export → `row-level security policy` | `SUPABASE_SECRET_KEY` tiene un valor incorrecto o es null. Verifica que uses la **service role key** (no la anon key). |
 
 ---
 
@@ -189,6 +218,12 @@ npx supabase db push
 
 # Ver estado de migraciones
 npx supabase migration list
+
+# Desplegar Edge Functions
+# NOTA: document-exporter ya sólo maneja el fallback txt/docx.
+# El PDF export se ejecuta en el proceso de Next.js (no requiere deploy de Edge Function).
+npx supabase functions deploy document-exporter --no-verify-jwt
+npx supabase functions deploy ai-provider --no-verify-jwt
 
 # Generar tipos TypeScript desde el esquema
 npx supabase gen types typescript --linked > src/shared/infrastructure/supabase/database.types.ts

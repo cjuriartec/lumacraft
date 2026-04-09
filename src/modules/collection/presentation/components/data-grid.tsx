@@ -43,8 +43,10 @@ import { DataRecord } from "../../domain/entities/record.entity";
 import { ColumnFilter } from "../../domain/types/pagination.types";
 import { RelationOption, useRelationRecords } from "../hooks/use-relation-records";
 import { useStorage } from "../hooks/use-storage";
+import { ExportRecordModal } from "./export-record-modal";
 
 interface DataGridProps {
+  collectionId?: string;
   fields: Field[];
   records: DataRecord[];
   total: number;
@@ -255,6 +257,7 @@ const RelationFilterInput = ({
 };
 
 export function DataGrid({
+  collectionId,
   fields,
   records,
   total,
@@ -280,6 +283,7 @@ export function DataGrid({
   const [downloadingFiles, setDownloadingFiles] = useState<Record<string, boolean>>({});
   const [draftValue, setDraftValue] = useState<string>("");
   const [updatingCell, setUpdatingCell] = useState(false);
+  const [exportRecordId, setExportRecordId] = useState<string | null>(null);
   const [filterValues, setFilterValues] = useState<Record<string, string>>(
     initialFilterValues || {},
   );
@@ -908,6 +912,17 @@ export function DataGrid({
                             <Edit2 size={14} />
                           </Button>
                         )}
+                        {collectionId && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Exportar registro ${record.id}`}
+                            className="h-8 w-8 text-muted hover:text-primary hover:bg-primary/10"
+                            onClick={() => setExportRecordId(record.id)}
+                          >
+                            <Download size={14} />
+                          </Button>
+                        )}
                         {canDelete && (
                           <Button
                             variant="ghost"
@@ -928,6 +943,15 @@ export function DataGrid({
           </TableBody>
         </Table>
       </div>
+
+      {collectionId && (
+        <ExportRecordModal
+          isOpen={!!exportRecordId}
+          onOpenChange={(open) => !open && setExportRecordId(null)}
+          collectionId={collectionId}
+          recordId={exportRecordId}
+        />
+      )}
 
       {total > pageSize && (
         <div className="flex items-center justify-between py-6 px-4">

@@ -1,5 +1,6 @@
 "use client";
 
+import { Ban, Bold, Italic, Palette, Type } from "lucide-react";
 import {
   AlignCenter,
   AlignJustify,
@@ -20,6 +21,19 @@ import * as React from "react";
 
 import type { FieldTypeValue } from "@/modules/collection/domain/value-objects/field-type.vo";
 import { cn } from "@/shared/lib/utils";
+import { Button } from "@/shared/presentation/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/shared/presentation/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/presentation/components/ui/select";
 
 export const DEFAULT_IMAGE_VARIABLE_WIDTH_PERCENT = 100;
 export const DEFAULT_IMAGE_VARIABLE_HEIGHT_PX = 180;
@@ -40,6 +54,10 @@ export interface VariableElementNode extends TElement {
   imageWidthPercent?: number;
   imageHeightPx?: number;
   align?: "left" | "center" | "right" | "justify";
+  bold?: boolean;
+  italic?: boolean;
+  color?: string;
+  textTransform?: "uppercase" | "lowercase" | "capitalize" | "none";
 }
 
 export const VariablePlugin = createPlatePlugin({
@@ -99,18 +117,163 @@ export function VariableElement(props: PlateElementProps<VariableElementNode>) {
   );
 
   if (!isImage) {
-    return (
+    const bold = element.bold ?? false;
+    const italic = element.italic ?? false;
+    const color = element.color;
+    const textTransform = element.textTransform ?? "none";
+
+    const updateFormatting = (
+      patch: Partial<Pick<VariableElementNode, "bold" | "italic" | "color" | "textTransform">>,
+    ) => {
+      const path = editor.api.findPath(element);
+      if (!path) return;
+      editor.tf.setNodes(patch, { at: path });
+    };
+
+    const trigger = (
       <span
         {...attributes}
         contentEditable={false}
-        className="mx-0.5 inline-flex items-center rounded-md bg-primary/10 px-1.5 py-0.5 text-sm font-medium text-primary ring-1 ring-inset ring-primary/20 select-none"
+        className={cn(
+          "mx-0.5 inline-flex items-center rounded-md px-1.5 py-0.5 text-sm font-medium ring-1 ring-inset select-none cursor-pointer transition-all hover:ring-primary/40",
+          !color && "bg-primary/10 text-primary ring-primary/20",
+          bold && "font-bold",
+          italic && "italic",
+        )}
+        style={{
+          color: color,
+          backgroundColor: color ? `${color}15` : undefined,
+          boxShadow: color ? `inset 0 0 0 1px ${color}30` : undefined,
+          textTransform:
+            textTransform === "capitalize"
+              ? "none"
+              : (textTransform as "none" | "uppercase" | "lowercase"),
+        }}
         data-variable-field-type={element.fieldType ?? "TEXT"}
       >
         <span className="opacity-70">{"{{"}</span>
-        <span className="px-0.5 font-semibold leading-none">{element.fieldPath}</span>
+        <span
+          className="px-0.5 leading-none"
+          style={{
+            textTransform:
+              textTransform === "capitalize"
+                ? "initial"
+                : (textTransform as "none" | "uppercase" | "lowercase"),
+          }}
+        >
+          {element.fieldPath}
+        </span>
         <span className="opacity-70">{"}}"}</span>
         {children}
       </span>
+    );
+
+    if (readOnly) return trigger;
+
+    return (
+      <Popover>
+        <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+        <PopoverContent
+          className="w-64 border-border/60 bg-surface-hover p-3 shadow-sm"
+          side="top"
+          align="center"
+        >
+          <div className="space-y-3">
+            <div className="flex items-center justify-between border-b border-border/40 pb-2">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                Formato de Variable
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <Button
+                variant="outline"
+                size="icon"
+                className={cn("h-8 w-8", bold && "bg-primary/10 border-primary/30 text-primary")}
+                onClick={() => updateFormatting({ bold: !bold })}
+                title="Negrita"
+              >
+                <Bold size={14} />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className={cn("h-8 w-8", italic && "bg-primary/10 border-primary/30 text-primary")}
+                onClick={() => updateFormatting({ italic: !italic })}
+                title="Cursiva"
+              >
+                <Italic size={14} />
+              </Button>
+
+              <div className="ml-auto flex items-center gap-1.5">
+                <Select
+                  value={textTransform}
+                  onValueChange={(val: "uppercase" | "lowercase" | "capitalize" | "none") =>
+                    updateFormatting({ textTransform: val })
+                  }
+                >
+                  <SelectTrigger className="h-8 w-[110px] bg-muted/10 border-border/40 text-xs focus:bg-background transition-colors">
+                    <Type size={12} className="mr-2 opacity-60" />
+                    <SelectValue placeholder="Caso" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Original</SelectItem>
+                    <SelectItem value="uppercase">MAYÚSCULAS</SelectItem>
+                    <SelectItem value="lowercase">minúsculas</SelectItem>
+                    <SelectItem value="capitalize">Tipo oración</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                <Palette size={10} />
+                Color de texto
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  null, // Default (Reset)
+                  "#ef4444", // Red
+                  "#f59e0b", // Amber
+                  "#10b981", // Emerald
+                  "#3b82f6", // Blue
+                  "#6366f1", // Indigo
+                  "#8b5cf6", // Violet
+                  "#ec4899", // Pink
+                ].map((c) => {
+                  const isDefault = c === null;
+                  const isActive = isDefault ? !color : color === c;
+
+                  return (
+                    <button
+                      key={String(c)}
+                      className={cn(
+                        "group relative flex h-6 w-6 items-center justify-center rounded-full border border-border/60 transition-all hover:scale-110",
+                        isActive && "ring-2 ring-primary ring-offset-1 ring-offset-background",
+                        isDefault && "bg-muted/5",
+                      )}
+                      style={!isDefault ? { backgroundColor: c as string } : {}}
+                      onClick={() => updateFormatting({ color: c ?? undefined })}
+                      title={isDefault ? "Color por defecto" : `Color: ${c}`}
+                    >
+                      {isDefault && (
+                        <Ban
+                          size={12}
+                          className={cn(
+                            "text-muted-foreground/40 transition-colors group-hover:text-muted-foreground/60",
+                            isActive && "text-primary/60",
+                          )}
+                        />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
     );
   }
 

@@ -1,6 +1,6 @@
 # 💎 Lumacraft
 
-[![Next.js](https://img.shields.io/badge/Next.js-15-black?style=flat-square&logo=next.js)](https://nextjs.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js)](https://nextjs.org/)
 [![Supabase](https://img.shields.io/badge/Supabase-BaaS-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.0-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
@@ -49,7 +49,10 @@ Este proyecto implementa **Screaming Architecture** (las carpetas gritan el domi
 | Capa               | Tecnología                                         |
 | :----------------- | :------------------------------------------------- |
 | **Frontend**       | Next.js 16 (App Router), React 19, Tailwind CSS 4  |
-| **Backend (BaaS)** | Supabase (PostgreSQL, Auth, Storage, RLs Granular) |
+| **Backend (BaaS)** | Supabase (PostgreSQL, Auth, Storage, RLS Granular) |
+| **IA Engine**      | Google Gemini (Contextual Generation)              |
+| **PDF Export**     | @react-pdf/renderer (High-Fidelity Document Rendering) |
+| **Editor**         | Plate.js (Highly Extensible WYSIWYG)               |
 | **Validación**     | Domain VOs (Internal), Zod (API/Form Boundaries)   |
 | **Testing**        | Vitest (Unit/Integration), Playwright (E2E)        |
 | **Componentes**    | Radix UI, Lucide Icons, Noir Minimalist Custom CSS |
@@ -59,8 +62,11 @@ Este proyecto implementa **Screaming Architecture** (las carpetas gritan el domi
 ## ✨ Características Principales
 
 - **Data Engine Hardened**: Motor de datos con validación estricta de esquemas a nivel de dominio y base de datos (PostgreSQL).
+- **Smart Template Editor**: Editor visual avanzado basado en Plate.js con soporte para bloques lógicos, tablas dinámicas y redimensionamiento inteligente.
+- **High-Fidelity PDF Export**: Exportación de templates a PDF con fidelidad visual total — headings, listas, tablas, imágenes, colores, fuentes y alineación — usando `@react-pdf/renderer` directamente en el proceso de Next.js.
+- **AI-Powered Context**: Integración profunda con Gemini para generación de contenido basada en el contexto de los datos de la colección.
+- **Relaciones Avanzadas Engine**: Soporte robusto para relaciones 1:1, 1:N y N:M con integridad referencial y resolución eficiente de datos.
 - **Zero-Trust Authz**: Sistema de permisos granulares basado en roles persistidos en DB y forzados mediante RLS.
-- **Eager Loading Engine**: Sistema inteligente de resolución de relaciones para evitar N+1 y flickering en la UI.
 - **Noir Aesthetics**: Interfaz premium minimalista con soporte nativo para Light/Dark mode y animaciones fluidas.
 
 ---
@@ -83,13 +89,25 @@ Este proyecto implementa **Screaming Architecture** (las carpetas gritan el domi
     ```bash
     npm install
     ```
-3.  Configurar variables de entorno (`.env.local`):
-    ```env
-    NEXT_PUBLIC_SUPABASE_URL=tu_url
-    NEXT_PUBLIC_SUPABASE_ANON_KEY=tu_anon_key
-    SUPABASE_SERVICE_ROLE_KEY=tu_service_key
+3.  **Configurar el entorno local**:
+    Lumacraft incluye un script automatizado para levantar Supabase y configurar las variables de entorno necesarias:
+    ```bash
+    npm run supabase:local
     ```
-4.  Ejecutar el servidor de desarrollo:
+    *Este script levantará los contenedores de Docker, aplicará las migraciones y generará las variables para tu `.env.local`.*
+
+    Las variables requeridas son:
+
+    | Variable | Descripción | Requerida para |
+    | --- | --- | --- |
+    | `NEXT_PUBLIC_SUPABASE_URL` | URL pública del proyecto Supabase | Todo |
+    | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Clave anónima (segura para el cliente) | Auth, DB queries |
+    | `SUPABASE_SECRET_KEY` | Service role key — bypasea RLS | **PDF Export**, admin ops |
+    | `AI_SETTINGS_MASTER_KEY` | Clave de cifrado para secrets de IA | AI Engine |
+
+    > **Importante**: `SUPABASE_SECRET_KEY` es obligatoria para que la exportación de PDF funcione. Sin ella, el servidor no puede subir archivos al bucket `exports` de Storage (bloqueado por RLS).
+
+4.  **Ejecutar el servidor de desarrollo**:
     ```bash
     npm run dev
     ```
@@ -98,19 +116,21 @@ Este proyecto implementa **Screaming Architecture** (las carpetas gritan el domi
 
 ## 🧪 Comandos Útiles
 
-- `npm run test:unit`: Ejecuta tests unitarios del dominio y casos de uso.
-- `npm run test:integration`: Ejecuta tests de integración contra adaptadores.
-- `npm run test:coverage`: Genera informe de cobertura de código.
-- `npm run lint`: Ejecuta el linter de ESLint.
+- `npm run dev`: Inicia el servidor de desarrollo.
+- `npm run supabase:local`: Configura y levanta el entorno de Supabase localmente.
+- `npm run test`: Ejecuta todos los tests críticos (Unit, Component, Integration).
+- `npm run test:e2e`: Ejecuta los tests de extremo a extremo con Playwright.
+- `npm run test:coverage`: Genera informe de cobertura completa.
+- `npm run lint:fix`: Ejecuta y corrige problemas de estilo y calidad de código.
 
 ---
 
 ## 🗺️ Roadmap de Implementación
 
 - [x] **Fase 1**: Fundación - Data Engine (Setup, Auth Google, CRUD dinámico).
-- [ ] **Fase 2**: Relaciones y Permisos (Sistema de grafos, RLS granular).
-- [ ] **Fase 3**: Template Engine Visual (Editor drag-and-drop, exportación PDF).
-- [ ] **Fase 4**: Context Engine + AI Engine (Integración Gemini contextual).
+- [x] **Fase 2**: Relaciones y Permisos (Sistema de relaciones complex, RLS granular).
+- [x] **Fase 3**: Template Engine Visual (Editor Plate.js, bloques dinámicos).
+- [x] **Fase 4**: Context Engine + AI Engine + PDF Export (Integración Gemini contextual, exportación de alta fidelidad con `@react-pdf/renderer`).
 - [ ] **Fase 5**: Automatizaciones y Workflows (Triggers on-create/update).
 
 ---

@@ -16,6 +16,9 @@ export interface AccountAISettingsDto {
   templatePreviewTimeoutMs: number;
   templatePreviewMaxAIBlocks: number;
   systemPrompt: string;
+  enableFallback: boolean;
+  fallbackProvider: AIProviderId;
+  fallbackModel: string;
   providerOptions: AccountAIProviderOptions;
   providerSecrets: AccountAIProviderSecretSummaries;
 }
@@ -31,6 +34,9 @@ export interface UpdateAccountAISettingsDto {
   templatePreviewTimeoutMs: number;
   templatePreviewMaxAIBlocks: number;
   systemPrompt: string;
+  enableFallback: boolean;
+  fallbackProvider: AIProviderId;
+  fallbackModel: string;
   providerOptions: AccountAIProviderOptions;
   providerSecretsInput?: Partial<Record<AIProviderId, string>>;
 }

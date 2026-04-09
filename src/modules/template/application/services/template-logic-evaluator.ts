@@ -337,7 +337,17 @@ async function evaluateBlock(
         locals: scope.locals,
         fieldMetadataByPath: params.context.fieldMetadataByPath,
         systemInstruction: params.aiSystemInstruction,
-        collectionContext: block.collectionContext ?? null,
+        collectionContext:
+          block.collectionContext ??
+          (params.context.collectionId && params.context.collectionName
+            ? {
+                id: params.context.collectionId,
+                name: params.context.collectionName,
+                ...(params.context.collectionDescription
+                  ? { description: params.context.collectionDescription }
+                  : {}),
+              }
+            : null),
       });
 
       if (groundedPrompt.truncated) {

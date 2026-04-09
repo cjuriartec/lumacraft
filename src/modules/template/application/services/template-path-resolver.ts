@@ -142,3 +142,22 @@ export function interpolateTemplateString(template: string, scope: TemplateRunti
     return stringifyTemplateValue(value);
   });
 }
+
+/**
+ * Applies text transformation to a string.
+ * Used for variables formatting in both preview and PDF export.
+ */
+export function applyTextTransform(text: string, transform?: string): string {
+  if (!text || !transform || transform === "none") return text;
+
+  switch (transform) {
+    case "uppercase":
+      return text.toUpperCase();
+    case "lowercase":
+      return text.toLowerCase();
+    case "capitalize": // Used as "Sentence case" in Lumacraft
+      return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
+    default:
+      return text;
+  }
+}

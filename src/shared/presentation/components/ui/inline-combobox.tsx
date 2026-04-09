@@ -254,7 +254,7 @@ const InlineComboboxContent: typeof ComboboxPopover = ({ className, ...props }) 
     <Portal>
       <ComboboxPopover
         className={cn(
-          "z-500 max-h-[288px] w-[300px] overflow-y-auto rounded-xl border border-border/50 bg-surface/80 backdrop-blur-xl p-1 shadow-2xl transition-all animate-in fade-in zoom-in-95",
+          "z-500 max-h-[288px] w-[300px] overflow-y-auto rounded-xl border border-border/60 bg-surface p-1 shadow-md transition-all animate-in fade-in zoom-in-95",
           className,
         )}
         onKeyDownCapture={handleKeyDown}

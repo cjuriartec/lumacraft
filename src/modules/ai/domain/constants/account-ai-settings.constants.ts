@@ -8,6 +8,9 @@ export const ACCOUNT_AI_DEFAULT_MAX_TOKENS = 300;
 export const ACCOUNT_AI_DEFAULT_REQUEST_TIMEOUT_MS = 25_000;
 export const ACCOUNT_AI_DEFAULT_TEMPLATE_PREVIEW_TIMEOUT_MS = 45_000;
 export const ACCOUNT_AI_DEFAULT_TEMPLATE_PREVIEW_MAX_AI_BLOCKS = 3;
+export const ACCOUNT_AI_DEFAULT_ENABLE_FALLBACK = false;
+export const ACCOUNT_AI_DEFAULT_FALLBACK_PROVIDER = "OPENAI" as const;
+export const ACCOUNT_AI_DEFAULT_FALLBACK_MODEL = "gpt-5.4-mini";
 export const ACCOUNT_AI_DEFAULT_SYSTEM_PROMPT = [
   "Redacta contenido claro, preciso y util para el workspace.",
   "Prioriza consistencia terminologica, buena estructura y foco en los datos mas relevantes del registro.",

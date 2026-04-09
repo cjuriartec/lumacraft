@@ -74,7 +74,7 @@ _Objetivo: Implementar el lienzo de Plate para armar documentos interactivos._
 
 ## 🤖 Iteración 3: La Capa de IA y Refinamiento (Sprints 6-7)
 
-### **Sprint 6: Lógica Avanzada y Bloque IA** 🔄 _En Progreso_
+### **Sprint 6: Lógica Avanzada y Bloque IA** ✅ _Completado_
 
 _Objetivo: Finalizar la generación de documentos e integrar Gemini._
 
@@ -83,7 +83,7 @@ _Objetivo: Finalizar la generación de documentos e integrar Gemini._
 - **US-6.02 (8 SP)**: UI del "Bloque IA" en el builder, Grounding de datos y streaming.
 - **Total Estimado**: 21 SP.
 
-### **Sprint 7: Exportaciones y Control de IA**
+### **Sprint 7: Exportaciones y Control de IA** ✅ _Completado_
 
 _Objetivo: Entregar el valor tangible (PDFs) y estabilizar el sistema de modelos._
 

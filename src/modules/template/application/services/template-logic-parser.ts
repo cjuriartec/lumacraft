@@ -305,6 +305,10 @@ function parseCustomTemplateNode(
         type: "list",
         sourcePath,
         itemAlias: asString(node.itemAlias) ?? "item",
+        listStyle:
+          node.listStyle === "bullet" || node.listStyle === "number" || node.listStyle === "none"
+            ? node.listStyle
+            : undefined,
         blocks: listBlocks,
         emptyText: asString(node.emptyText),
       };

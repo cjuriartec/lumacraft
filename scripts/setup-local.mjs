@@ -4,11 +4,11 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { createHmac } from "node:crypto";
 import { readFileSync } from "node:fs";
 import http from "node:http";
 import https from "node:https";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 // ─── Colores para la terminal ─────────────────────────────────────────────────
 const C = {
@@ -41,24 +41,18 @@ function runCLI(args, { silent = false } = {}) {
   });
 }
 
-function base64UrlEncode(value) {
-  return Buffer.from(value)
-    .toString("base64")
-    .replaceAll("=", "")
-    .replaceAll("+", "-")
-    .replaceAll("/", "_");
-}
+export function parseStatusEnv(output) {
+  const parsed = {};
 
-function signJwt(payload, secret) {
-  const header = base64UrlEncode(JSON.stringify({ alg: "HS256", typ: "JWT" }));
-  const pl = base64UrlEncode(JSON.stringify(payload));
-  const sig = createHmac("sha256", secret)
-    .update(`${header}.${pl}`)
-    .digest("base64")
-    .replaceAll("=", "")
-    .replaceAll("+", "-")
-    .replaceAll("/", "_");
-  return `${header}.${pl}.${sig}`;
+  for (const line of output.split("\n")) {
+    const match = line.match(/^([A-Z0-9_]+)="?(.*?)"?$/);
+
+    if (match) {
+      parsed[match[1]] = match[2];
+    }
+  }
+
+  return parsed;
 }
 
 function readConfig() {
@@ -89,43 +83,19 @@ async function checkService(url) {
   });
 }
 
-async function waitForSupabase(apiUrl, maxAttempts = 60) {
-  const services = [
-    { name: "Auth", url: `${apiUrl}/auth/v1/health` },
-    { name: "Storage", url: `${apiUrl}/storage/v1/health` },
-    { name: "Rest", url: `${apiUrl}/rest/v1/` },
-  ];
-
-  for (let i = 1; i <= maxAttempts; i++) {
-    try {
-      const results = await Promise.all(
-        services.map((s) => checkService(s.url).then((r) => ({ ...s, ...r }))),
-      );
-
-      if (results.every((r) => r.ok)) return true;
-
-      const failures = results.filter((r) => !r.ok);
-      const failMsg = failures.map((f) => `${f.name}:${f.status || f.error}`).join(", ");
-      console.log(`    ${C.gray}[${i}/${maxAttempts}] Esperando: ${failMsg}...${C.reset}`);
-    } catch (e) {
-      console.log(
-        `    ${C.gray}[${i}/${maxAttempts}] Error en health check: ${e.message}${C.reset}`,
-      );
-    }
-    await new Promise((r) => setTimeout(r, 2000));
+export async function canReuseRunningSupabase(env, serviceChecker = checkService) {
+  if (!env?.API_URL) {
+    return false;
   }
-  return false;
+
+  const authHealth = await serviceChecker(`${env.API_URL}/auth/v1/health`);
+  return authHealth.ok;
 }
 
 function getEnvFromStatus() {
   try {
     const output = runCLI(["status", "-o", "env"], { silent: true });
-    const parsed = {};
-    for (const line of output.split("\n")) {
-      const match = line.match(/^([A-Z0-9_]+)="?(.*?)"?$/);
-      if (match) parsed[match[1]] = match[2];
-    }
-    return parsed;
+    return parseStatusEnv(output);
   } catch {
     return null;
   }
@@ -138,19 +108,27 @@ async function main() {
   log.separator();
 
   const { apiPort, studioPort } = readConfig();
-  const jwtSecret = "super-secret-jwt-token-with-at-least-32-characters-long";
 
   // ── Paso 1: Iniciar Supabase ───────────────────────────────────────────────
   log.step(1, "Iniciando contenedores Docker de Supabase...");
   let env = getEnvFromStatus();
+  const fallbackApiUrl = `http://127.0.0.1:${apiPort}`;
+  const isRunning = await canReuseRunningSupabase(env);
 
-  if (env?.API_URL) {
+  if (isRunning) {
     log.ok("Supabase ya está corriendo. Continuando...");
   } else {
-    log.info("Levantando contenedores (puede tardar 30-60s la primera vez)...");
+    if (env?.API_URL) {
+      log.info(
+        "La API local aun no responde. Ejecutando `supabase start` para esperar el arranque...",
+      );
+    } else {
+      log.info("Levantando contenedores (puede tardar 30-60s la primera vez)...");
+    }
+
     try {
       runCLI(["start"]);
-      log.ok("Contenedores iniciados.");
+      log.ok("Contenedores listos.");
     } catch {
       log.err("Error al iniciar Supabase. ¿Está Docker corriendo?");
       process.exit(1);
@@ -158,17 +136,11 @@ async function main() {
     env = getEnvFromStatus();
   }
 
-  const apiUrl = env?.API_URL || `http://127.0.0.1:${apiPort}`;
+  const apiUrl = env?.API_URL || fallbackApiUrl;
 
-  // ── Paso 2: Esperar API ────────────────────────────────────────────────────
-  log.step(2, `Esperando servicios en ${apiUrl}...`);
-  const ready = await waitForSupabase(apiUrl);
-  if (!ready) {
-    log.err(`La API no respondió correctamente.`);
-    log.info("Intenta: npx supabase stop --no-backup && npm run supabase:local");
-    process.exit(1);
-  }
-  log.ok(`Servicios disponibles en ${apiUrl}`);
+  // ── Paso 2: Resolver endpoints ─────────────────────────────────────────────
+  log.step(2, "Resolviendo endpoints locales...");
+  log.ok(`API disponible en ${apiUrl}`);
 
   // ── Paso 3: Aplicar migraciones ───────────────────────────────────────────
   log.step(3, "Aplicando migraciones y preparando base de datos...");
@@ -195,19 +167,18 @@ async function main() {
   log.step(4, "Obteniendo credenciales finales...");
   log.separator();
 
-  env = getEnvFromStatus();
-  const anonKey =
-    env?.ANON_KEY ?? signJwt({ iss: "supabase-demo", role: "anon", exp: 1983812996 }, jwtSecret);
-  const serviceKey =
-    env?.SERVICE_ROLE_KEY ??
-    signJwt({ iss: "supabase-demo", role: "service_role", exp: 1983812996 }, jwtSecret);
+  const publishableKey = env?.PUBLISHABLE_KEY ?? env?.ANON_KEY;
+  const secretKey = env?.SECRET_KEY ?? env?.SUPABASE_SECRET_KEY;
 
   console.log(`
 ${C.bold}📋 Variables para .env.local (modo local):${C.reset}
 
 ${C.cyan}NEXT_PUBLIC_SUPABASE_URL${C.reset}=${apiUrl}
-${C.cyan}NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY${C.reset}=${anonKey}
-${C.cyan}SUPABASE_SERVICE_ROLE_KEY${C.reset}=${serviceKey}
+${C.cyan}NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY${C.reset}=${publishableKey}
+${C.cyan}SUPABASE_SECRET_KEY${C.reset}=${secretKey}
+
+${C.bold}🔐 AI Settings:${C.reset}
+${C.cyan}AI_SETTINGS_MASTER_KEY${C.reset}=define-una-clave-maestra-segura-para-cifrar-secrets-ai
 
 ${C.bold}🌐 Interfaces:${C.reset}
   ${C.green}API:${C.reset}         ${apiUrl}
@@ -219,7 +190,13 @@ ${C.bold}🌐 Interfaces:${C.reset}
   console.log(`${C.bold}${C.green}✅ Entorno listo.${C.reset}\n`);
 }
 
-main().catch((err) => {
-  log.err(err.message ?? err);
-  process.exit(1);
-});
+const isDirectExecution =
+  typeof process.argv[1] === "string" &&
+  import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href;
+
+if (isDirectExecution) {
+  main().catch((err) => {
+    log.err(err.message ?? err);
+    process.exit(1);
+  });
+}
