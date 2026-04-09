@@ -31,7 +31,7 @@ const booleanConfigSchema = z.object({
   falseLabel: z.string().optional(),
 });
 
-const relationTypeSchema = z.enum(["ONE_TO_ONE", "ONE_TO_MANY", "MANY_TO_MANY"]);
+const relationTypeSchema = z.enum(["ONE_TO_ONE", "ONE_TO_MANY", "MANY_TO_ONE", "MANY_TO_MANY"]);
 const onDeleteSchema = z.enum(["CASCADE", "SET_NULL", "RESTRICT"]);
 
 const relationConfigSchema = z.object({
@@ -42,6 +42,11 @@ const relationConfigSchema = z.object({
   bidirectional: z.boolean().optional(),
   inverseFieldName: z.string().min(1).optional(),
   onDelete: onDeleteSchema.optional(),
+});
+
+const reverseLookupConfigSchema = z.object({
+  targetCollectionId: z.string().uuid(),
+  targetFieldId: z.string().uuid(),
 });
 
 const fileConfigSchema = z.object({
@@ -72,6 +77,7 @@ export type BooleanConfig = z.infer<typeof booleanConfigSchema>;
 export type RelationTypeValue = z.infer<typeof relationTypeSchema>;
 export type OnDeleteValue = z.infer<typeof onDeleteSchema>;
 export type RelationConfig = z.infer<typeof relationConfigSchema>;
+export type ReverseLookupConfig = z.infer<typeof reverseLookupConfigSchema>;
 export type FileConfig = z.infer<typeof fileConfigSchema>;
 export type ImageConfig = z.infer<typeof imageConfigSchema>;
 export type LocationConfig = z.infer<typeof locationConfigSchema>;
@@ -82,6 +88,7 @@ export type FieldConfigValue =
   | DateConfig
   | BooleanConfig
   | RelationConfig
+  | ReverseLookupConfig
   | FileConfig
   | ImageConfig
   | LocationConfig;
@@ -115,6 +122,9 @@ export class FieldConfig {
         break;
       case "FILE":
         schema = fileConfigSchema;
+        break;
+      case "REVERSE_LOOKUP":
+        schema = reverseLookupConfigSchema;
         break;
       case "IMAGE":
         schema = imageConfigSchema;

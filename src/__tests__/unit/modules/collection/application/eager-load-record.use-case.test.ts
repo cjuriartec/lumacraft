@@ -29,6 +29,9 @@ function createMockRepository(data: {
       const rels = data.relations?.[`${fieldId}:${sourceId}`] || [];
       return ok(rels.map((r) => r.target_record_id));
     }),
+    getReverseRelations: vi.fn(async (_targetColId, _targetFieldName, _sourceId) => {
+      return ok([]);
+    }),
     resolveRecursive: vi.fn(async (recordId, collectionId, _depth, _visited, _includeFields) => {
       // For unit tests of the UseCase, we can either mock the whole recursion
       // or implement a simple version here. Since the UseCase now just delegates,
@@ -82,6 +85,7 @@ describe("EagerLoadRecordUseCase", () => {
       getRecordData: vi.fn(),
       getRelationFields: vi.fn(),
       getRelations: vi.fn(),
+      getReverseRelations: vi.fn(),
     };
 
     const useCase = new EagerLoadRecordUseCase(mockRepo);

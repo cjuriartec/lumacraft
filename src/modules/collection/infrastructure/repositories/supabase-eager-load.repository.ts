@@ -38,7 +38,7 @@ export class SupabaseEagerLoadRepository extends BaseRepository implements IEage
       .from("fields")
       .select("id, name, field_type, config")
       .eq("collection_id", collectionId)
-      .eq("field_type", "RELATION");
+      .in("field_type", ["RELATION", "REVERSE_LOOKUP"]);
 
     if (error) return fail(new DomainError(error.message, "DB_ERROR"));
     return ok((data as RawField[]) || []);
@@ -53,6 +53,22 @@ export class SupabaseEagerLoadRepository extends BaseRepository implements IEage
 
     if (error) return fail(new DomainError(error.message, "DB_ERROR"));
     return ok((data || []).map((r) => r.target_record_id as string));
+  }
+
+  async getReverseRelations(
+    targetCollectionId: string,
+    targetFieldName: string,
+    sourceRecordId: string,
+  ): Promise<Result<string[]>> {
+    const { data, error } = await this.supabase.rpc("resolve_reverse_lookup", {
+      target_collection_id: targetCollectionId,
+      target_field_name: targetFieldName,
+      source_record_id: sourceRecordId,
+    });
+
+    if (error) return fail(new DomainError(error.message, "DB_ERROR"));
+    const records = (data as { id: string }[] | null) || [];
+    return ok(records.map((r) => r.id));
   }
 
   async resolveRecursive(
@@ -103,7 +119,48 @@ export class SupabaseEagerLoadRepository extends BaseRepository implements IEage
 
       if (!targetCollectionId) continue;
 
-      const relationsResult = await this.getRelations(field.id, recordId);
+      let relationsResult: Result<string[]>;
+      let currentRelationType = relationType;
+
+      if (field.field_type === "REVERSE_LOOKUP") {
+        const targetFieldId = config.targetFieldId as string;
+        // We need the target field name to query the JSONB column via RPC
+        const targetFieldRes = await this.supabase
+          .from("fields")
+          .select("name, config")
+          .eq("id", targetFieldId)
+          .single();
+
+        if (targetFieldRes.error || !targetFieldRes.data) continue;
+
+        const targetFieldName = targetFieldRes.data.name;
+        const targetConfig = (targetFieldRes.data.config as Record<string, unknown>) || {};
+        const originalRelationType = targetConfig.relationType as string;
+
+        // Correct reverse mapping:
+        // ONE_TO_ONE <-> ONE_TO_ONE (Both Singular)
+        // MANY_TO_ONE <-> ONE_TO_MANY (Singular <-> Plural)
+        // ONE_TO_MANY <-> MANY_TO_ONE (Plural <-> Singular)
+        // MANY_TO_MANY <-> MANY_TO_MANY (Both Plural)
+        if (originalRelationType === "ONE_TO_ONE") {
+          currentRelationType = "ONE_TO_ONE";
+        } else if (originalRelationType === "ONE_TO_MANY") {
+          currentRelationType = "MANY_TO_ONE";
+        } else if (originalRelationType === "MANY_TO_ONE") {
+          currentRelationType = "ONE_TO_MANY";
+        } else {
+          currentRelationType = "MANY_TO_MANY";
+        }
+
+        relationsResult = await this.getReverseRelations(
+          targetCollectionId,
+          targetFieldName,
+          recordId,
+        );
+      } else {
+        relationsResult = await this.getRelations(field.id, recordId);
+      }
+
       if (!relationsResult.ok || relationsResult.value.length === 0) continue;
 
       const resolvedRecords: EagerLoadedRecord[] = [];
@@ -124,8 +181,9 @@ export class SupabaseEagerLoadRepository extends BaseRepository implements IEage
       }
 
       if (resolvedRecords.length > 0) {
-        result.relations[field.name] =
-          relationType === "ONE_TO_ONE" ? resolvedRecords[0] : resolvedRecords;
+        const isSingular =
+          currentRelationType === "ONE_TO_ONE" || currentRelationType === "MANY_TO_ONE";
+        result.relations[field.name] = isSingular ? resolvedRecords[0] : resolvedRecords;
       }
     }
 

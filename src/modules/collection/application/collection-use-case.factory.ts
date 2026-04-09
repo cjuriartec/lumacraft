@@ -22,6 +22,7 @@ import { ListFieldsUseCase } from "./use-cases/list-fields.use-case";
 import { ListRecordsUseCase } from "./use-cases/list-records.use-case";
 import { PersistGridFiltersUseCase } from "./use-cases/persist-grid-filters.use-case";
 import { ReorderFieldsUseCase } from "./use-cases/reorder-fields.use-case";
+import { ResolveReverseLookupUseCase } from "./use-cases/resolve-reverse-lookup.use-case";
 import { UpdateCollectionUseCase } from "./use-cases/update-collection.use-case";
 import { UpdateFieldUseCase } from "./use-cases/update-field.use-case";
 import { UpdateRecordUseCase } from "./use-cases/update-record.use-case";
@@ -90,7 +91,7 @@ class CollectionUseCaseFactoryImpl {
   }
 
   public deleteField() {
-    return new DeleteFieldUseCase(this.repositories.field);
+    return new DeleteFieldUseCase(this.repositories.field, this.repositories.record);
   }
 
   public reorderFields() {
@@ -141,5 +142,9 @@ class CollectionUseCaseFactoryImpl {
 
   public persistGridFilters() {
     return new PersistGridFiltersUseCase(this.repositories.gridState);
+  }
+
+  public resolveReverseLookup() {
+    return new ResolveReverseLookupUseCase(this.repositories.field, this.repositories.record);
   }
 }

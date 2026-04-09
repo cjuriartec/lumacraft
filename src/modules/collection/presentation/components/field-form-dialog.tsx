@@ -102,6 +102,7 @@ const fieldSchema = z.object({
     "FILE",
     "IMAGE",
     "LOCATION",
+    "REVERSE_LOOKUP",
   ]),
   isRequired: z.boolean().default(false).optional(),
   isUnique: z.boolean().default(false).optional(),
@@ -121,6 +122,8 @@ interface FieldConfigUI {
   targetCollectionId?: string;
   relationType?: string;
   allowMultiple?: boolean;
+  bidirectional?: boolean;
+  inverseFieldName?: string;
   displayField?: string;
   maxSizeBytes?: number;
   allowedMimeTypes?: string[];
@@ -493,7 +496,7 @@ export function FieldFormDialog({
                       onValueChange={(value) =>
                         updateConfig({
                           relationType: value,
-                          allowMultiple: value !== "ONE_TO_ONE",
+                          allowMultiple: value === "ONE_TO_MANY" || value === "MANY_TO_MANY",
                           displayField:
                             (form.getValues("config") as FieldConfigUI | undefined)?.displayField ||
                             "id",
@@ -503,13 +506,38 @@ export function FieldFormDialog({
                       <SelectTrigger className={selectTriggerClass}>
                         <SelectValue placeholder="—" />
                       </SelectTrigger>
-                      <SelectContent className="border-border bg-surface text-foreground">
-                        <SelectItem value="ONE_TO_ONE">1:1</SelectItem>
-                        <SelectItem value="ONE_TO_MANY">1:N</SelectItem>
-                        <SelectItem value="MANY_TO_MANY">N:M</SelectItem>
+                      <SelectContent className="border-border bg-surface text-foreground font-poppins">
+                        <SelectItem value="ONE_TO_ONE">1:1 (One to One)</SelectItem>
+                        <SelectItem value="MANY_TO_ONE">N:1 (Many to One)</SelectItem>
+                        <SelectItem value="ONE_TO_MANY">1:N (One to Many)</SelectItem>
+                        <SelectItem value="MANY_TO_MANY">N:M (Many to Many)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
+
+                  <SwitchRow
+                    id="bidirectional"
+                    label="Bidireccional"
+                    checked={!!config.bidirectional}
+                    onCheckedChange={(checked) => updateConfig({ bidirectional: checked })}
+                  />
+
+                  {config.bidirectional && (
+                    <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                      <Label className="text-[11px] font-semibold uppercase text-foreground/70 flex justify-between">
+                        <span>Nombre campo inverso</span>
+                      </Label>
+                      <Input
+                        value={String(config.inverseFieldName || "")}
+                        onChange={(e) => updateConfig({ inverseFieldName: e.target.value })}
+                        placeholder="ej: ordenes_relacionadas"
+                        className={inputFieldClass}
+                      />
+                      <p className="text-[10px] text-foreground/50 px-1">
+                        Se creará un campo virtual en la colección destino para navegar de vuelta.
+                      </p>
+                    </div>
+                  )}
                 </FormSection>
               )}
 

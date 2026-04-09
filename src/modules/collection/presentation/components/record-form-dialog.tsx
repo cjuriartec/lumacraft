@@ -8,6 +8,7 @@ import { z } from "zod";
 
 import { useWorkspace } from "@/modules/workspace/presentation/providers/workspace-provider";
 import { cn } from "@/shared/lib/utils";
+import { Badge } from "@/shared/presentation/components/ui/badge";
 import { Button } from "@/shared/presentation/components/ui/button";
 import {
   Dialog,
@@ -71,6 +72,7 @@ export function RecordFormDialog({
     loading: relationLoading,
     searchRelations,
     fetchOptionsByIds,
+    findReverseRelations,
   } = useRelationRecords();
   const { uploadFile, deleteFiles } = useStorage();
   const [loading, setLoading] = useState(false);
@@ -88,6 +90,8 @@ export function RecordFormDialog({
     const config = getRelationConfig(field);
     return config.relationType === "ONE_TO_MANY" || config.relationType === "MANY_TO_MANY";
   };
+
+  const isReverseLookup = (field: Field) => field.fieldType.value === "REVERSE_LOOKUP";
 
   // Generate dynamic schema based on fields
   const getDynamicSchema = () => {
@@ -107,7 +111,7 @@ export function RecordFormDialog({
         validator = relationFieldAllowsMany(field)
           ? z.array(z.string().uuid()).optional()
           : z.string().uuid().optional();
-      } else if (isFileLikeFieldType(field.fieldType.value)) {
+      } else if (isFileLikeFieldType(field.fieldType.value) || isReverseLookup(field)) {
         validator = z.unknown().optional();
       } else {
         const config = field.config?.value as
@@ -196,10 +200,13 @@ export function RecordFormDialog({
               void fetchOptionsByIds(field, ids);
             }
           }
+        } else if (field.fieldType.value === "REVERSE_LOOKUP" && record?.id) {
+          // Resolve reverse relations
+          void findReverseRelations(field, record.id);
         }
       });
     }
-  }, [open, record, form, fields, searchRelations, fetchOptionsByIds]);
+  }, [open, record, form, fields, searchRelations, fetchOptionsByIds, findReverseRelations]);
 
   useEffect(() => {
     const timers = relationTimers.current;
@@ -623,6 +630,58 @@ export function RecordFormDialog({
             </div>
           </div>
         );
+
+      case "REVERSE_LOOKUP": {
+        const reverseData = record?.data?.[name];
+        const reverseItems = Array.isArray(reverseData)
+          ? reverseData
+          : reverseData
+            ? [reverseData]
+            : [];
+
+        return (
+          <div className="space-y-2 opacity-80">
+            <Label className="text-muted flex items-center justify-between">
+              {displayName || name}
+              <Badge
+                variant="outline"
+                className="text-[9px] uppercase tracking-tighter opacity-50 border-none px-0"
+              >
+                Virtual
+              </Badge>
+            </Label>
+            <div className="flex flex-wrap gap-1.5 min-h-[40px] p-3 rounded-lg bg-foreground/3 border border-border/30 border-dashed">
+              {reverseItems.length > 0 ? (
+                reverseItems.map((item: Record<string, unknown> | string, idx) => {
+                  const isObj = typeof item === "object" && item !== null;
+                  const label = isObj
+                    ? (item as Record<string, string>).displayName ||
+                      (item as Record<string, string>).name ||
+                      (item as Record<string, string>).id
+                    : String(item);
+                  return (
+                    <Badge
+                      key={idx}
+                      variant="secondary"
+                      className="bg-primary/5 text-primary/70 border-primary/10"
+                    >
+                      {label}
+                    </Badge>
+                  );
+                })
+              ) : (
+                <span className="text-[10px] text-muted-foreground/50 italic font-light">
+                  Sin vínculos inversos
+                </span>
+              )}
+            </div>
+            <p className="text-[9px] text-muted-foreground/40 leading-tight">
+              Este campo se calcula automáticamente basándose en las relaciones de otras
+              colecciones.
+            </p>
+          </div>
+        );
+      }
 
       default:
         return (

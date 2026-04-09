@@ -41,6 +41,7 @@ import {
 import { Field } from "../../domain/entities/field.entity";
 import { DataRecord } from "../../domain/entities/record.entity";
 import { ColumnFilter } from "../../domain/types/pagination.types";
+import { ReverseLookupResults } from "../hooks/use-records";
 import { RelationOption, useRelationRecords } from "../hooks/use-relation-records";
 import { useStorage } from "../hooks/use-storage";
 import { ExportRecordModal } from "./export-record-modal";
@@ -63,6 +64,7 @@ interface DataGridProps {
   onEdit: (record: DataRecord) => void;
   onDelete: (id: string) => void;
   onAddRecord?: () => void;
+  reverseLookupResults?: ReverseLookupResults;
   initialFilterValues?: Record<string, string>;
   canCreate?: boolean;
   canUpdate?: boolean;
@@ -98,29 +100,32 @@ const RelationCell = React.memo(
     relationOptions: Record<string, RelationOption[]>;
     fetchOptionsByIds: (field: Field, ids: string[]) => Promise<void>;
   }) => {
-    const ids = Array.isArray(value) ? value : [value];
-    if (ids.length === 0) return <span className="text-muted opacity-40">—</span>;
+    const items = Array.isArray(value) ? value : value ? [value] : [];
+    if (items.length === 0) return <span className="text-muted opacity-40">—</span>;
 
     const options = relationOptions[field.name] || [];
     const isLoading = relationLoading[field.name];
 
     const handleOpenChange = (open: boolean) => {
-      if (open && ids.length > 0) {
-        void fetchOptionsByIds(field, ids);
+      // Only fetch if we have raw IDs (strings)
+      const hasRawIds = items.some((item) => typeof item === "string");
+      if (open && hasRawIds) {
+        const rawIds = items.filter((item): item is string => typeof item === "string");
+        void fetchOptionsByIds(field, rawIds);
       }
     };
 
-    const noun = ids.length === 1 ? "Relación" : "Relaciones";
+    const noun = items.length === 1 ? "Relación" : "Relaciones";
 
     return (
       <Popover onOpenChange={handleOpenChange}>
         <PopoverTrigger asChild>
           <Badge
             variant="outline"
-            className="text-[11px] py-0.5 h-6 border-border/40 font-normal bg-surface/50 text-muted cursor-pointer hover:bg-surface-hover hover:text-foreground transition-all group"
+            className="text-[10px] py-0.5 h-6 border-border/40 font-normal bg-surface/50 text-muted cursor-pointer hover:bg-surface-hover hover:text-foreground transition-all group"
           >
             <span className="mr-1.5 opacity-40 group-hover:opacity-100 transition-opacity">🔗</span>
-            {ids.length} {noun}
+            {items.length} {noun}
           </Badge>
         </PopoverTrigger>
         <PopoverContent
@@ -129,18 +134,29 @@ const RelationCell = React.memo(
         >
           <div className="flex justify-between items-center mb-2 px-2">
             <div className="text-[11px] font-semibold text-foreground/70 uppercase tracking-wider">
-              {ids.length} {noun}
+              {items.length} {noun}
             </div>
             {isLoading && <Loader2 size={12} className="animate-spin text-primary" />}
           </div>
 
           <div className="flex flex-col gap-0.5 max-h-[200px] overflow-y-auto px-1 -mx-1 custom-scrollbar">
             {!isLoading ? (
-              ids.map((id) => {
-                const label = options.find((o) => o.id === id)?.label || id;
+              items.map((item, idx) => {
+                let id: string;
+                let label: string;
+
+                if (typeof item === "object" && item !== null) {
+                  const obj = item as Record<string, unknown>;
+                  id = String(obj.id);
+                  label = String(obj.displayName || obj.name || obj.label || obj.id);
+                } else {
+                  id = String(item);
+                  label = options.find((o) => o.id === id)?.label || id;
+                }
+
                 return (
                   <div
-                    key={String(id)}
+                    key={`${id}-${idx}`}
                     className="text-xs text-foreground/80 truncate py-1.5 px-2 rounded-lg hover:bg-background/80 transition-colors border border-transparent hover:border-border/30"
                   >
                     {String(label)}
@@ -148,7 +164,7 @@ const RelationCell = React.memo(
                 );
               })
             ) : (
-              <div className="text-xs text-muted italic px-2 py-1">Cargando relaciones...</div>
+              <div className="text-xs text-muted italic px-2 py-1">Cargando vinculación...</div>
             )}
           </div>
         </PopoverContent>
@@ -274,6 +290,7 @@ export function DataGrid({
   onEdit,
   onDelete,
   onAddRecord,
+  reverseLookupResults = {},
   initialFilterValues,
   canCreate = true,
   canUpdate = true,
@@ -477,7 +494,12 @@ export function DataGrid({
   };
 
   const renderCellValue = (record: DataRecord, field: Field) => {
-    const value = record.data[field.name];
+    let value = record.data[field.name];
+
+    if (field.fieldType.value === "REVERSE_LOOKUP") {
+      value = reverseLookupResults?.[record.id]?.[field.name];
+    }
+
     const isEditing = editingCell?.recordId === record.id && editingCell?.fieldName === field.name;
 
     if (isEditing) {
@@ -653,6 +675,7 @@ export function DataGrid({
         );
       }
       case "RELATION":
+      case "REVERSE_LOOKUP":
         return (
           <RelationCell
             field={field}

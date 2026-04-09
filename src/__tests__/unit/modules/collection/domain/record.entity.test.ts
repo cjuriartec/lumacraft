@@ -69,24 +69,63 @@ describe("DataRecord entity", () => {
     }
   });
 
-  it("rejects relation values that are not UUIDs", () => {
+  it("rejects plural relation values for singular relation types", () => {
     resetFactories();
     const field = makeField({
       name: "client",
       fieldType: "RELATION",
       config: {
         targetCollectionId: "4f83f5eb-48ad-4c8f-aebb-f8030d7d32f9",
-        relationType: "ONE_TO_ONE",
+        relationType: "MANY_TO_ONE",
         displayField: "name",
       },
     });
-    const record = makeRecord({ data: { client: "not-uuid" } });
+    // plural instead of singular
+    const record = makeRecord({ data: { client: ["123e4567-e89b-12d3-a456-426614174000"] } });
 
     const result = record.validateAgainstSchema([field]);
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect((result.error as Error & { code?: string }).code).toBe("INVALID_RELATION_VALUE");
     }
+  });
+
+  it("rejects singular relation values for plural relation types", () => {
+    resetFactories();
+    const field = makeField({
+      name: "tags",
+      fieldType: "RELATION",
+      config: {
+        targetCollectionId: "4f83f5eb-48ad-4c8f-aebb-f8030d7d32f9",
+        relationType: "ONE_TO_MANY",
+        displayField: "name",
+      },
+    });
+    // singular instead of plural
+    const record = makeRecord({ data: { tags: "123e4567-e89b-12d3-a456-426614174000" } });
+
+    const result = record.validateAgainstSchema([field]);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect((result.error as Error & { code?: string }).code).toBe("INVALID_RELATION_VALUE");
+    }
+  });
+
+  it("bypasses validation for REVERSE_LOOKUP virtual fields", () => {
+    resetFactories();
+    const field = makeField({
+      name: "invoices",
+      fieldType: "REVERSE_LOOKUP",
+      config: {
+        targetCollectionId: "123e4567-e89b-12d3-a456-426614174000",
+        targetFieldId: "123e4567-e89b-12d3-a456-426614174001",
+      },
+    });
+    // it shouldn't fail regardless of type, since it skips standard checks
+    const record = makeRecord({ data: { invoices: "any-format" } });
+
+    const result = record.validateAgainstSchema([field]);
+    expect(result.ok).toBe(true);
   });
 
   it("accepts valid file metadata and rejects malformed file values", () => {

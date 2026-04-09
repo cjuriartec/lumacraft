@@ -343,6 +343,10 @@ export class InMemoryRecordRepository implements IRecordRepository {
     return ok(undefined);
   });
 
+  public deleteFieldData = vi.fn(async (_collectionId: string, _fieldName: string) => {
+    return ok(undefined);
+  });
+
   public count = vi.fn(async (collectionId: string) => {
     return (
       this.countResult ??
@@ -351,15 +355,21 @@ export class InMemoryRecordRepository implements IRecordRepository {
   });
 
   public findByFieldValue = vi.fn(
-    async (collectionId: string, fieldName: string, value: unknown) => {
+    async (collectionId: string, fieldName: string, value: unknown | unknown[]) => {
       if (this.findByFieldValueResult) return this.findByFieldValueResult;
 
       return ok(
-        this.items.filter(
-          (record) =>
-            record.collectionId === collectionId &&
-            String(record.data[fieldName]) === String(value),
-        ),
+        this.items.filter((record) => {
+          const isSameCollection = record.collectionId === collectionId;
+          const recordValue = record.data[fieldName];
+
+          if (Array.isArray(value)) {
+            const valuesSet = new Set(value.map((v) => String(v)));
+            return isSameCollection && valuesSet.has(String(recordValue));
+          }
+
+          return isSameCollection && String(recordValue) === String(value);
+        }),
       );
     },
   );

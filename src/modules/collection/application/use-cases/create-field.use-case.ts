@@ -60,6 +60,54 @@ export class CreateFieldUseCase {
     }
 
     // 4. Persistence
-    return this.fieldRepository.create(result.value);
+    const createdRes = await this.fieldRepository.create(result.value);
+    if (!createdRes.ok) return createdRes;
+
+    const createdField = createdRes.value;
+
+    // 5. Bidirectional Relation: Create Reverse Lookup Field
+    interface RelationConfig {
+      bidirectional?: boolean;
+      targetCollectionId?: string;
+      inverseFieldName?: string;
+    }
+
+    const config = createdField.config?.value as RelationConfig | undefined;
+
+    if (createdField.fieldType.value === "RELATION" && config?.bidirectional) {
+      const targetCollectionId = config.targetCollectionId;
+      const inverseFieldName = config.inverseFieldName || `${request.name}_inverse`;
+
+      if (!targetCollectionId) return createdRes; // Safety check
+
+      const reverseFieldTypeRes = FieldType.create("REVERSE_LOOKUP");
+      if (reverseFieldTypeRes.ok) {
+        const reverseConfigRes = FieldConfig.create("REVERSE_LOOKUP", {
+          targetCollectionId: request.collectionId,
+          targetFieldId: createdField.id,
+        });
+
+        if (reverseConfigRes.ok) {
+          const reverseFieldRes = Field.create({
+            id: crypto.randomUUID(),
+            collectionId: targetCollectionId,
+            name: inverseFieldName.toLowerCase().replace(/\s+/g, "_"),
+            displayName:
+              config.inverseFieldName ||
+              `REVERSE: ${createdField.displayName || createdField.name}`,
+            fieldType: reverseFieldTypeRes.value,
+            config: reverseConfigRes.value,
+            isRequired: false,
+            isUnique: false,
+          });
+
+          if (reverseFieldRes.ok) {
+            await this.fieldRepository.create(reverseFieldRes.value);
+          }
+        }
+      }
+    }
+
+    return createdRes;
   }
 }
