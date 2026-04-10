@@ -17,6 +17,7 @@ import { DownloadFileUseCase } from "./use-cases/download-file.use-case";
 import { EagerLoadRecordUseCase } from "./use-cases/eager-load-record.use-case";
 import { DeleteFileUseCase, UploadFileUseCase } from "./use-cases/file-mgmt.use-case";
 import { GetCollectionUseCase } from "./use-cases/get-collection.use-case";
+import { GetFieldUseCase } from "./use-cases/get-field.use-case";
 import { ListCollectionsUseCase } from "./use-cases/list-collections.use-case";
 import { ListFieldsUseCase } from "./use-cases/list-fields.use-case";
 import { ListRecordsUseCase } from "./use-cases/list-records.use-case";
@@ -96,6 +97,10 @@ class CollectionUseCaseFactoryImpl {
 
   public reorderFields() {
     return new ReorderFieldsUseCase(this.repositories.field);
+  }
+
+  public getField() {
+    return new GetFieldUseCase(this.repositories.field);
   }
 
   // --- Records ---
