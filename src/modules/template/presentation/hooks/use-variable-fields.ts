@@ -76,6 +76,7 @@ function getCardinalityFromConfig(
   const raw = config?.relationType;
   if (raw === "ONE_TO_ONE") return "ONE_TO_ONE";
   if (raw === "ONE_TO_MANY") return "ONE_TO_MANY";
+  if (raw === "MANY_TO_ONE") return "MANY_TO_ONE";
   if (raw === "MANY_TO_MANY") return "MANY_TO_MANY";
   return null;
 }
@@ -130,6 +131,61 @@ export function useVariableFields(value?: string | null | UseVariableFieldsOptio
       const typedFields = await listFields.execute(collectionId);
       if (typedFields.ok) {
         const resolved = typedFields.value.map(fromDomainField);
+
+        const reverseLookups = typedFields.value.filter(
+          (f) => f.fieldType.value === "REVERSE_LOOKUP",
+        );
+        if (reverseLookups.length > 0) {
+          const targetFieldIds = reverseLookups
+            .map((f) => (f.config?.value as Record<string, unknown>)?.targetFieldId as string)
+            .filter(Boolean);
+
+          if (targetFieldIds.length > 0) {
+            const { data } = await supabase
+              .from("fields")
+              .select("id, name, display_name, config")
+              .in("id", targetFieldIds);
+
+            if (data) {
+              const configMap = new Map(
+                data.map((d) => [
+                  d.id,
+                  {
+                    config: d.config as Record<string, unknown>,
+                    name: d.name,
+                    displayName: d.display_name,
+                  },
+                ]),
+              );
+              for (const rField of resolved) {
+                if (rField.fieldType === "REVERSE_LOOKUP") {
+                  const originalField = typedFields.value.find((f) => f.name === rField.name);
+                  const targetFieldId = (originalField?.config?.value as Record<string, unknown>)
+                    ?.targetFieldId as string;
+
+                  if (targetFieldId && configMap.has(targetFieldId)) {
+                    const originalMeta = configMap.get(targetFieldId)!;
+                    const originalConfig = originalMeta.config;
+                    const originalRelationType = originalConfig?.relationType;
+
+                    const originalName = originalMeta.displayName || originalMeta.name;
+                    // Append the origin field's name to disambiguate identical reverse lookups
+                    rField.displayName = `${rField.displayName} (${originalName})`;
+
+                    if (originalRelationType === "ONE_TO_ONE") rField.cardinality = "ONE_TO_ONE";
+                    else if (originalRelationType === "ONE_TO_MANY")
+                      rField.cardinality = "MANY_TO_ONE";
+                    else if (originalRelationType === "MANY_TO_ONE")
+                      rField.cardinality = "ONE_TO_MANY";
+                    else if (originalRelationType === "MANY_TO_MANY")
+                      rField.cardinality = "MANY_TO_MANY";
+                  }
+                }
+              }
+            }
+          }
+        }
+
         metadataCache.set(collectionId, resolved);
         return resolved;
       }
@@ -174,8 +230,10 @@ export function useVariableFields(value?: string | null | UseVariableFieldsOptio
       metadataCache: Map<string, ResolvedFieldMetadata[]>,
       collectionMetaCache: Map<string, { name: string; description?: string }>,
       discoveredErrors: string[],
+      fieldNamesPath: string[] = [],
     ): Promise<VariableNode[]> => {
-      if (currentDepth >= 5) return [];
+      // Extremely deep absolute failsafe, shouldn't be reached practically
+      if (currentDepth >= 7) return [];
 
       const fields = await fetchFields(targetCollectionId, metadataCache, discoveredErrors);
       const collectionMeta = await fetchCollectionMeta(
@@ -183,14 +241,21 @@ export function useVariableFields(value?: string | null | UseVariableFieldsOptio
         collectionMetaCache,
         discoveredErrors,
       );
+
       const fieldNodes: VariableNode[] = [];
 
       for (const field of fields) {
         const fieldPath = currentPath ? `${currentPath}.${field.name}` : field.name;
 
+        let finalDisplayName = field.displayName;
+        if (field.fieldType === "REVERSE_LOOKUP" && fieldNamesPath.length > 0) {
+          const joinedPath = fieldNamesPath.join(" → ");
+          finalDisplayName = `${field.displayName} [${joinedPath}]`;
+        }
+
         const node: VariableNode = {
           path: fieldPath,
-          displayName: field.displayName,
+          displayName: finalDisplayName,
           fieldType: field.fieldType,
           collectionId: targetCollectionId,
           collectionName: collectionMeta?.name,
@@ -200,19 +265,28 @@ export function useVariableFields(value?: string | null | UseVariableFieldsOptio
           sampleValue: readPath(sampleRoot, fieldPath),
         };
 
-        if (field.fieldType === "RELATION" && field.targetCollectionId) {
-          const children = await resolveNodes(
-            field.targetCollectionId,
-            fieldPath,
-            currentDepth + 1,
-            sampleRoot,
-            metadataCache,
-            collectionMetaCache,
-            discoveredErrors,
-          );
+        if (
+          (field.fieldType === "RELATION" || field.fieldType === "REVERSE_LOOKUP") &&
+          field.targetCollectionId
+        ) {
+          // Allow deep tree traversal without stripping the leaf relation nodes
+          if (currentDepth < 4) {
+            const nextFieldNamesPath = [...fieldNamesPath, field.displayName];
 
-          if (children.length > 0) {
-            node.children = children;
+            const children = await resolveNodes(
+              field.targetCollectionId,
+              fieldPath,
+              currentDepth + 1,
+              sampleRoot,
+              metadataCache,
+              collectionMetaCache,
+              discoveredErrors,
+              nextFieldNamesPath,
+            );
+
+            if (children.length > 0) {
+              node.children = children;
+            }
           }
         }
 

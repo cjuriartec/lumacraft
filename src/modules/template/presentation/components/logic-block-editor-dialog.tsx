@@ -227,8 +227,26 @@ export function LogicBlockEditorDialog<T extends BlockNode>({
   const switchOptions = flattenedCatalog.filter(
     (node) => getFieldSemantics(node.fieldType).switchComparable,
   );
-  const listOptions = flattenedCatalog.filter(
-    (node) => node.fieldType === "RELATION" && isIterableRelation(node.cardinality),
+  const listOptionsRaw = flattenedCatalog.filter(
+    (node) =>
+      (node.fieldType === "RELATION" || node.fieldType === "REVERSE_LOOKUP") &&
+      isIterableRelation(node.cardinality),
+  );
+
+  // Clean the dropdown by strictly keeping shorter valid paths and removing duplicated loops
+  const listOptions = Array.from(
+    listOptionsRaw
+      .reduce((acc, node) => {
+        // Avoid populating the dropdown with deep cyclic repeats that clutter the UI
+        if (node.path.split(".").length > 3) return acc;
+
+        // Deduplicate by displayName to ensure single entries per valid relation trace
+        if (!acc.has(node.displayName)) {
+          acc.set(node.displayName, node);
+        }
+        return acc;
+      }, new Map<string, TemplateVariableCatalogNode>())
+      .values(),
   );
 
   const catalogEmpty = !catalogLoading && !catalogError && flattenedCatalog.length === 0;
