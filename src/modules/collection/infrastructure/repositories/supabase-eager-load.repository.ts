@@ -158,7 +158,9 @@ export class SupabaseEagerLoadRepository extends BaseRepository implements IEage
           recordId,
         );
       } else {
-        relationsResult = await this.getRelations(field.id, recordId);
+        const rawValue = result.data[field.name];
+        const targetIds = extractRelationIds(rawValue);
+        relationsResult = ok(targetIds);
       }
 
       if (!relationsResult.ok || relationsResult.value.length === 0) continue;
@@ -189,4 +191,13 @@ export class SupabaseEagerLoadRepository extends BaseRepository implements IEage
 
     return ok(result);
   }
+}
+
+function extractRelationIds(value: unknown): string[] {
+  if (value === undefined || value === null || value === "") return [];
+  if (typeof value === "string") return [value];
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string => typeof item === "string");
+  }
+  return [];
 }
