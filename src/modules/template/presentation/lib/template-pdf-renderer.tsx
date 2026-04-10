@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingBottom: 60,
     paddingHorizontal: 72,
-    lineHeight: 1.5,
+    lineHeight: 1.15,
     backgroundColor: "#ffffff",
   },
   h1: {
@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
   },
   paragraph: {
     marginBottom: 8,
-    lineHeight: 1.5,
+    lineHeight: 1.15,
   },
   blockquote: {
     borderLeftWidth: 3,
@@ -247,27 +247,18 @@ const styles = StyleSheet.create({
   },
   table: {
     marginVertical: 10,
-    borderWidth: 1,
-    borderColor: "#d1d5db",
-    borderRadius: 4,
   },
   tableRow: {
     flexDirection: "row",
-    borderBottomWidth: 1,
-    borderBottomColor: "#e5e7eb",
   },
   tableLastRow: {
     flexDirection: "row",
   },
   tableCell: {
-    flex: 1,
     padding: 6,
-    fontSize: 10,
   },
   tableHeaderCell: {
-    flex: 1,
     padding: 6,
-    fontSize: 10,
     fontWeight: 700,
     backgroundColor: "#f9fafb",
   },
@@ -401,9 +392,12 @@ function renderBlock(
         ? parseFloat(lineHeight)
         : undefined;
 
+  // High-end adjustment: applying a factor of 0.85 to proportionally adjust
+  // lineHeight because react-pdf's rendering is more "generous" than web browsers.
+  const PDF_LINE_HEIGHT_FACTOR = 0.85;
   const blockTextStyle: Style = {
     ...(textAlign ? { textAlign } : {}),
-    ...(lh && !isNaN(lh) ? { lineHeight: lh } : {}),
+    ...(lh && !isNaN(lh) ? { lineHeight: lh * PDF_LINE_HEIGHT_FACTOR } : {}),
   };
 
   // ---------- Headings ----------
@@ -502,23 +496,102 @@ function renderBlock(
   if (type === "table") {
     const rows = children.filter(isElementNode);
     const lastRowIdx = rows.length - 1;
+
+    // Determine the number of columns from the first row
+    const firstRowCells = rows[0]?.children.filter(isElementNode) ?? [];
+    const colCount = firstRowCells.length || 1;
+
+    // Build effective column sizes. Plate stores colSizes on the table node;
+    // values of 0 mean "not yet resized" and should use a default (120px).
+    const rawColSizes = Array.isArray(node.colSizes) ? (node.colSizes as number[]) : [];
+    const DEFAULT_COL_WIDTH = 120;
+    const effectiveColSizes: number[] = Array.from({ length: colCount }, (_, i) => {
+      const raw = rawColSizes[i];
+      return typeof raw === "number" && raw > 0 ? raw : DEFAULT_COL_WIDTH;
+    });
+    const totalColWidth = effectiveColSizes.reduce((sum, w) => sum + w, 0);
+
     return (
       <View key={key} style={styles.table}>
         {rows.map((row, rIdx) => {
           const isLast = rIdx === lastRowIdx;
           const cells = row.children.filter(isElementNode);
-          const lastCellIdx = cells.length - 1;
           return (
             <View key={rIdx} style={isLast ? styles.tableLastRow : styles.tableRow}>
               {cells.map((cell, cIdx) => {
                 const isHeader = cell.type === "th";
-                const cellStyle = isHeader ? styles.tableHeaderCell : styles.tableCell;
-                const borderRight =
-                  cIdx < lastCellIdx ? { borderRightWidth: 1, borderRightColor: "#e5e7eb" } : {};
-                const inlines = renderInlineChildren(cell.children);
+                const baseStyle = isHeader ? styles.tableHeaderCell : styles.tableCell;
+
+                // Column width: always compute explicit percentage from effectiveColSizes.
+                // This avoids the flex:1 vs width conflict in Yoga.
+                const colPx = effectiveColSizes[cIdx] ?? DEFAULT_COL_WIDTH;
+                const widthPercent = (colPx / totalColWidth) * 100;
+                const colStyle: Style = { width: `${widthPercent.toFixed(2)}%` };
+
+                // Per-cell borders from Plate. Each cell may have borders.top/bottom/left/right
+                // with a .size property. size > 0 means border visible; size === 0 or absent means hidden.
+                const cellBorders = (cell as PlateElementNode).borders as
+                  | Record<string, { size?: number; color?: string }>
+                  | undefined;
+
+                const borderStyle: Style = {};
+                if (cellBorders) {
+                  // Explicit border data exists — only render borders the user enabled
+                  if (cellBorders.top?.size) {
+                    borderStyle.borderTopWidth = 1;
+                    borderStyle.borderTopColor = cellBorders.top.color ?? "#d1d5db";
+                  }
+                  if (cellBorders.bottom?.size) {
+                    borderStyle.borderBottomWidth = 1;
+                    borderStyle.borderBottomColor = cellBorders.bottom.color ?? "#d1d5db";
+                  }
+                  if (cellBorders.left?.size) {
+                    borderStyle.borderLeftWidth = 1;
+                    borderStyle.borderLeftColor = cellBorders.left.color ?? "#d1d5db";
+                  }
+                  if (cellBorders.right?.size) {
+                    borderStyle.borderRightWidth = 1;
+                    borderStyle.borderRightColor = cellBorders.right.color ?? "#d1d5db";
+                  }
+                } else {
+                  // No explicit border data on the cell: apply default grid borders
+                  if (rIdx < lastRowIdx) {
+                    borderStyle.borderBottomWidth = 1;
+                    borderStyle.borderBottomColor = "#e5e7eb";
+                  }
+                  if (cIdx < cells.length - 1) {
+                    borderStyle.borderRightWidth = 1;
+                    borderStyle.borderRightColor = "#e5e7eb";
+                  }
+                }
+
+                // Cell background color
+                const bgColor =
+                  typeof (cell as PlateElementNode).background === "string"
+                    ? ((cell as PlateElementNode).background as string)
+                    : undefined;
+
+                // Render cell children as full blocks (paragraphs, lists, etc.)
+                // to preserve line breaks and vertical spacing within cells.
+                const elements = cell.children.filter(isElementNode);
+
                 return (
-                  <View key={cIdx} style={[cellStyle, borderRight]}>
-                    <Text style={blockTextStyle}>{inlines}</Text>
+                  <View
+                    key={cIdx}
+                    style={[
+                      baseStyle,
+                      colStyle,
+                      borderStyle,
+                      bgColor ? { backgroundColor: bgColor } : {},
+                    ]}
+                  >
+                    {elements.length > 0 ? (
+                      elements.map((childBlock, cbIdx) =>
+                        renderBlock(childBlock, `cell-${rIdx}-${cIdx}-block-${cbIdx}`, elements),
+                      )
+                    ) : (
+                      <Text style={blockTextStyle}>{renderInlineChildren(cell.children)}</Text>
+                    )}
                   </View>
                 );
               })}
