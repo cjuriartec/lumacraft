@@ -39,7 +39,7 @@ export function HeadingElementStatic({
       style={mergedStyle}
       {...props}
     >
-      {/* Bookmark anchor for DOCX TOC internal links */}
+      {/* Bookmark anchor for generated document internal links */}
       {id && <span id={id} />}
       {props.children}
     </SlateElement>

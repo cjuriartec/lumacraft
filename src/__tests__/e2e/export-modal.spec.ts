@@ -5,7 +5,7 @@ import { AUTH_STATE_PATH } from "@/__tests__/e2e/constants";
 test.describe("Record Document Selector", () => {
   test.use({ storageState: AUTH_STATE_PATH });
 
-  test("opens the document selector from the eye action without showing DOCX options", async ({
+  test("opens the document selector from the eye action without legacy export format tabs", async ({
     page,
   }) => {
     await page.goto("/collections");
@@ -21,6 +21,6 @@ test.describe("Record Document Selector", () => {
 
     await expect(page.getByText("Abrir Documento")).toBeVisible();
     await expect(page.getByText("Documento persistido por plantilla")).toBeVisible();
-    await expect(page.getByText(/DOCX/i)).toHaveCount(0);
+    await expect(page.getByRole("dialog").getByRole("tab")).toHaveCount(0);
   });
 });
