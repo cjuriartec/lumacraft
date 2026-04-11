@@ -33,9 +33,11 @@ function isVariableNode(value: unknown): value is TElement {
 }
 
 function toNodeEntries(editor: PlateEditor, at: Path | PlateEditor["selection"]) {
+  const target = at ?? undefined;
+
   return Array.from(
     editor.api.nodes({
-      at,
+      at: target,
       match: (node) => isTextNode(node) || isVariableNode(node),
       mode: "all",
     }),

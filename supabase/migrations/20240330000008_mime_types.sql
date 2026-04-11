@@ -17,7 +17,6 @@ INSERT INTO public.mime_types (label, value, extension, category) VALUES
 ('SVG Vector', 'image/svg+xml', 'svg', 'image'),
 ('PDF Document', 'application/pdf', 'pdf', 'document'),
 ('Word Document (Classic)', 'application/msword', 'doc', 'document'),
-('Word Document (.docx)', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'docx', 'document'),
 ('CSV Spreadsheet', 'text/csv', 'csv', 'document'),
 ('JSON Data', 'application/json', 'json', 'document'),
 ('Plain Text', 'text/plain', 'txt', 'document'),

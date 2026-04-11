@@ -15,6 +15,8 @@ import {
   SyncFieldRelationsRequest,
   ValidateCardinalityRequest,
 } from "@/modules/collection/domain/types/relation.types";
+import { RecordDocument } from "@/modules/document/domain/entities/record-document.entity";
+import { IRecordDocumentRepository } from "@/modules/document/domain/ports/record-document-repository.port";
 import { Template } from "@/modules/template/domain/entities/template.entity";
 import { ITemplateRepository } from "@/modules/template/domain/ports/template-repository.port";
 import { Workspace } from "@/modules/workspace/domain/entities/workspace.entity";
@@ -160,6 +162,47 @@ export class InMemoryTemplateRepository implements ITemplateRepository {
     if (this.deleteResult) return this.deleteResult;
     this.items = this.items.filter((template) => template.id !== id);
     return ok(undefined);
+  });
+}
+
+export class InMemoryRecordDocumentRepository implements IRecordDocumentRepository {
+  constructor(public items: RecordDocument[] = []) {}
+
+  public findByTemplateAndRecordResult?: Result<RecordDocument | null, DomainError>;
+  public createResult?: Result<RecordDocument, DomainError>;
+  public updateResult?: Result<RecordDocument, DomainError>;
+
+  public findByTemplateAndRecord = vi.fn(async (templateId: string, recordId: string) => {
+    return (
+      this.findByTemplateAndRecordResult ??
+      ok(
+        this.items.find(
+          (document) => document.templateId === templateId && document.recordId === recordId,
+        ) ?? null,
+      )
+    );
+  });
+
+  public create = vi.fn(async (document: RecordDocument) => {
+    if (this.createResult) return this.createResult;
+    this.items.push(document);
+    return ok(document);
+  });
+
+  public update = vi.fn(async (document: RecordDocument, expectedVersion: number) => {
+    if (this.updateResult) return this.updateResult;
+
+    const existing = this.items.find((item) => item.id === document.id);
+    if (!existing) {
+      return fail(new DomainError("Record document not found", "DOCUMENT_NOT_FOUND"));
+    }
+
+    if (existing.version !== expectedVersion) {
+      return fail(new DomainError("Record document version conflict", "DOCUMENT_VERSION_CONFLICT"));
+    }
+
+    this.items = this.items.map((item) => (item.id === document.id ? document : item));
+    return ok(document);
   });
 }
 

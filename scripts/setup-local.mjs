@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /**
  * 🚀 Lumacraft — Setup Local Supabase (Ironclad Version)
  */

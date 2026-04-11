@@ -1,19 +1,16 @@
 export type SupportedDocumentFontFamily = "arial" | "roboto" | "times" | "courier";
 
-export type DocumentRenderTarget = "web" | "pdf" | "docx";
+export type DocumentRenderTarget = "web" | "pdf";
 
 type DocumentBlockType = "p" | "blockquote" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
 
 interface DocumentFontFamilyDefinition {
   label: string;
-  docx: string;
   pdf: string;
   web: string;
 }
 
 interface DocumentSpacingDefinition {
-  docxAfter: number;
-  docxBefore: number;
   pdfMarginBottom: number;
   pdfMarginTop: number;
 }
@@ -21,7 +18,6 @@ interface DocumentSpacingDefinition {
 export const DEFAULT_DOCUMENT_FONT_FAMILY: SupportedDocumentFontFamily = "arial";
 export const DEFAULT_DOCUMENT_FONT_SIZE = 16;
 export const DEFAULT_DOCUMENT_LINE_HEIGHT = 1.5;
-export const DOCX_LINE_HEIGHT_FACTOR = 240;
 
 export const DOCUMENT_BLOCK_FONT_SIZES: Record<DocumentBlockType, number> = {
   p: 16,
@@ -40,25 +36,21 @@ const DOCUMENT_FONT_FAMILY_DEFINITIONS: Record<
 > = {
   arial: {
     label: "Arial",
-    docx: "Arial",
     pdf: "Helvetica",
     web: "Arial, Helvetica, sans-serif",
   },
   roboto: {
     label: "Roboto",
-    docx: "Roboto",
     pdf: "Roboto",
     web: '"Roboto", Arial, sans-serif',
   },
   times: {
     label: "Times New Roman",
-    docx: "Times New Roman",
     pdf: "Times-Roman",
     web: '"Times New Roman", Times, serif',
   },
   courier: {
     label: "Courier New",
-    docx: "Courier New",
     pdf: "Courier",
     web: '"Courier New", Courier, monospace',
   },
@@ -66,50 +58,34 @@ const DOCUMENT_FONT_FAMILY_DEFINITIONS: Record<
 
 const DOCUMENT_BLOCK_SPACING: Record<DocumentBlockType, DocumentSpacingDefinition> = {
   p: {
-    docxAfter: 160,
-    docxBefore: 0,
     pdfMarginBottom: 8,
     pdfMarginTop: 0,
   },
   blockquote: {
-    docxAfter: 160,
-    docxBefore: 120,
     pdfMarginBottom: 8,
     pdfMarginTop: 8,
   },
   h1: {
-    docxAfter: 240,
-    docxBefore: 480,
     pdfMarginBottom: 14,
     pdfMarginTop: 24,
   },
   h2: {
-    docxAfter: 200,
-    docxBefore: 360,
     pdfMarginBottom: 12,
     pdfMarginTop: 20,
   },
   h3: {
-    docxAfter: 160,
-    docxBefore: 280,
     pdfMarginBottom: 10,
     pdfMarginTop: 16,
   },
   h4: {
-    docxAfter: 140,
-    docxBefore: 220,
     pdfMarginBottom: 8,
     pdfMarginTop: 14,
   },
   h5: {
-    docxAfter: 120,
-    docxBefore: 180,
     pdfMarginBottom: 8,
     pdfMarginTop: 12,
   },
   h6: {
-    docxAfter: 120,
-    docxBefore: 160,
     pdfMarginBottom: 6,
     pdfMarginTop: 10,
   },
@@ -210,23 +186,4 @@ export function resolveDocumentLineHeight(value: unknown): number {
 
 export function resolvePdfBlockSpacing(blockType?: unknown): DocumentSpacingDefinition {
   return DOCUMENT_BLOCK_SPACING[resolveDocumentBlockType(blockType)];
-}
-
-export function resolveDocxLineHeight(value: unknown): number {
-  return Math.round(resolveDocumentLineHeight(value) * DOCX_LINE_HEIGHT_FACTOR);
-}
-
-export function resolveDocxBlockSpacing(
-  blockType?: unknown,
-): Pick<DocumentSpacingDefinition, "docxAfter" | "docxBefore"> {
-  const spacing = resolvePdfBlockSpacing(blockType);
-
-  return {
-    docxAfter: spacing.docxAfter,
-    docxBefore: spacing.docxBefore,
-  };
-}
-
-export function resolveDocxFontSize(value: unknown, blockType?: unknown): number {
-  return Math.round(resolveDocumentFontSize(value, blockType) * 2);
 }

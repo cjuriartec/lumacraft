@@ -22,6 +22,16 @@ vi.mock("@/modules/collection/presentation/hooks/use-storage", () => ({
   }),
 }));
 
+vi.mock("@/modules/document/presentation/components/record-document-selector-modal", () => ({
+  RecordDocumentSelectorModal: ({
+    isOpen,
+    recordId,
+  }: {
+    isOpen: boolean;
+    recordId: string | null;
+  }) => (isOpen ? <div data-testid="record-document-selector">{recordId}</div> : null),
+}));
+
 describe("DataGrid", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -129,5 +139,42 @@ describe("DataGrid", () => {
 
     // Wait for the async call
     expect(onInlineEdit).toHaveBeenCalled();
+  });
+
+  it("opens the document selector when the eye action is clicked", async () => {
+    resetFactories();
+    const field = makeField({ name: "title", displayName: "Title", fieldType: "TEXT" });
+    const record = makeRecord({
+      id: "record-1",
+      collectionId: field.collectionId,
+      data: { title: "Alpha" },
+    });
+
+    render(
+      <DataGrid
+        collectionId={field.collectionId}
+        fields={[field]}
+        records={[record]}
+        total={1}
+        currentPage={1}
+        pageSize={25}
+        search=""
+        onSearchChange={vi.fn()}
+        onFiltersChange={vi.fn()}
+        onPageChange={vi.fn()}
+        onSort={vi.fn()}
+        onInlineEdit={vi.fn()}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+        canRead
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Abrir documento del registro record-1/i }));
+
+    expect(screen.getByTestId("record-document-selector")).toHaveTextContent("record-1");
+    expect(
+      screen.queryByRole("button", { name: /Exportar registro record-1/i }),
+    ).not.toBeInTheDocument();
   });
 });
