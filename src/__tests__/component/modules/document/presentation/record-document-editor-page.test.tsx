@@ -339,7 +339,7 @@ describe("RecordDocumentEditorPage", () => {
       />,
     );
 
-    expect(screen.getByRole("button", { name: /Regenerando documento/i })).toBeDisabled();
+    expect(screen.getAllByRole("button", { name: /Regenerando\.\.\./i })[0]).toBeDisabled();
     expect(screen.getByRole("button", { name: /Cancelar/i })).toBeDisabled();
   });
 
