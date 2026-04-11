@@ -83,6 +83,10 @@ const editorVariants = cva(
         demo: "size-full px-16 pt-16 pb-72 text-base sm:px-[max(64px,calc(50%-350px))] bg-surface shadow-sm border border-border/50 rounded-xl",
         fullWidth:
           "size-full px-16 pt-16 pb-72 text-base sm:px-24 bg-surface shadow-sm border border-border/50 rounded-xl",
+        // A4 variant: replicates the exact PDF margins (paddingHorizontal: 72pt, paddingTop/Bottom: 60pt)
+        // 72pt ≈ 96px, 60pt ≈ 80px. Width 794px = 210mm at 96dpi.
+        // Font size: PDF uses pt units; 16pt is the default base for this system.
+        a4: "w-full min-h-[1122px] bg-white px-[96px] pt-[80px] pb-[80px] text-[16pt] leading-[1.5] text-[#1a1a1a] shadow-[0_2px_20px_rgba(0,0,0,0.12)] rounded-sm border border-[#e0e0e0] antialiased [text-rendering:optimizeLegibility]",
         none: "",
         select: "px-3 py-2 text-base data-readonly:w-fit bg-surface",
       },

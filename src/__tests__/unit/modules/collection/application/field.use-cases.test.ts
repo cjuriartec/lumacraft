@@ -1,9 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { makeField, resetFactories } from "@/__tests__/factories/domain-factories";
-import { InMemoryFieldRepository } from "@/__tests__/helpers/fakes";
+import { InMemoryFieldRepository, InMemoryRecordRepository } from "@/__tests__/helpers/fakes";
 import { CreateFieldUseCase } from "@/modules/collection/application/use-cases/create-field.use-case";
 import { DeleteFieldUseCase } from "@/modules/collection/application/use-cases/delete-field.use-case";
+import { GetFieldUseCase } from "@/modules/collection/application/use-cases/get-field.use-case";
 import { ListFieldsUseCase } from "@/modules/collection/application/use-cases/list-fields.use-case";
 import { UpdateFieldUseCase } from "@/modules/collection/application/use-cases/update-field.use-case";
 
@@ -107,16 +108,32 @@ describe("field use cases", () => {
   it("lists and deletes fields via the repository port", async () => {
     resetFactories();
     const field = makeField({ collectionId: "collection-1" });
-    const repository = new InMemoryFieldRepository([field]);
+    const fieldRepository = new InMemoryFieldRepository([field]);
+    const recordRepository = new InMemoryRecordRepository();
 
-    const listUseCase = new ListFieldsUseCase(repository);
-    const deleteUseCase = new DeleteFieldUseCase(repository);
+    const listUseCase = new ListFieldsUseCase(fieldRepository);
+    const deleteUseCase = new DeleteFieldUseCase(fieldRepository, recordRepository);
 
     const listed = await listUseCase.execute("collection-1");
     const deleted = await deleteUseCase.execute(field.id);
 
     expect(listed.ok).toBe(true);
     expect(deleted.ok).toBe(true);
-    expect(repository.delete).toHaveBeenCalledWith(field.id);
+    expect(fieldRepository.delete).toHaveBeenCalledWith(field.id);
+  });
+
+  it("retrieves a field by ID", async () => {
+    resetFactories();
+    const field = makeField();
+    const repository = new InMemoryFieldRepository([field]);
+    const useCase = new GetFieldUseCase(repository);
+
+    const result = await useCase.execute(field.id);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value?.id).toBe(field.id);
+    }
+    expect(repository.findById).toHaveBeenCalledWith(field.id);
   });
 });

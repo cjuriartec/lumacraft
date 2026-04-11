@@ -1,9 +1,9 @@
 /**
  * Unit tests for the template PDF renderer.
  *
- * The renderer is configured with Helvetica as its base font — a built-in PDF
- * standard font that requires no network download. Inter is only used when
- * available in production environments. Therefore, no network mocking is needed.
+ * The renderer is configured with built-in PDF fonts for Arial/Times/Courier
+ * equivalents, and a local Roboto registration when that family is selected.
+ * Therefore, no network mocking is needed.
  *
  * All assertions check that the function returns a valid PDF binary
  * (confirmed by the %PDF magic bytes), proving that each block type is
@@ -274,10 +274,11 @@ describe("renderTemplateToPdfBuffer", () => {
     expect(getPdfHeader(result)).toContain(PDF_MAGIC_BYTES);
   });
 
-  it("handles variable formatting (bold, italic, color, textTransform)", async () => {
+  it("handles variable formatting (bold, italic, color, textTransform, fontFamily)", async () => {
     const blocks: TemplateBlocks = [
       {
         type: "p",
+        fontFamily: "times",
         children: [
           {
             type: "variable",
@@ -285,12 +286,27 @@ describe("renderTemplateToPdfBuffer", () => {
             bold: true,
             italic: true,
             color: "#ff0000",
+            fontFamily: "times",
+            fontSize: "20px",
             textTransform: "uppercase",
             children: [{ text: "JUAN" }],
           },
         ],
       },
     ];
+    const result = await renderTemplateToPdfBuffer(blocks);
+    expect(getPdfHeader(result)).toContain(PDF_MAGIC_BYTES);
+  });
+
+  it("renders Roboto when that family is selected", async () => {
+    const blocks: TemplateBlocks = [
+      {
+        type: "p",
+        fontFamily: "roboto",
+        children: [{ text: "Texto en Roboto " }, { text: "negrita", bold: true }],
+      },
+    ];
+
     const result = await renderTemplateToPdfBuffer(blocks);
     expect(getPdfHeader(result)).toContain(PDF_MAGIC_BYTES);
   });

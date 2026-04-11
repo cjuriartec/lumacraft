@@ -79,6 +79,7 @@ export function getFieldSemantics(fieldType: FieldTypeValue): TemplateFieldSeman
     case "FILE":
     case "IMAGE":
     case "RELATION":
+    case "REVERSE_LOOKUP":
       return {
         fieldType,
         comparable: false,

@@ -42,4 +42,13 @@ export interface IEagerLoadRepository {
    * Fetches all related record IDs for a specific field and source record.
    */
   getRelations(fieldId: string, sourceRecordId: string): Promise<Result<string[]>>;
+
+  /**
+   * Fetches all record IDs that point to this record via a specific field.
+   */
+  getReverseRelations(
+    targetCollectionId: string,
+    targetFieldName: string,
+    sourceRecordId: string,
+  ): Promise<Result<string[]>>;
 }

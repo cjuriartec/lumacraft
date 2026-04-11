@@ -48,4 +48,14 @@ describe("template path resolver", () => {
 
     expect(rendered).toBe("![uno.jpg](bucket/uno.jpg)\n![dos.png](bucket/dos.png)");
   });
+
+  it("resolves deeply nested object paths (de.oficina.nombre)", () => {
+    const scope: TemplateRuntimeScope = {
+      root: {
+        de: { cargo: "Gerente", oficina: { nombre: "Oficina Central" } },
+      },
+      locals: {},
+    };
+    expect(resolveTemplatePath(scope, "de.oficina.nombre")).toBe("Oficina Central");
+  });
 });

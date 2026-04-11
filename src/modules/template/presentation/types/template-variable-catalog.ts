@@ -1,6 +1,11 @@
 import type { FieldTypeValue } from "@/modules/collection/domain/value-objects/field-type.vo";
 
-export type TemplateRelationCardinality = "ONE_TO_ONE" | "ONE_TO_MANY" | "MANY_TO_MANY" | null;
+export type TemplateRelationCardinality =
+  | "ONE_TO_ONE"
+  | "ONE_TO_MANY"
+  | "MANY_TO_ONE"
+  | "MANY_TO_MANY"
+  | null;
 
 export interface TemplateCollectionContext {
   id: string;

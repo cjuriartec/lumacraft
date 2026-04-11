@@ -9,13 +9,14 @@ export interface IRecordRepository {
     options: PaginationOptions,
   ): Promise<Result<PaginatedResult<DataRecord>>>;
   findById(id: string): Promise<Result<DataRecord | null>>;
-  create(record: DataRecord): Promise<Result<DataRecord>>;
-  update(record: DataRecord): Promise<Result<DataRecord>>;
+  create(record: DataRecord, omitFields?: string[]): Promise<Result<DataRecord>>;
+  update(record: DataRecord, omitFields?: string[]): Promise<Result<DataRecord>>;
   delete(id: string): Promise<Result<void>>;
+  deleteFieldData(collectionId: string, fieldName: string): Promise<Result<void>>;
   count(collectionId: string): Promise<Result<number>>;
   findByFieldValue(
     collectionId: string,
     fieldName: string,
-    value: unknown,
+    value: unknown | unknown[],
   ): Promise<Result<DataRecord[]>>;
 }

@@ -194,6 +194,10 @@ vi.mock("@/shared/presentation/components/ui/font-color-toolbar-button", () => (
   FontColorToolbarButton: () => <button type="button">font-color</button>,
 }));
 
+vi.mock("@/modules/template/presentation/components/font-family-toolbar-button", () => ({
+  FontFamilyToolbarButton: () => <button type="button">font-family</button>,
+}));
+
 vi.mock("@/shared/presentation/components/ui/font-size-toolbar-button", () => ({
   FontSizeToolbarButton: () => <button type="button">font-size</button>,
 }));
@@ -316,6 +320,7 @@ describe("TemplateEditorPage", () => {
     expect(screen.getByText("Vincula una colección para insertar variables.")).toBeInTheDocument();
     expect(screen.getByText("indent")).toBeInTheDocument();
     expect(screen.getByText("outdent")).toBeInTheDocument();
+    expect(screen.getByText("font-family")).toBeInTheDocument();
     expect(screen.getAllByText("font-color")).toHaveLength(2);
   });
 

@@ -38,7 +38,7 @@ export class SupabaseEagerLoadRepository extends BaseRepository implements IEage
       .from("fields")
       .select("id, name, field_type, config")
       .eq("collection_id", collectionId)
-      .eq("field_type", "RELATION");
+      .in("field_type", ["RELATION", "REVERSE_LOOKUP"]);
 
     if (error) return fail(new DomainError(error.message, "DB_ERROR"));
     return ok((data as RawField[]) || []);
@@ -55,6 +55,22 @@ export class SupabaseEagerLoadRepository extends BaseRepository implements IEage
     return ok((data || []).map((r) => r.target_record_id as string));
   }
 
+  async getReverseRelations(
+    targetCollectionId: string,
+    targetFieldName: string,
+    sourceRecordId: string,
+  ): Promise<Result<string[]>> {
+    const { data, error } = await this.supabase.rpc("resolve_reverse_lookup", {
+      target_collection_id: targetCollectionId,
+      target_field_name: targetFieldName,
+      source_record_id: sourceRecordId,
+    });
+
+    if (error) return fail(new DomainError(error.message, "DB_ERROR"));
+    const records = (data as { id: string }[] | null) || [];
+    return ok(records.map((r) => r.id));
+  }
+
   async resolveRecursive(
     recordId: string,
     collectionId: string,
@@ -67,9 +83,68 @@ export class SupabaseEagerLoadRepository extends BaseRepository implements IEage
     // However, to satisfy the interface, we'll implement it here and let the Use Case call it.
 
     if (visited.has(recordId)) {
-      return fail(
-        new DomainError(`Circular reference detected for record ${recordId}`, "CIRCULAR_REFERENCE"),
-      );
+      // Circular reference detected. Instead of returning empty relations (which breaks paths like
+      // trabajador.oficina.nombre), we resolve one more level of direct RELATION fields only —
+      // skipping REVERSE_LOOKUP to avoid re-triggering the cycle.
+      const metaResult = await this.getCollectionMetadata(collectionId);
+      const recordResult = await this.getRecordData(recordId);
+
+      if (!metaResult.ok || !recordResult.ok) {
+        return fail(
+          new DomainError(
+            `Circular reference detected for record ${recordId}`,
+            "CIRCULAR_REFERENCE",
+          ),
+        );
+      }
+
+      const shallowResult: EagerLoadedRecord = {
+        id: recordResult.value.id,
+        collectionId,
+        collectionName: metaResult.value.display_name || metaResult.value.name,
+        data: recordResult.value.data || {},
+        relations: {},
+      };
+
+      // Resolve only direct RELATION fields (not REVERSE_LOOKUP) one level deep.
+      // Use a visited set that already includes this record to prevent deeper cycles.
+      const fieldsResult = await this.getRelationFields(collectionId);
+      if (fieldsResult.ok) {
+        const newVisitedForShallow = new Set(visited);
+        newVisitedForShallow.add(recordId);
+
+        for (const field of fieldsResult.value) {
+          if (field.field_type !== "RELATION") continue; // skip REVERSE_LOOKUP to avoid cycles
+
+          const config = (field.config as Record<string, unknown>) || {};
+          const targetCollectionId = config.targetCollectionId as string;
+          if (!targetCollectionId) continue;
+
+          const rawValue = shallowResult.data[field.name];
+          const targetIds = extractRelationIds(rawValue);
+          if (targetIds.length === 0) continue;
+
+          const relationType = config.relationType as string;
+          const resolvedRecords: EagerLoadedRecord[] = [];
+          for (const targetId of targetIds) {
+            const resolved = await this.resolveRecursive(
+              targetId,
+              targetCollectionId,
+              0, // depth=0 → only fetch the record's flat data, no further relations
+              newVisitedForShallow,
+              undefined,
+            );
+            if (resolved.ok) resolvedRecords.push(resolved.value);
+          }
+
+          if (resolvedRecords.length > 0) {
+            const isSingular = relationType === "ONE_TO_ONE" || relationType === "MANY_TO_ONE";
+            shallowResult.relations[field.name] = isSingular ? resolvedRecords[0] : resolvedRecords;
+          }
+        }
+      }
+
+      return ok(shallowResult);
     }
     const newVisited = new Set(visited);
     newVisited.add(recordId);
@@ -103,13 +178,55 @@ export class SupabaseEagerLoadRepository extends BaseRepository implements IEage
 
       if (!targetCollectionId) continue;
 
-      const relationsResult = await this.getRelations(field.id, recordId);
+      let relationsResult: Result<string[]>;
+      let currentRelationType = relationType;
+
+      if (field.field_type === "REVERSE_LOOKUP") {
+        const targetFieldId = config.targetFieldId as string;
+        // We need the target field name to query the JSONB column via RPC
+        const targetFieldRes = await this.supabase
+          .from("fields")
+          .select("name, config")
+          .eq("id", targetFieldId)
+          .single();
+
+        if (targetFieldRes.error || !targetFieldRes.data) continue;
+
+        const targetFieldName = targetFieldRes.data.name;
+        const targetConfig = (targetFieldRes.data.config as Record<string, unknown>) || {};
+        const originalRelationType = targetConfig.relationType as string;
+
+        // Correct reverse mapping:
+        // ONE_TO_ONE <-> ONE_TO_ONE (Both Singular)
+        // MANY_TO_ONE <-> ONE_TO_MANY (Singular <-> Plural)
+        // ONE_TO_MANY <-> MANY_TO_ONE (Plural <-> Singular)
+        // MANY_TO_MANY <-> MANY_TO_MANY (Both Plural)
+        if (originalRelationType === "ONE_TO_ONE") {
+          currentRelationType = "ONE_TO_ONE";
+        } else if (originalRelationType === "ONE_TO_MANY") {
+          currentRelationType = "MANY_TO_ONE";
+        } else if (originalRelationType === "MANY_TO_ONE") {
+          currentRelationType = "ONE_TO_MANY";
+        } else {
+          currentRelationType = "MANY_TO_MANY";
+        }
+
+        relationsResult = await this.getReverseRelations(
+          targetCollectionId,
+          targetFieldName,
+          recordId,
+        );
+      } else {
+        const rawValue = result.data[field.name];
+        const targetIds = extractRelationIds(rawValue);
+        relationsResult = ok(targetIds);
+      }
+
       if (!relationsResult.ok || relationsResult.value.length === 0) continue;
 
       const resolvedRecords: EagerLoadedRecord[] = [];
       for (const targetId of relationsResult.value) {
-        if (newVisited.has(targetId)) continue;
-
+        // If we revisit a node, `resolveRecursive` will now intelligently return a shallow copy
         const resolved = await this.resolveRecursive(
           targetId,
           targetCollectionId,
@@ -124,11 +241,21 @@ export class SupabaseEagerLoadRepository extends BaseRepository implements IEage
       }
 
       if (resolvedRecords.length > 0) {
-        result.relations[field.name] =
-          relationType === "ONE_TO_ONE" ? resolvedRecords[0] : resolvedRecords;
+        const isSingular =
+          currentRelationType === "ONE_TO_ONE" || currentRelationType === "MANY_TO_ONE";
+        result.relations[field.name] = isSingular ? resolvedRecords[0] : resolvedRecords;
       }
     }
 
     return ok(result);
   }
+}
+
+function extractRelationIds(value: unknown): string[] {
+  if (value === undefined || value === null || value === "") return [];
+  if (typeof value === "string") return [value];
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string => typeof item === "string");
+  }
+  return [];
 }

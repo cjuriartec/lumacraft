@@ -81,6 +81,7 @@ import { TooltipProvider } from "@/shared/presentation/components/ui/tooltip";
 import { TurnIntoToolbarButton } from "@/shared/presentation/components/ui/turn-into-toolbar-button";
 import { useBreadcrumbs } from "@/shared/presentation/providers/breadcrumb-provider";
 
+import { FontFamilyToolbarButton } from "../components/font-family-toolbar-button";
 import { SlashInputElement } from "../components/slash-command/slash-input-element";
 import { SlashInputPlugin, SlashPlugin } from "../components/slash-command/slash-plugin";
 import {
@@ -120,6 +121,7 @@ import {
   plateValueToTemplateBlocks,
   templateBlocksToPlateValue,
 } from "../lib/template-blocks.adapter";
+import { getCurrentVariableFormatting } from "../lib/template-editor-formatting";
 
 interface TemplateEditorPageProps {
   templateId: string;
@@ -495,6 +497,7 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
                     </ToolbarGroup>
 
                     <ToolbarGroup>
+                      <FontFamilyToolbarButton />
                       <FontSizeToolbarButton />
                       <FontColorToolbarButton
                         nodeType={FontColorPlugin.key}
@@ -577,11 +580,13 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
                         onOpenChange={setIsVariableSelectorOpen}
                         onSelect={(node) => {
                           const isImageVariable = node.fieldType === "IMAGE";
+                          const currentFormatting = getCurrentVariableFormatting(editor);
                           const variableNode: VariableElementNode = {
                             type: VARIABLE_TYPE,
                             fieldPath: node.path,
                             collectionId: node.collectionId,
                             fieldType: node.fieldType,
+                            ...currentFormatting,
                             ...(isImageVariable
                               ? {
                                   imageWidthPercent: DEFAULT_IMAGE_VARIABLE_WIDTH_PERCENT,
@@ -606,20 +611,24 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
               </div>
             )}
 
-            {/* Editor Content */}
+            {/* Editor Content — A4 Canvas */}
             <div
               className={cn(
-                "flex-1 overflow-y-auto bg-background/40 px-6 py-10",
+                "flex-1 overflow-y-auto py-10 px-6",
+                // subtle dot grid
+                "bg-[radial-gradient(circle,rgba(0,0,0,0.08)_1px,transparent_1px)] dark:bg-[radial-gradient(circle,rgba(255,255,255,0.06)_1px,transparent_1px)]",
+                "bg-size-[20px_20px]",
                 !canEdit && "pt-6",
               )}
             >
-              <div className="mx-auto max-w-5xl space-y-6">
+              {/* A4 sheet: 794px wide = 210mm @ 96dpi */}
+              <div className="mx-auto w-[794px] max-w-full">
                 <ResizableProvider>
                   <EditorContainer className="overflow-visible shadow-none border-none bg-transparent">
                     <Editor
                       placeholder={canEdit ? "Escribe '/' para ver comandos rápidos..." : ""}
-                      variant="demo"
-                      className="min-h-0 border-none shadow-none pb-10!"
+                      variant="a4"
+                      className=""
                     />
                   </EditorContainer>
                 </ResizableProvider>

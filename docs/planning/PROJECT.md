@@ -144,7 +144,6 @@ Desarrollar una plataforma web modular que permita crear estructuras de datos di
 
 - [ ] API para compilar template + contexto → documento final
 - [ ] Exportación a PDF (Puppeteer o wkhtmltopdf)
-- [ ] Exportación a DOCX (docx.js)
 - [ ] Sistema de versionado de templates
 - [ ] Historial de documentos generados
 
@@ -351,7 +350,7 @@ CREATE TYPE field_type_enum AS ENUM ('TEXT', 'NUMBER', 'BOOLEAN', 'DATE', 'ENUM'
 CREATE TYPE relation_type_enum AS ENUM ('ONE_TO_ONE', 'ONE_TO_MANY', 'MANY_TO_MANY');
 CREATE TYPE trigger_event_enum AS ENUM ('ON_CREATE', 'ON_UPDATE', 'ON_DELETE');
 CREATE TYPE trigger_status_enum AS ENUM ('SUCCESS', 'FAILED', 'PENDING');
-CREATE TYPE doc_format_enum AS ENUM ('PDF', 'DOCX', 'HTML');
+CREATE TYPE doc_format_enum AS ENUM ('PDF', 'HTML');
 CREATE TYPE ai_provider_enum AS ENUM ('GEMINI', 'OPENAI', 'ANTHROPIC');
 CREATE TYPE on_delete_enum AS ENUM ('CASCADE', 'SET_NULL', 'RESTRICT');
 CREATE TYPE permission_action_enum AS ENUM ('CREATE', 'READ', 'UPDATE', 'DELETE', 'MANAGE');

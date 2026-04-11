@@ -46,6 +46,7 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { can, isOwner, isSuperAdmin } = usePermissions();
+  const canRead = can(collectionId, "read");
   const canCreate = can(collectionId, "create");
   const canUpdate = can(collectionId, "update");
   const canDelete = can(collectionId, "delete");
@@ -61,6 +62,8 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
     records,
     total,
     pagination,
+    reverseLookupResults,
+    resolveReverseLookups,
     createRecord,
     updateRecord,
     deleteRecord,
@@ -71,6 +74,15 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
     setFilters,
     setPagination,
   } = useRecords(collectionId);
+
+  // ... (existing effects)
+
+  // Resolve reverse lookups when records or fields are ready
+  useEffect(() => {
+    if (records.length > 0 && fields.length > 0) {
+      void resolveReverseLookups(fields);
+    }
+  }, [records, fields, resolveReverseLookups]);
   const { collections, updateCollection } = useCollections();
   const { loadStoredFilters, persistFilters } = useGridPersistence(collectionId);
 
@@ -237,7 +249,9 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
                   onEdit={handleEditRecord}
                   onDelete={deleteRecord}
                   onAddRecord={handleCreateRecord}
+                  reverseLookupResults={reverseLookupResults}
                   canCreate={canCreate}
+                  canRead={canRead}
                   canUpdate={canUpdate}
                   canDelete={canDelete}
                 />

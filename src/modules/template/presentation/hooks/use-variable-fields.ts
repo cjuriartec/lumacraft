@@ -25,6 +25,7 @@ interface ResolvedFieldMetadata {
   targetCollectionId: string | null;
   cardinality: VariableNode["cardinality"];
   enumOptions: string[];
+  config: unknown;
 }
 
 function normalizeOptions(
@@ -76,6 +77,7 @@ function getCardinalityFromConfig(
   const raw = config?.relationType;
   if (raw === "ONE_TO_ONE") return "ONE_TO_ONE";
   if (raw === "ONE_TO_MANY") return "ONE_TO_MANY";
+  if (raw === "MANY_TO_ONE") return "MANY_TO_ONE";
   if (raw === "MANY_TO_MANY") return "MANY_TO_MANY";
   return null;
 }
@@ -96,6 +98,7 @@ function fromDomainField(field: Field): ResolvedFieldMetadata {
     targetCollectionId: typeof targetCollectionId === "string" ? targetCollectionId : null,
     cardinality: getCardinalityFromConfig(config),
     enumOptions: normalizeEnumOptions(config?.options),
+    config: config,
   };
 }
 
@@ -113,6 +116,7 @@ export function useVariableFields(value?: string | null | UseVariableFieldsOptio
     () => collectionFactory.getCollection(),
     [collectionFactory],
   );
+  const getFieldUseCase = useMemo(() => collectionFactory.getField(), [collectionFactory]);
 
   useEffect(() => {
     const listFields = listFieldsUseCase;
@@ -174,8 +178,10 @@ export function useVariableFields(value?: string | null | UseVariableFieldsOptio
       metadataCache: Map<string, ResolvedFieldMetadata[]>,
       collectionMetaCache: Map<string, { name: string; description?: string }>,
       discoveredErrors: string[],
+      ancestorCollectionIds: string[] = [],
     ): Promise<VariableNode[]> => {
       if (currentDepth >= 5) return [];
+      const newAncestors = [...ancestorCollectionIds, targetCollectionId];
 
       const fields = await fetchFields(targetCollectionId, metadataCache, discoveredErrors);
       const collectionMeta = await fetchCollectionMeta(
@@ -183,10 +189,32 @@ export function useVariableFields(value?: string | null | UseVariableFieldsOptio
         collectionMetaCache,
         discoveredErrors,
       );
+
       const fieldNodes: VariableNode[] = [];
 
       for (const field of fields) {
         const fieldPath = currentPath ? `${currentPath}.${field.name}` : field.name;
+
+        // Cardinality inference for REVERSE_LOOKUP
+        let cardinality = field.cardinality;
+        if (field.fieldType === "REVERSE_LOOKUP") {
+          const config = field.config as { targetFieldId?: string } | undefined;
+          if (config?.targetFieldId) {
+            const fieldRes = await getFieldUseCase.execute(config.targetFieldId);
+            if (fieldRes.ok && fieldRes.value) {
+              const targetRelationType = fieldRes.value.config?.value?.relationType;
+              if (targetRelationType === "ONE_TO_ONE") {
+                cardinality = "ONE_TO_ONE";
+              } else if (targetRelationType === "ONE_TO_MANY") {
+                cardinality = "ONE_TO_ONE"; // Inverse of a plural is singular
+              } else if (targetRelationType === "MANY_TO_ONE") {
+                cardinality = "ONE_TO_MANY"; // Inverse of a singular many-to-one is a list
+              } else if (targetRelationType === "MANY_TO_MANY") {
+                cardinality = "MANY_TO_MANY";
+              }
+            }
+          }
+        }
 
         const node: VariableNode = {
           path: fieldPath,
@@ -195,24 +223,43 @@ export function useVariableFields(value?: string | null | UseVariableFieldsOptio
           collectionId: targetCollectionId,
           collectionName: collectionMeta?.name,
           collectionDescription: collectionMeta?.description,
-          cardinality: field.cardinality,
+          cardinality: cardinality,
           enumOptions: field.enumOptions,
           sampleValue: readPath(sampleRoot, fieldPath),
         };
 
-        if (field.fieldType === "RELATION" && field.targetCollectionId) {
-          const children = await resolveNodes(
-            field.targetCollectionId,
-            fieldPath,
-            currentDepth + 1,
-            sampleRoot,
-            metadataCache,
-            collectionMetaCache,
-            discoveredErrors,
-          );
+        const isRelation = field.fieldType === "RELATION" || field.fieldType === "REVERSE_LOOKUP";
 
-          if (children.length > 0) {
-            node.children = children;
+        if (isRelation && field.targetCollectionId) {
+          // Circular reference protection: don't recurse if target collection is an ancestor
+          const isCircular = ancestorCollectionIds.includes(field.targetCollectionId);
+
+          if (!isCircular) {
+            const children = await resolveNodes(
+              field.targetCollectionId,
+              fieldPath,
+              currentDepth + 1,
+              sampleRoot,
+              metadataCache,
+              collectionMetaCache,
+              discoveredErrors,
+              newAncestors,
+            );
+
+            if (children.length > 0) {
+              node.children = children;
+            }
+          } else {
+            // If circular, we still keep the node but without children (prevents infinite loop)
+            // The user also requested to NOT show the relation to the parent if it would recurse.
+            // But we keep it as a leaf node so the ID is available if needed,
+            // OR we can even skip it entirely if the user prefers.
+            // "menos a la relacion con el padre" -> Let's skip it if it's the direct parent.
+            const isDirectParent =
+              ancestorCollectionIds[ancestorCollectionIds.length - 1] === field.targetCollectionId;
+            if (isDirectParent) {
+              continue; // Skip this field
+            }
           }
         }
 
@@ -258,6 +305,7 @@ export function useVariableFields(value?: string | null | UseVariableFieldsOptio
         new Map<string, ResolvedFieldMetadata[]>(),
         new Map<string, { name: string; description?: string }>(),
         discoveredErrors,
+        [],
       );
 
       if (ignore) return;
@@ -275,6 +323,7 @@ export function useVariableFields(value?: string | null | UseVariableFieldsOptio
   }, [
     eagerLoadUseCase,
     getCollectionUseCase,
+    getFieldUseCase,
     listFieldsUseCase,
     options.collectionId,
     options.depth,

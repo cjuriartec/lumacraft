@@ -15,6 +15,8 @@ import {
   SyncFieldRelationsRequest,
   ValidateCardinalityRequest,
 } from "@/modules/collection/domain/types/relation.types";
+import { RecordDocument } from "@/modules/document/domain/entities/record-document.entity";
+import { IRecordDocumentRepository } from "@/modules/document/domain/ports/record-document-repository.port";
 import { Template } from "@/modules/template/domain/entities/template.entity";
 import { ITemplateRepository } from "@/modules/template/domain/ports/template-repository.port";
 import { Workspace } from "@/modules/workspace/domain/entities/workspace.entity";
@@ -160,6 +162,47 @@ export class InMemoryTemplateRepository implements ITemplateRepository {
     if (this.deleteResult) return this.deleteResult;
     this.items = this.items.filter((template) => template.id !== id);
     return ok(undefined);
+  });
+}
+
+export class InMemoryRecordDocumentRepository implements IRecordDocumentRepository {
+  constructor(public items: RecordDocument[] = []) {}
+
+  public findByTemplateAndRecordResult?: Result<RecordDocument | null, DomainError>;
+  public createResult?: Result<RecordDocument, DomainError>;
+  public updateResult?: Result<RecordDocument, DomainError>;
+
+  public findByTemplateAndRecord = vi.fn(async (templateId: string, recordId: string) => {
+    return (
+      this.findByTemplateAndRecordResult ??
+      ok(
+        this.items.find(
+          (document) => document.templateId === templateId && document.recordId === recordId,
+        ) ?? null,
+      )
+    );
+  });
+
+  public create = vi.fn(async (document: RecordDocument) => {
+    if (this.createResult) return this.createResult;
+    this.items.push(document);
+    return ok(document);
+  });
+
+  public update = vi.fn(async (document: RecordDocument, expectedVersion: number) => {
+    if (this.updateResult) return this.updateResult;
+
+    const existing = this.items.find((item) => item.id === document.id);
+    if (!existing) {
+      return fail(new DomainError("Record document not found", "DOCUMENT_NOT_FOUND"));
+    }
+
+    if (existing.version !== expectedVersion) {
+      return fail(new DomainError("Record document version conflict", "DOCUMENT_VERSION_CONFLICT"));
+    }
+
+    this.items = this.items.map((item) => (item.id === document.id ? document : item));
+    return ok(document);
   });
 }
 
@@ -343,6 +386,10 @@ export class InMemoryRecordRepository implements IRecordRepository {
     return ok(undefined);
   });
 
+  public deleteFieldData = vi.fn(async (_collectionId: string, _fieldName: string) => {
+    return ok(undefined);
+  });
+
   public count = vi.fn(async (collectionId: string) => {
     return (
       this.countResult ??
@@ -351,15 +398,21 @@ export class InMemoryRecordRepository implements IRecordRepository {
   });
 
   public findByFieldValue = vi.fn(
-    async (collectionId: string, fieldName: string, value: unknown) => {
+    async (collectionId: string, fieldName: string, value: unknown | unknown[]) => {
       if (this.findByFieldValueResult) return this.findByFieldValueResult;
 
       return ok(
-        this.items.filter(
-          (record) =>
-            record.collectionId === collectionId &&
-            String(record.data[fieldName]) === String(value),
-        ),
+        this.items.filter((record) => {
+          const isSameCollection = record.collectionId === collectionId;
+          const recordValue = record.data[fieldName];
+
+          if (Array.isArray(value)) {
+            const valuesSet = new Set(value.map((v) => String(v)));
+            return isSameCollection && valuesSet.has(String(recordValue));
+          }
+
+          return isSameCollection && String(recordValue) === String(value);
+        }),
       );
     },
   );

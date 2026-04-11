@@ -104,6 +104,11 @@ export class DataRecord extends BaseEntity {
       if (value !== undefined && value !== null) {
         const typeValue = field.fieldType.value;
 
+        if (typeValue === "REVERSE_LOOKUP") {
+          // Reverse lookups are computed virtually, skip direct validation
+          continue;
+        }
+
         if (typeValue === "NUMBER" && typeof value !== "number" && isNaN(Number(value))) {
           return fail(
             new DomainError(
@@ -140,7 +145,20 @@ export class DataRecord extends BaseEntity {
         }
 
         if (typeValue === "RELATION") {
-          if (Array.isArray(value)) {
+          const relationConfig = field.config?.value as { relationType?: string } | undefined;
+          const relationType = relationConfig?.relationType;
+          const isPlural = relationType === "ONE_TO_MANY" || relationType === "MANY_TO_MANY";
+          const isSingular = relationType === "ONE_TO_ONE" || relationType === "MANY_TO_ONE";
+
+          if (isPlural) {
+            if (!Array.isArray(value)) {
+              return fail(
+                new DomainError(
+                  `Field ${field.displayName || field.name} requires an array of UUIDs for ${relationType}`,
+                  "INVALID_RELATION_VALUE",
+                ),
+              );
+            }
             if (!value.every(isUuid)) {
               return fail(
                 new DomainError(
@@ -149,13 +167,34 @@ export class DataRecord extends BaseEntity {
                 ),
               );
             }
-          } else if (!isUuid(value)) {
-            return fail(
-              new DomainError(
-                `Field ${field.displayName || field.name} must be a relation UUID`,
-                "INVALID_RELATION_VALUE",
-              ),
-            );
+          } else if (isSingular) {
+            if (Array.isArray(value) || !isUuid(value)) {
+              return fail(
+                new DomainError(
+                  `Field ${field.displayName || field.name} requires a single UUID string for ${relationType}`,
+                  "INVALID_RELATION_VALUE",
+                ),
+              );
+            }
+          } else {
+            // Fallback if relation type is missing or malformed
+            if (Array.isArray(value)) {
+              if (!value.every(isUuid)) {
+                return fail(
+                  new DomainError(
+                    `Field ${field.displayName || field.name} must contain valid relation UUIDs`,
+                    "INVALID_RELATION_VALUE",
+                  ),
+                );
+              }
+            } else if (!isUuid(value)) {
+              return fail(
+                new DomainError(
+                  `Field ${field.displayName || field.name} must be a relation UUID`,
+                  "INVALID_RELATION_VALUE",
+                ),
+              );
+            }
           }
         }
 

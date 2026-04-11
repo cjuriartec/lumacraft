@@ -3,6 +3,8 @@ import type { SlateElementProps } from "platejs/static";
 import { SlateElement } from "platejs/static";
 import * as React from "react";
 
+import { resolveDocumentFontFamily } from "@/shared/lib/document-typography";
+
 const headingVariants = cva("relative mb-1", {
   variants: {
     variant: {
@@ -21,10 +23,23 @@ export function HeadingElementStatic({
   ...props
 }: SlateElementProps & VariantProps<typeof headingVariants>) {
   const id = props.element.id as string | undefined;
+  const fontFamily =
+    typeof props.element.fontFamily === "string"
+      ? resolveDocumentFontFamily("web", props.element.fontFamily)
+      : undefined;
+  const mergedStyle = {
+    ...(props.attributes.style as React.CSSProperties | undefined),
+    ...(fontFamily ? { fontFamily } : {}),
+  };
 
   return (
-    <SlateElement as={variant!} className={headingVariants({ variant })} {...props}>
-      {/* Bookmark anchor for DOCX TOC internal links */}
+    <SlateElement
+      as={variant!}
+      className={headingVariants({ variant })}
+      style={mergedStyle}
+      {...props}
+    >
+      {/* Bookmark anchor for generated document internal links */}
       {id && <span id={id} />}
       {props.children}
     </SlateElement>

@@ -84,8 +84,8 @@ export class SupabaseRecordRepository extends BaseRepository implements IRecordR
     return ok(this.toEntity(data));
   }
 
-  public async create(record: DataRecord): Promise<Result<DataRecord>> {
-    const persistence = this.toPersistence(record);
+  public async create(record: DataRecord, omitFields?: string[]): Promise<Result<DataRecord>> {
+    const persistence = this.toPersistence(record, omitFields);
     const { data, error } = await this.table.insert(persistence).select().single();
 
     if (error) return fail(new DomainError(error.message, "DB_ERROR"));
@@ -93,8 +93,8 @@ export class SupabaseRecordRepository extends BaseRepository implements IRecordR
     return ok(this.toEntity(data));
   }
 
-  public async update(record: DataRecord): Promise<Result<DataRecord>> {
-    const persistence = this.toPersistence(record);
+  public async update(record: DataRecord, omitFields?: string[]): Promise<Result<DataRecord>> {
+    const persistence = this.toPersistence(record, omitFields);
     const { data, error } = await this.table
       .update(persistence)
       .eq("id", record.id)
@@ -112,6 +112,16 @@ export class SupabaseRecordRepository extends BaseRepository implements IRecordR
     return ok(undefined);
   }
 
+  public async deleteFieldData(collectionId: string, fieldName: string): Promise<Result<void>> {
+    const { error: rpcError } = await this.supabase.rpc("purge_field_data", {
+      p_collection_id: collectionId,
+      p_field_name: fieldName,
+    });
+
+    if (rpcError) return fail(new DomainError(rpcError.message, "DB_ERROR"));
+    return ok(undefined);
+  }
+
   public async count(collectionId: string): Promise<Result<number>> {
     const { count, error } = await this.table
       .select("*", { count: "exact", head: true })
@@ -124,12 +134,18 @@ export class SupabaseRecordRepository extends BaseRepository implements IRecordR
   public async findByFieldValue(
     collectionId: string,
     fieldName: string,
-    value: unknown,
+    value: unknown | unknown[],
   ): Promise<Result<DataRecord[]>> {
-    const { data, error } = await this.table
-      .select("*")
-      .eq("collection_id", collectionId)
-      .filter(`data->>${fieldName}`, "eq", String(value));
+    let query = this.table.select("*").eq("collection_id", collectionId);
+
+    if (Array.isArray(value)) {
+      const valuesString = `(${value.map((v) => String(v)).join(",")})`;
+      query = query.filter(`data->>${fieldName}`, "in", valuesString);
+    } else {
+      query = query.filter(`data->>${fieldName}`, "eq", String(value));
+    }
+
+    const { data, error } = await query;
 
     if (error) return fail(new DomainError(error.message, "DB_ERROR"));
     return ok(((data as Record<string, unknown>[]) || []).map((item) => this.toEntity(item)));
@@ -208,13 +224,21 @@ export class SupabaseRecordRepository extends BaseRepository implements IRecordR
     });
   }
 
-  private toPersistence(record: DataRecord) {
+  private toPersistence(record: DataRecord, omitFields?: string[]) {
     const json = record.toJSON();
+    const data = { ...json.data };
+
+    if (omitFields && omitFields.length > 0) {
+      for (const field of omitFields) {
+        delete data[field];
+      }
+    }
+
     return {
       id: json.id,
       collection_id: json.collectionId,
       account_id: json.accountId,
-      data: json.data,
+      data,
       created_by: json.createdBy,
       updated_by: json.updatedBy,
       updated_at: new Date().toISOString(),

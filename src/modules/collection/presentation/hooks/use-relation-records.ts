@@ -31,6 +31,7 @@ export function useRelationRecords() {
 
   const listUseCase = useMemo(() => factory.listRecords(), [factory]);
   const getCollectionUseCase = useMemo(() => factory.getCollection(), [factory]);
+  const resolveReverseLookupUseCase = useMemo(() => factory.resolveReverseLookup(), [factory]);
 
   const resolveLabel = (record: DataRecord, displayField?: string | null): string => {
     // 1. Try specified display field
@@ -175,6 +176,49 @@ export function useRelationRecords() {
     [currentWorkspace, getCollectionUseCase, listUseCase],
   );
 
+  const findReverseRelations = useCallback(
+    async (field: Field, sourceRecordId: string) => {
+      if (!currentWorkspace || !sourceRecordId) return [];
+
+      const config =
+        (field.config?.value as {
+          targetFieldId?: string;
+          targetCollectionId?: string;
+        }) ?? {};
+      if (!config.targetFieldId || !config.targetCollectionId) return [];
+
+      setLoading((prev) => ({ ...prev, [field.name]: true }));
+
+      try {
+        const res = await resolveReverseLookupUseCase.execute({
+          targetFieldId: config.targetFieldId,
+          targetCollectionId: config.targetCollectionId,
+          sourceRecordIds: [sourceRecordId],
+        });
+
+        if (res.ok) {
+          const records = res.value[sourceRecordId] || [];
+
+          // Also need to get primary field for labels
+          const collRes = await getCollectionUseCase.execute(config.targetCollectionId);
+          const primaryField = collRes.ok ? collRes.value?.primaryFieldName : null;
+
+          const mapped = records.map((record) => ({
+            id: record.id,
+            label: resolveLabel(record, primaryField),
+          }));
+
+          setOptions((prev) => ({ ...prev, [field.name]: mapped }));
+          return mapped;
+        }
+      } finally {
+        setLoading((prev) => ({ ...prev, [field.name]: false }));
+      }
+      return [];
+    },
+    [currentWorkspace, getCollectionUseCase, resolveReverseLookupUseCase],
+  );
+
   return useMemo(
     () => ({
       options,
@@ -182,7 +226,15 @@ export function useRelationRecords() {
       searchRelations,
       fetchOptionsByIds,
       fetchBatchOptionsByIds,
+      findReverseRelations,
     }),
-    [options, loading, searchRelations, fetchOptionsByIds, fetchBatchOptionsByIds],
+    [
+      options,
+      loading,
+      searchRelations,
+      fetchOptionsByIds,
+      fetchBatchOptionsByIds,
+      findReverseRelations,
+    ],
   );
 }

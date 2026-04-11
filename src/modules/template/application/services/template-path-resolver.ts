@@ -1,6 +1,6 @@
 import { TemplateRuntimeScope } from "../../domain/types/template-runtime-context";
 
-const TOKEN_REGEX = /\{\{\s*([a-zA-Z0-9_.\[\]-]+)\s*\}\}/g;
+const TOKEN_REGEX = /\{\{\s*([^{}\s]+)\s*\}\}/g;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);

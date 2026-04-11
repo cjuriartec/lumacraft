@@ -36,6 +36,8 @@ const recordsState = vi.hoisted(() => ({
   setSearchFields: vi.fn(),
   setFilters: vi.fn(),
   setPagination: vi.fn(),
+  reverseLookupResults: {},
+  resolveReverseLookups: vi.fn(),
 }));
 
 const collectionsState = vi.hoisted(() => ({

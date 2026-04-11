@@ -35,15 +35,27 @@ interface VariableSelectorProps {
   disabled?: boolean;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  hideIterables?: boolean;
 }
 
-const filterNodes = (nodes: VariableNode[], query: string): VariableNode[] => {
+const filterNodes = (
+  nodes: VariableNode[],
+  query: string,
+  hideIterables: boolean,
+): VariableNode[] => {
   return nodes.reduce((acc: VariableNode[], node) => {
+    if (
+      hideIterables &&
+      (node.cardinality === "ONE_TO_MANY" || node.cardinality === "MANY_TO_MANY")
+    ) {
+      return acc;
+    }
+
     const matches =
       node.displayName.toLowerCase().includes(query.toLowerCase()) ||
       node.path.toLowerCase().includes(query.toLowerCase());
 
-    const filteredChildren = node.children ? filterNodes(node.children, query) : [];
+    const filteredChildren = node.children ? filterNodes(node.children, query, hideIterables) : [];
 
     if (matches || filteredChildren.length > 0) {
       acc.push({
@@ -66,6 +78,7 @@ export function VariableSelector({
   disabled,
   open: controlledOpen,
   onOpenChange,
+  hideIterables = true,
 }: VariableSelectorProps) {
   const { nodes: hookNodes, loading: hookLoading } = useVariableFields(
     providedNodes ? undefined : { collectionId, recordId, depth },
@@ -89,9 +102,8 @@ export function VariableSelector({
   const listContainerRef = React.useRef<HTMLDivElement>(null);
 
   const filteredNodes = React.useMemo(() => {
-    if (!searchTerm) return nodes;
-    return filterNodes(nodes, searchTerm);
-  }, [nodes, searchTerm]);
+    return filterNodes(nodes, searchTerm || "", hideIterables);
+  }, [nodes, searchTerm, hideIterables]);
 
   const getVisibleItems = React.useCallback(() => {
     if (!listContainerRef.current) return [];
@@ -278,6 +290,7 @@ function NodeItem({
       case "BOOLEAN":
         return <CheckCircle2 size={14} />;
       case "RELATION":
+      case "REVERSE_LOOKUP":
         return <Database size={14} />;
       case "IMAGE":
         return <ImageIcon size={14} />;
@@ -286,12 +299,14 @@ function NodeItem({
     }
   };
 
+  const isRelational = node.fieldType === "RELATION" || node.fieldType === "REVERSE_LOOKUP";
+
   return (
     <div>
       <button
         data-variable-item="true"
         onClick={() => {
-          if (node.fieldType !== "RELATION") {
+          if (!isRelational) {
             onSelect(node);
           } else {
             setExpanded(!expanded);
@@ -299,7 +314,7 @@ function NodeItem({
         }}
         className={cn(
           "group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-surface-hover/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/40",
-          node.fieldType === "RELATION" ? "text-foreground/70" : "text-foreground",
+          isRelational ? "text-foreground/70" : "text-foreground",
         )}
         style={{ paddingLeft: `${level * 12 + 8}px` }}
       >
@@ -312,7 +327,7 @@ function NodeItem({
         {!hasChildren && <div className="w-3.5 shrink-0" />}
         <span className="text-primary/60 shrink-0">{getIcon(node.fieldType)}</span>
         <span className="truncate flex-1">{node.displayName}</span>
-        {node.fieldType !== "RELATION" && (
+        {!isRelational && (
           <span className="text-[10px] text-muted opacity-0 group-hover:opacity-100 transition-opacity">
             Insertar
           </span>

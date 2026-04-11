@@ -10,6 +10,7 @@ const VALID_FIELD_TYPES = [
   "FILE",
   "IMAGE",
   "LOCATION",
+  "REVERSE_LOOKUP",
 ] as const;
 
 export type FieldTypeValue = (typeof VALID_FIELD_TYPES)[number];

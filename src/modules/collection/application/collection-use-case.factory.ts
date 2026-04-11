@@ -17,11 +17,13 @@ import { DownloadFileUseCase } from "./use-cases/download-file.use-case";
 import { EagerLoadRecordUseCase } from "./use-cases/eager-load-record.use-case";
 import { DeleteFileUseCase, UploadFileUseCase } from "./use-cases/file-mgmt.use-case";
 import { GetCollectionUseCase } from "./use-cases/get-collection.use-case";
+import { GetFieldUseCase } from "./use-cases/get-field.use-case";
 import { ListCollectionsUseCase } from "./use-cases/list-collections.use-case";
 import { ListFieldsUseCase } from "./use-cases/list-fields.use-case";
 import { ListRecordsUseCase } from "./use-cases/list-records.use-case";
 import { PersistGridFiltersUseCase } from "./use-cases/persist-grid-filters.use-case";
 import { ReorderFieldsUseCase } from "./use-cases/reorder-fields.use-case";
+import { ResolveReverseLookupUseCase } from "./use-cases/resolve-reverse-lookup.use-case";
 import { UpdateCollectionUseCase } from "./use-cases/update-collection.use-case";
 import { UpdateFieldUseCase } from "./use-cases/update-field.use-case";
 import { UpdateRecordUseCase } from "./use-cases/update-record.use-case";
@@ -90,11 +92,15 @@ class CollectionUseCaseFactoryImpl {
   }
 
   public deleteField() {
-    return new DeleteFieldUseCase(this.repositories.field);
+    return new DeleteFieldUseCase(this.repositories.field, this.repositories.record);
   }
 
   public reorderFields() {
     return new ReorderFieldsUseCase(this.repositories.field);
+  }
+
+  public getField() {
+    return new GetFieldUseCase(this.repositories.field);
   }
 
   // --- Records ---
@@ -141,5 +147,9 @@ class CollectionUseCaseFactoryImpl {
 
   public persistGridFilters() {
     return new PersistGridFiltersUseCase(this.repositories.gridState);
+  }
+
+  public resolveReverseLookup() {
+    return new ResolveReverseLookupUseCase(this.repositories.field, this.repositories.record);
   }
 }
