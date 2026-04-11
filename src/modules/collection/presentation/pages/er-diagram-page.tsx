@@ -70,13 +70,17 @@ export default function ERDiagramPage() {
         position: { x: col * 350, y: row * 400 },
         data: {
           collection,
-          fields: fields.filter((f) => f.collectionId === collection.id),
+          fields: fields.filter(
+            (f) => f.collectionId === collection.id && f.fieldType.toString() !== "REVERSE_LOOKUP",
+          ),
         },
       });
     });
 
     // 2. Create Edges
     fields.forEach((field) => {
+      if (field.fieldType.toString() === "REVERSE_LOOKUP") return;
+
       const config = field.config?.value as {
         targetCollectionId?: string;
         relationType?: string;
@@ -99,22 +103,6 @@ export default function ERDiagramPage() {
           labelStyle,
           animated: true,
           style: { stroke: "var(--primary)", strokeWidth: 1, opacity: 0.4 },
-          markerEnd: {
-            type: MarkerType.ArrowClosed,
-            color: "var(--primary)",
-          },
-        });
-      }
-
-      if (field.fieldType.toString() === "REVERSE_LOOKUP" && config?.targetCollectionId) {
-        initialEdges.push({
-          id: `edge-${field.id}`,
-          source: field.collectionId,
-          target: config.targetCollectionId,
-          sourceHandle: field.id,
-          label: "Búsqueda inversa",
-          labelStyle,
-          style: { stroke: "var(--primary)", strokeWidth: 1, strokeDasharray: "5,5", opacity: 0.4 },
           markerEnd: {
             type: MarkerType.ArrowClosed,
             color: "var(--primary)",
@@ -184,7 +172,7 @@ export default function ERDiagramPage() {
   return (
     <div className="flex flex-col h-full bg-background text-foreground overflow-hidden animate-in fade-in duration-700">
       {/* Header Block */}
-      <div className="px-8 py-6">
+      <div className="px-8 py-2">
         <div className="flex items-center gap-3 mb-1">
           <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
             <Share2 size={18} />
@@ -201,7 +189,7 @@ export default function ERDiagramPage() {
       </div>
 
       {/* Diagram Area */}
-      <div className="flex-1 relative bg-background">
+      <div className="flex-1 relative bg-background px-4 py-2 mb-2">
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -209,6 +197,7 @@ export default function ERDiagramPage() {
           onEdgesChange={onEdgesChange}
           nodeTypes={nodeTypes}
           fitView
+          className="rounded-xl"
           colorMode={theme === "system" ? "system" : isDark ? "dark" : "light"}
         >
           <Background color="var(--border)" gap={20} size={1} />
