@@ -261,6 +261,7 @@ export default function RecordDocumentEditorPage({
                   size="sm"
                   className="h-9 gap-2 cursor-pointer"
                   onClick={() => window.open(pdfUrl, "_blank", "noopener")}
+                  aria-label="Descargar PDF"
                 >
                   <Download size={14} />
                 </Button>

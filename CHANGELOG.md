@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.4](https://github.com/cjuriartec/lumacraft/compare/v0.1.3...v0.1.4) (2026-04-11)
+
+
+### ✨ Features
+
+* add AI fallback configuration fields and dynamically inject app version from package.json ([0c7778a](https://github.com/cjuriartec/lumacraft/commit/0c7778a16baf31d4d2335afa07bc304f2fe10d84))
+* add font family selection support and A4 document preview styling ([91ec79b](https://github.com/cjuriartec/lumacraft/commit/91ec79bbeef6c23065b434ebbf508b5768de2b68))
+* **collection:** add GetFieldUseCase and support REVERSE_LOOKUP fields in template variables ([5dfd343](https://github.com/cjuriartec/lumacraft/commit/5dfd343c68e6a353e556a6599c9938fc3de77155))
+* implement document management system including template compilation, PDF export ([94b0a4c](https://github.com/cjuriartec/lumacraft/commit/94b0a4c74207303fa9bcd41f3cd53b317429c386))
+* implement optimistic concurrency control and request queuing for document auto-saves ([7f22c0b](https://github.com/cjuriartec/lumacraft/commit/7f22c0b35c94a1c8b49acf837a1a2e0d7536ba23))
+* implement reverse lookup field type with bidirectional relationship support ([a99c3bf](https://github.com/cjuriartec/lumacraft/commit/a99c3bfba80e8dbd5a6cb07ac348e7363663fc64))
+* implement Supabase eager loading repository and add template path resolver unit tests ([4b988bd](https://github.com/cjuriartec/lumacraft/commit/4b988bd6eacaf2429e9323d537c64c82dc6872a6))
+* implement Supabase eager loading repository and add template variable management UI components ([86168e9](https://github.com/cjuriartec/lumacraft/commit/86168e9e060d73143c033d7950b5140a747b5caa))
+* remove legacy document format enum, add static heading components, and verify export modal UI ([b3f17da](https://github.com/cjuriartec/lumacraft/commit/b3f17da33605665a4aa9eaf82ccbd10a5ef068a2))
+
+
+### 🐛 Bug Fixes
+
+* lineHeight corrected ([4c1f2b2](https://github.com/cjuriartec/lumacraft/commit/4c1f2b2230b0496d5f255593a5f175247f87571e))
+* **ui:** update document editor tests and add accessibility labels ([8b6a19e](https://github.com/cjuriartec/lumacraft/commit/8b6a19ee07a10bfa8caf3b4604c24a1be5a33a78))
+
 ### [0.1.3](https://github.com/cjuriartec/lumacraft/compare/v0.1.2...v0.1.3) (2026-04-09)
 
 
