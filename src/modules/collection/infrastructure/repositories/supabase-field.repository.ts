@@ -31,6 +31,26 @@ export class SupabaseFieldRepository extends BaseRepository implements IFieldRep
     return ok(entities);
   }
 
+  public async findByAccountId(accountId: string): Promise<Result<Field[]>> {
+    // We join with collections to filter by account_id
+    const { data, error } = await this.supabase
+      .from("fields")
+      .select("*, collections!inner(account_id)")
+      .eq("collections.account_id", accountId)
+      .order("sort_order", { ascending: true });
+
+    if (error) return fail(new DomainError(error.message, "DB_ERROR"));
+
+    const entities: Field[] = [];
+    for (const item of data as Record<string, unknown>[]) {
+      const entityRes = this.toEntity(item);
+      if (!entityRes.ok) return fail(entityRes.error);
+      entities.push(entityRes.value);
+    }
+
+    return ok(entities);
+  }
+
   public async findById(id: string): Promise<Result<Field | null>> {
     const { data, error } = await this.table.select("*").eq("id", id).single();
 
