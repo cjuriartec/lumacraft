@@ -1,7 +1,9 @@
 import { vi } from "vitest";
 
 import { User } from "@/modules/auth/domain/entities/user.entity";
+import { UserProfile } from "@/modules/auth/domain/entities/user-profile.entity";
 import { IAuthProvider } from "@/modules/auth/domain/ports/auth-provider.port";
+import { IUserProfileRepository } from "@/modules/auth/domain/ports/user-profile-repository.port";
 import { Collection } from "@/modules/collection/domain/entities/collection.entity";
 import { Field } from "@/modules/collection/domain/entities/field.entity";
 import { DataRecord } from "@/modules/collection/domain/entities/record.entity";
@@ -497,6 +499,28 @@ export class InMemoryRelationRepository implements IRelationRepository {
     }));
 
     this.items = [...base, ...next];
+    return ok(undefined);
+  });
+}
+
+export class InMemoryUserProfileRepository implements IUserProfileRepository {
+  constructor(public items: UserProfile[] = []) {}
+
+  public findByIdResult?: Result<UserProfile>;
+  public saveResult?: Result<void>;
+
+  public findById = vi.fn(async (userId: string) => {
+    if (this.findByIdResult) return this.findByIdResult;
+    const item = this.items.find((i) => i.id === userId);
+    return item ? ok(item) : UserProfile.create({ id: userId });
+  });
+
+  public save = vi.fn(async (profile: UserProfile) => {
+    if (this.saveResult) return this.saveResult;
+    this.items = this.items.map((i) => (i.id === profile.id ? profile : i));
+    if (!this.items.find((i) => i.id === profile.id)) {
+      this.items.push(profile);
+    }
     return ok(undefined);
   });
 }

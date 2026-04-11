@@ -8,8 +8,8 @@ import { createClient } from "@/shared/infrastructure/supabase/client";
 export class SupabaseUserProfileRepository implements IUserProfileRepository {
   private supabase: SupabaseClient;
 
-  constructor() {
-    this.supabase = createClient();
+  constructor(client?: SupabaseClient) {
+    this.supabase = client ?? createClient();
   }
 
   public async findById(userId: string): Promise<Result<UserProfile>> {
@@ -20,9 +20,13 @@ export class SupabaseUserProfileRepository implements IUserProfileRepository {
       .single();
 
     if (error) {
-      // If not found, it might be that the trigger hasn't run or something.
-      // We return a default profile.
-      if (error.code === "PGRST116") {
+      // PGRST116: JSON object not found (row doesn't exist)
+      // Any code containing "schema cache" or table name issues: Table doesn't exist yet
+      const isMissingTable =
+        error.message.toLowerCase().includes("user_profiles") &&
+        error.message.toLowerCase().includes("schema cache");
+
+      if (error.code === "PGRST116" || isMissingTable) {
         return UserProfile.create({ id: userId });
       }
       return fail(new DomainError(error.message, "DATABASE_ERROR"));

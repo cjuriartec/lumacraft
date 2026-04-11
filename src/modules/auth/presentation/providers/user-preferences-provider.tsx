@@ -1,7 +1,7 @@
 "use client";
 
 import { useTheme } from "next-themes";
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { GetUserPreferencesUseCase } from "@/modules/auth/application/use-cases/get-user-preferences.use-case";
 import { UpdateUserPreferencesUseCase } from "@/modules/auth/application/use-cases/update-user-preferences.use-case";
@@ -24,6 +24,7 @@ export function UserPreferencesProvider({ children }: { children: React.ReactNod
   const { user } = useAuth();
   const { setTheme: setNextTheme, theme: nextTheme } = useTheme();
   const [isCollapsed, setIsCollapsed] = useState(true);
+  const hasSynced = useRef(false);
 
   const repo = useMemo(() => new SupabaseUserProfileRepository(), []);
   const getPrefsUseCase = useMemo(() => new GetUserPreferencesUseCase(repo), [repo]);
@@ -31,19 +32,23 @@ export function UserPreferencesProvider({ children }: { children: React.ReactNod
 
   // Load preferences from server
   useEffect(() => {
-    if (!user) return;
+    if (!user || hasSynced.current) return;
 
     const load = async () => {
       const res = await getPrefsUseCase.execute(user.id);
       if (res.ok) {
         setIsCollapsed(res.value.sidebarCollapsed);
-        if (res.value.theme) {
+
+        // Only update theme if it differs from current next-themes state
+        // and we haven't synced yet in this session
+        if (res.value.theme && res.value.theme !== nextTheme) {
           setNextTheme(res.value.theme as string);
         }
+        hasSynced.current = true;
       }
     };
     load();
-  }, [user, getPrefsUseCase, setNextTheme]);
+  }, [user, getPrefsUseCase, setNextTheme, nextTheme]);
 
   const updateServerPreference = async (prefs: {
     sidebarCollapsed?: boolean;
