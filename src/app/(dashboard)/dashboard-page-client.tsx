@@ -1,13 +1,16 @@
 "use client";
 
-import { ArrowRight, Database, FileText, Sparkles, TrendingUp, Zap } from "lucide-react";
+import { ArrowRight, Database, FileText, Sparkles, TrendingUp } from "lucide-react";
 import Link from "next/link";
 
 import { useAuth } from "@/modules/auth/presentation/providers/auth-provider";
 import { useBreadcrumbs } from "@/shared/presentation/providers/breadcrumb-provider";
 
+import { useDashboardStats } from "./use-dashboard-stats";
+
 export default function DashboardPageClient() {
   const { user } = useAuth();
+  const { stats, loading: statsLoading } = useDashboardStats();
   useBreadcrumbs([{ label: "Inicio" }]);
   const firstName = user?.fullName?.split(" ")[0] || "de nuevo";
 
@@ -26,11 +29,21 @@ export default function DashboardPageClient() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-12">
-        <StatCard title="Colecciones" value="0" icon={<Database size={18} />} trend="Esta semana" />
-        <StatCard title="Registros Totales" value="0" icon={<TrendingUp size={18} />} trend="Hoy" />
+        <StatCard
+          title="Colecciones"
+          value={statsLoading ? "..." : stats.collectionsCount.toString()}
+          icon={<Database size={18} />}
+          trend="Esta semana"
+        />
+        <StatCard
+          title="Registros Totales"
+          value={statsLoading ? "..." : stats.recordsCount.toString()}
+          icon={<TrendingUp size={18} />}
+          trend="Hoy"
+        />
         <StatCard
           title="Plantillas Activas"
-          value="0"
+          value={statsLoading ? "..." : stats.templatesCount.toString()}
           icon={<FileText size={18} />}
           trend="Este mes"
         />
@@ -40,20 +53,13 @@ export default function DashboardPageClient() {
         <p className="text-[11px] font-semibold uppercase tracking-[0.12em] mb-4 text-foreground/60">
           Acciones rápidas
         </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4">
           <QuickAction
             href="/collections"
             icon={<Database size={20} />}
-            title="Crear Colección"
-            description="Define una nueva tabla dinámica para organizar tus datos de forma estructurada."
+            title="Ir a Colecciones"
+            description="Gestiona tus tablas de datos, configura campos y administra tus plantillas personalizadas."
             badge="Motor de Datos"
-          />
-          <QuickAction
-            href="/collections"
-            icon={<FileText size={20} />}
-            title="Gestionar Plantillas"
-            description="Las plantillas viven dentro de cada colección para mantener el flujo de datos organizado."
-            badge="Plantillas"
           />
         </div>
       </div>
@@ -63,9 +69,9 @@ export default function DashboardPageClient() {
 
         <div className="relative z-10">
           <div className="flex items-center gap-2 mb-4">
-            <Zap size={14} className="text-primary" />
+            <Sparkles size={14} className="text-primary" />
             <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-primary">
-              Próximamente
+              Motor Activo
             </span>
           </div>
           <h2 className="text-2xl font-bold mb-2 text-foreground tracking-[-0.015em]">

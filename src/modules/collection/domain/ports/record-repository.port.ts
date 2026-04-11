@@ -14,6 +14,7 @@ export interface IRecordRepository {
   delete(id: string): Promise<Result<void>>;
   deleteFieldData(collectionId: string, fieldName: string): Promise<Result<void>>;
   count(collectionId: string): Promise<Result<number>>;
+  countAll(accountId: string): Promise<Result<number>>;
   findByFieldValue(
     collectionId: string,
     fieldName: string,

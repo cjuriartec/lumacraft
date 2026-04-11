@@ -84,6 +84,15 @@ export class SupabaseCollectionRepository extends BaseRepository implements ICol
     return ok(undefined);
   }
 
+  public async count(accountId: string): Promise<Result<number>> {
+    const { count, error } = await this.table
+      .select("*", { count: "exact", head: true })
+      .eq("account_id", accountId);
+
+    if (error) return fail(new DomainError(error.message, "DB_ERROR"));
+    return ok(count || 0);
+  }
+
   private toEntity(data: Record<string, unknown>): Collection {
     const result = Collection.create({
       id: data.id as string,

@@ -131,6 +131,15 @@ export class SupabaseRecordRepository extends BaseRepository implements IRecordR
     return ok(count || 0);
   }
 
+  public async countAll(accountId: string): Promise<Result<number>> {
+    const { count, error } = await this.table
+      .select("*", { count: "exact", head: true })
+      .eq("account_id", accountId);
+
+    if (error) return fail(new DomainError(error.message, "DB_ERROR"));
+    return ok(count || 0);
+  }
+
   public async findByFieldValue(
     collectionId: string,
     fieldName: string,

@@ -8,4 +8,5 @@ export interface ICollectionRepository {
   create(collection: Collection): Promise<Result<Collection>>;
   update(collection: Collection): Promise<Result<Collection>>;
   delete(id: string): Promise<Result<void>>;
+  count(accountId: string): Promise<Result<number>>;
 }

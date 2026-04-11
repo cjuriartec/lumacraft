@@ -114,6 +114,15 @@ export class SupabaseTemplateRepository extends BaseRepository implements ITempl
     return ok(undefined);
   }
 
+  public async count(accountId: string): Promise<Result<number>> {
+    const { count, error } = await this.table
+      .select("*", { count: "exact", head: true })
+      .eq("account_id", accountId);
+
+    if (error) return fail(new DomainError(error.message, "DB_ERROR"));
+    return ok(count || 0);
+  }
+
   private toEntityResult(data: TemplateRow): Result<Template> {
     if (!isTemplateBlocks(data.blocks)) {
       return fail(new DomainError("Invalid template blocks payload", "DATA_INTEGRITY_ERROR"));
