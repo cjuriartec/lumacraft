@@ -2,7 +2,6 @@
 
 import {
   ChevronRight,
-  Database,
   LayoutDashboard,
   PanelLeft,
   Settings,
@@ -18,6 +17,10 @@ import AuthGuard from "@/modules/auth/presentation/components/auth-guard";
 import UserMenu from "@/modules/auth/presentation/components/user-menu";
 import AuthProvider from "@/modules/auth/presentation/providers/auth-provider";
 import {
+  UserPreferencesProvider,
+  useUserPreferences as useSidebarPreferences,
+} from "@/modules/auth/presentation/providers/user-preferences-provider";
+import {
   PermissionProvider,
   usePermissions,
 } from "@/modules/authorization/presentation/providers/permission-provider";
@@ -25,12 +28,21 @@ import { WorkspaceSwitcher } from "@/modules/workspace/presentation/components/w
 import WorkspaceProvider from "@/modules/workspace/presentation/providers/workspace-provider";
 import { getMissingPublicSupabaseEnv } from "@/shared/infrastructure/supabase/env";
 import SupabaseConfigMissingState from "@/shared/presentation/components/supabase-config-missing-state";
+import { TooltipProvider } from "@/shared/presentation/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/shared/presentation/components/ui/tooltip";
+import { useMediaQuery } from "@/shared/presentation/hooks/use-media-query";
 import {
   BreadcrumbItem,
   BreadcrumbProvider,
   useBreadcrumbItems,
 } from "@/shared/presentation/providers/breadcrumb-provider";
 import SupabaseProvider from "@/shared/presentation/providers/supabase-provider";
+
+import { SidebarCollections } from "../../modules/collection/presentation/components/sidebar-collections";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -43,63 +55,77 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <SupabaseProvider>
       <AuthProvider>
-        <WorkspaceProvider>
-          <AuthGuard>
-            <BreadcrumbProvider>
-              <PermissionProvider>
-                <div className="flex h-screen overflow-hidden bg-background text-foreground">
-                  {/* Mobile overlay */}
-                  {sidebarOpen && (
-                    <div
-                      className="fixed inset-0 bg-black/60 z-30 lg:hidden"
-                      onClick={() => setSidebarOpen(false)}
-                    />
-                  )}
-
-                  {/* Sidebar */}
-                  <aside
-                    className={`fixed lg:static inset-y-0 left-0 z-40 flex flex-col w-60 transition-transform duration-300 ease-out lg:translate-x-0 bg-sidebar ${
-                      sidebarOpen ? "translate-x-0" : "-translate-x-full"
-                    }`}
-                  >
-                    {/* Brand + Workspace Switcher */}
-                    <div className="px-3 py-4">
-                      <WorkspaceSwitcher />
-                    </div>
-
-                    {/* Nav */}
-                    <SidebarNav setSidebarOpen={setSidebarOpen} />
-                  </aside>
-
-                  {/* Main Content */}
-                  <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-                    {/* Header */}
-                    <header className="h-14 flex items-center justify-between px-6 shrink-0 bg-background">
-                      <div className="flex items-center gap-3">
-                        <button
-                          className="lg:hidden p-1.5 rounded-lg transition-colors text-foreground/70 hover:bg-surface"
-                          onClick={() => setSidebarOpen(true)}
-                        >
-                          <PanelLeft size={18} />
-                        </button>
-                        <Breadcrumb />
-                      </div>
-
-                      <div className="flex items-center gap-3">
-                        <UserMenu />
-                      </div>
-                    </header>
-
-                    {/* Page Body */}
-                    <main className="flex-1 overflow-y-auto bg-background">{children}</main>
-                  </div>
-                </div>
-              </PermissionProvider>
-            </BreadcrumbProvider>
-          </AuthGuard>
-        </WorkspaceProvider>
+        <UserPreferencesProvider>
+          <WorkspaceProvider>
+            <AuthGuard>
+              <BreadcrumbProvider>
+                <PermissionProvider>
+                  <TooltipProvider delayDuration={0}>
+                    <DashboardContent sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen}>
+                      {children}
+                    </DashboardContent>
+                  </TooltipProvider>
+                </PermissionProvider>
+              </BreadcrumbProvider>
+            </AuthGuard>
+          </WorkspaceProvider>
+        </UserPreferencesProvider>
       </AuthProvider>
     </SupabaseProvider>
+  );
+}
+
+function DashboardContent({
+  children,
+  sidebarOpen,
+  setSidebarOpen,
+}: {
+  children: React.ReactNode;
+  sidebarOpen: boolean;
+  setSidebarOpen: (o: boolean) => void;
+}) {
+  return (
+    <div className="flex h-screen overflow-hidden bg-background text-foreground">
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 z-30 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar - Will be refactored further below */}
+      <DashboardSidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Header */}
+        <DashboardHeader setSidebarOpen={setSidebarOpen} />
+
+        {/* Page Body */}
+        <main className="flex-1 overflow-y-auto bg-background">{children}</main>
+      </div>
+    </div>
+  );
+}
+
+function DashboardHeader({ setSidebarOpen }: { setSidebarOpen: (o: boolean) => void }) {
+  return (
+    <header className="h-14 flex items-center justify-between px-6 shrink-0 bg-background border-b border-border/30">
+      <div className="flex items-center gap-3">
+        <button
+          className="md:hidden p-1.5 rounded-lg transition-colors text-foreground/70 hover:bg-surface"
+          onClick={() => setSidebarOpen(true)}
+        >
+          <PanelLeft size={18} />
+        </button>
+        <Breadcrumb />
+      </div>
+
+      <div className="flex items-center gap-3">
+        <UserMenu />
+      </div>
+    </header>
   );
 }
 
@@ -162,90 +188,170 @@ function Breadcrumb() {
   );
 }
 
+function DashboardSidebar({
+  sidebarOpen,
+  setSidebarOpen,
+}: {
+  sidebarOpen: boolean;
+  setSidebarOpen: (o: boolean) => void;
+}) {
+  const { isCollapsed, toggleSidebar } = useSidebarPreferences();
+  const isDesktop = useMediaQuery("(min-width: 768px)");
+  const effectiveIsCollapsed = isCollapsed && isDesktop;
+
+  return (
+    <aside
+      className={`fixed md:static inset-y-0 left-0 z-40 flex flex-col transition-all duration-300 ease-in-out bg-sidebar border-r border-border/30 ${
+        sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+      } ${effectiveIsCollapsed ? "md:w-[72px]" : "w-64"} w-64`}
+    >
+      {/* Brand + Workspace Switcher */}
+      <div
+        className={`py-4 flex items-center justify-center ${effectiveIsCollapsed ? "px-0" : "px-3"}`}
+      >
+        <WorkspaceSwitcher showName={!effectiveIsCollapsed} />
+      </div>
+
+      {/* Nav */}
+      <SidebarNav setSidebarOpen={setSidebarOpen} isCollapsed={effectiveIsCollapsed} />
+
+      {/* Footer Toggle Block */}
+      <div className={`p-3 border-t border-border/10 ${!isDesktop ? "hidden" : "block"}`}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={toggleSidebar}
+              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-foreground/50 hover:text-foreground hover:bg-surface transition-colors ${
+                effectiveIsCollapsed ? "justify-center" : ""
+              }`}
+            >
+              <PanelLeft
+                size={16}
+                className={`transition-transform duration-300 ${effectiveIsCollapsed ? "rotate-180" : ""}`}
+              />
+              {!effectiveIsCollapsed && <span className="text-[13px] font-medium">Colapsar</span>}
+            </button>
+          </TooltipTrigger>
+          {effectiveIsCollapsed && <TooltipContent side="right">Expandir Sidebar</TooltipContent>}
+        </Tooltip>
+      </div>
+    </aside>
+  );
+}
+
 function NavLink({
   href,
   icon,
   label,
   onClick,
+  isCollapsed,
 }: {
   href: string;
   icon: React.ReactNode;
   label: string;
   onClick?: () => void;
+  isCollapsed?: boolean;
 }) {
   const pathname = usePathname();
   const active = pathname === href || (href !== "/" && pathname.startsWith(href));
 
-  return (
+  const content = (
     <Link
       href={href}
       onClick={onClick}
-      className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13.5px] font-medium transition-all duration-150 ${active ? "text-primary bg-primary/10" : "text-foreground/70 hover:text-foreground hover:bg-surface"}`}
+      className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13.5px] font-medium transition-all duration-150 ${
+        active
+          ? "text-primary bg-primary/10"
+          : "text-foreground/70 hover:text-foreground hover:bg-surface"
+      } ${isCollapsed ? "justify-center" : ""}`}
     >
       <span className={active ? "text-primary" : "text-inherit opacity-70"}>{icon}</span>
-      <span className="flex-1">{label}</span>
-      {active && <span className="w-1 h-1 rounded-full bg-primary" />}
+      {!isCollapsed && <span className="flex-1 truncate">{label}</span>}
+      {!isCollapsed && active && <span className="w-1 h-1 rounded-full bg-primary" />}
     </Link>
   );
+
+  if (isCollapsed) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{content}</TooltipTrigger>
+        <TooltipContent side="right">{label}</TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return content;
 }
 
-function SidebarNav({ setSidebarOpen }: { setSidebarOpen: (o: boolean) => void }) {
+function SidebarNav({
+  setSidebarOpen,
+  isCollapsed,
+}: {
+  setSidebarOpen: (o: boolean) => void;
+  isCollapsed: boolean;
+}) {
   const { isOwner, isSuperAdmin } = usePermissions();
 
   return (
-    <>
-      <nav className="flex-1 overflow-y-auto px-3 space-y-0.5">
-        <p className="text-[10px] font-semibold uppercase tracking-widest px-3 mb-3 mt-1 text-foreground/60">
+    <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1 scrollbar-hide">
+      <div className={`mb-4 ${isCollapsed ? "hidden" : ""}`}>
+        <p className="text-[10px] font-bold uppercase tracking-[0.15em] px-3 text-foreground/30">
           Principal
         </p>
-        <NavLink
-          href="/"
-          icon={<LayoutDashboard size={16} />}
-          label="Inicio"
-          onClick={() => setSidebarOpen(false)}
-        />
-        <NavLink
-          href="/collections"
-          icon={<Database size={16} />}
-          label="Colecciones"
-          onClick={() => setSidebarOpen(false)}
-        />
-        <NavLink
-          href="/relations"
-          icon={<Share2 size={16} />}
-          label="Relaciones"
-          onClick={() => setSidebarOpen(false)}
-        />
+      </div>
 
-        {(isOwner || isSuperAdmin) && (
-          <>
-            <p className="text-[10px] font-semibold uppercase tracking-widest px-3 mb-3 mt-6 text-foreground/60">
-              Seguridad
+      <NavLink
+        href="/"
+        icon={<LayoutDashboard size={18} strokeWidth={1.5} />}
+        label="Inicio"
+        isCollapsed={isCollapsed}
+        onClick={() => setSidebarOpen(false)}
+      />
+
+      {/* Collections Section - Will be replaced with SidebarCollections */}
+      <SidebarCollections isCollapsed={isCollapsed} setSidebarOpen={setSidebarOpen} />
+
+      <NavLink
+        href="/relations"
+        icon={<Share2 size={18} strokeWidth={1.5} />}
+        label="Relaciones"
+        isCollapsed={isCollapsed}
+        onClick={() => setSidebarOpen(false)}
+      />
+
+      {(isOwner || isSuperAdmin) && (
+        <>
+          <div className={`mb-3 mt-8 ${isCollapsed ? "hidden" : ""}`}>
+            <p className="text-[10px] font-bold uppercase tracking-[0.15em] px-3 text-foreground/30">
+              Gestión
             </p>
-            <NavLink
-              href="/settings/roles"
-              icon={<Users size={16} />}
-              label="Roles y Miembros"
-              onClick={() => setSidebarOpen(false)}
-            />
-            <NavLink
-              href="/settings/permissions"
-              icon={<Shield size={16} />}
-              label="Permisos"
-              onClick={() => setSidebarOpen(false)}
-            />
-          </>
-        )}
-      </nav>
+          </div>
+          <NavLink
+            href="/settings/roles"
+            icon={<Users size={18} strokeWidth={1.5} />}
+            label="Miembros"
+            isCollapsed={isCollapsed}
+            onClick={() => setSidebarOpen(false)}
+          />
+          <NavLink
+            href="/settings/permissions"
+            icon={<Shield size={18} strokeWidth={1.5} />}
+            label="Permisos"
+            isCollapsed={isCollapsed}
+            onClick={() => setSidebarOpen(false)}
+          />
+        </>
+      )}
 
-      <div className="p-3 pb-5">
+      <div className={`pt-4 mt-auto border-t border-border/5 ${isCollapsed ? "hidden" : "block"}`}>
         <NavLink
           href="/settings"
-          icon={<Settings size={16} />}
+          icon={<Settings size={18} strokeWidth={1.5} />}
           label="Configuración"
+          isCollapsed={isCollapsed}
           onClick={() => setSidebarOpen(false)}
         />
       </div>
-    </>
+    </nav>
   );
 }

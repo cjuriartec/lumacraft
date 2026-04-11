@@ -14,7 +14,7 @@ import {
 import { useWorkspace } from "../providers/workspace-provider";
 import { InviteMemberModal } from "./invite-member-modal";
 
-export function WorkspaceSwitcher() {
+export function WorkspaceSwitcher({ showName = true }: { showName?: boolean }) {
   const { workspaces, currentWorkspace, setCurrentWorkspace, loading } = useWorkspace();
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
 
@@ -27,22 +27,35 @@ export function WorkspaceSwitcher() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="w-full flex items-center justify-between px-2.5 py-2 group hover:bg-surface-hover/20 rounded-xl transition-all duration-300 border border-transparent hover:border-border/10">
-          <div className="flex items-center gap-3 overflow-hidden">
+        <button
+          className={cn(
+            "w-full flex items-center group hover:bg-surface-hover/20 rounded-xl transition-all duration-300 border border-transparent hover:border-border/10",
+            showName ? "justify-between px-2.5 py-2" : "justify-center p-2",
+          )}
+        >
+          <div
+            className={cn("flex items-center gap-3 overflow-hidden", !showName && "justify-center")}
+          >
             <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-primary shrink-0 shadow-lg shadow-primary/10">
               <Layers size={16} className="text-white" />
             </div>
-            <div className="flex flex-col items-start min-w-0 leading-tight">
-              <span className="text-[12px] font-bold uppercase text-foreground/90">Lumacraft</span>
-              <span className="text-[11px] text-muted-foreground font-medium truncate w-full group-hover:text-foreground/70 transition-colors">
-                {currentWorkspace?.name || "Seleccionar..."}
-              </span>
-            </div>
+            {showName && (
+              <div className="flex flex-col items-start min-w-0 leading-tight">
+                <span className="text-[12px] font-bold uppercase text-foreground/90">
+                  Lumacraft
+                </span>
+                <span className="text-[11px] text-muted-foreground font-medium truncate w-full group-hover:text-foreground/70 transition-colors">
+                  {currentWorkspace?.name || "Seleccionar..."}
+                </span>
+              </div>
+            )}
           </div>
-          <ChevronDown
-            size={14}
-            className="text-muted/40 group-hover:text-muted transition-colors shrink-0 ml-2"
-          />
+          {showName && (
+            <ChevronDown
+              size={14}
+              className="text-muted/40 group-hover:text-muted transition-colors shrink-0 ml-2"
+            />
+          )}
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent

@@ -115,6 +115,10 @@ export class InMemoryCollectionRepository implements ICollectionRepository {
     this.items = this.items.filter((collection) => collection.id !== id);
     return ok(undefined);
   });
+
+  public count = vi.fn(async (accountId: string) => {
+    return ok(this.items.filter((col) => col.accountId === accountId).length);
+  });
 }
 
 export class InMemoryTemplateRepository implements ITemplateRepository {
@@ -162,6 +166,10 @@ export class InMemoryTemplateRepository implements ITemplateRepository {
     if (this.deleteResult) return this.deleteResult;
     this.items = this.items.filter((template) => template.id !== id);
     return ok(undefined);
+  });
+
+  public count = vi.fn(async (accountId: string) => {
+    return ok(this.items.filter((item) => item.accountId === accountId).length);
   });
 }
 
@@ -222,6 +230,10 @@ export class InMemoryFieldRepository implements IFieldRepository {
       .sort((left, right) => left.sortOrder - right.sortOrder);
 
     return this.findByCollectionIdResult ?? ok(fields);
+  });
+
+  public findByAccountId = vi.fn(async (_accountId: string) => {
+    return ok(this.items);
   });
 
   public findById = vi.fn(async (id: string) => {
@@ -368,13 +380,13 @@ export class InMemoryRecordRepository implements IRecordRepository {
     return this.findByIdResult ?? ok(this.items.find((record) => record.id === id) ?? null);
   });
 
-  public create = vi.fn(async (record: DataRecord) => {
+  public create = vi.fn(async (record: DataRecord, _omitFields?: string[]) => {
     if (this.createResult) return this.createResult;
     this.items.push(record);
     return ok(record);
   });
 
-  public update = vi.fn(async (record: DataRecord) => {
+  public update = vi.fn(async (record: DataRecord, _omitFields?: string[]) => {
     if (this.updateResult) return this.updateResult;
     this.items = this.items.map((item) => (item.id === record.id ? record : item));
     return ok(record);
@@ -395,6 +407,10 @@ export class InMemoryRecordRepository implements IRecordRepository {
       this.countResult ??
       ok(this.items.filter((record) => record.collectionId === collectionId).length)
     );
+  });
+
+  public countAll = vi.fn(async (_accountId: string) => {
+    return ok(this.items.length);
   });
 
   public findByFieldValue = vi.fn(
