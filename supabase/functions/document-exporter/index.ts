@@ -1,21 +1,25 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
-async function handleCORS(_req?: Request) {
-  return new Response("ok", { headers: corsHeaders });
-}
-
-export const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.40.0";
 import * as docx from "https://esm.sh/docx";
+
+import {
+  DEFAULT_DOCUMENT_FONT_FAMILY,
+  DEFAULT_DOCUMENT_LINE_HEIGHT,
+  resolveDocumentFontFamily,
+  resolveDocxBlockSpacing,
+  resolveDocxFontSize,
+  resolveDocxLineHeight,
+} from "../../../src/shared/lib/document-typography.ts";
+
 const {
   AlignmentType,
   Document,
   HeadingLevel,
+  LevelFormat,
+  LineRuleType,
   Packer,
   Paragraph,
   Table,
@@ -25,10 +29,53 @@ const {
   WidthType,
 } = docx;
 
-/**
- * Maps Plate alignment to docx AlignmentType
- */
-function mapAlignment(align?: string): AlignmentType {
+const DOCX_NUMBERING_REFERENCE = "lumacraft-decimal";
+
+interface DocxTypographyContext {
+  fontFamily?: string;
+  fontSize?: string | number;
+  lineHeight?: string | number;
+}
+
+async function handleCORS(_req?: Request) {
+  return new Response("ok", { headers: corsHeaders });
+}
+
+export const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isTextNode(value: unknown): value is { text: string; [key: string]: unknown } {
+  return isRecord(value) && typeof value.text === "string";
+}
+
+function isElementNode(
+  value: unknown,
+): value is { type: string; children: unknown[]; [key: string]: unknown } {
+  return isRecord(value) && typeof value.type === "string" && Array.isArray(value.children);
+}
+
+function applyTextTransform(text: string, transform?: string): string {
+  if (!text || !transform || transform === "none") return text;
+
+  switch (transform) {
+    case "uppercase":
+      return text.toUpperCase();
+    case "lowercase":
+      return text.toLowerCase();
+    case "capitalize":
+      return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
+    default:
+      return text;
+  }
+}
+
+function mapAlignment(align?: string): any {
   switch (align) {
     case "center":
       return AlignmentType.CENTER;
@@ -41,115 +88,317 @@ function mapAlignment(align?: string): AlignmentType {
   }
 }
 
-/**
- * Renders inline children (text nodes, variables) to TextRuns
- */
-function renderInlines(children: any[]): TextRun[] {
-  return children.flatMap((child) => {
-    if (child.text !== undefined) {
-      return [
-        new TextRun({
-          text: child.text,
-          bold: !!child.bold,
-          italics: !!child.italic,
-          strike: !!child.strikethrough,
-          underline: child.underline ? {} : undefined,
-          color: child.color?.replace("#", ""),
-          size: child.fontSize ? child.fontSize * 2 : undefined, // docx uses half-points
-        }),
-      ];
-    }
-    if (child.type === "variable" || child.type === "template_variable") {
-      return [
-        new TextRun({
-          text: child.value || `{{${child.fieldPath}}}`,
-          bold: !!child.bold || true,
-          color: child.color?.replace("#", "") || "4f46e5",
-        }),
-      ];
-    }
-    if (child.children) {
-      return renderInlines(child.children);
-    }
-    return [];
+function resolveDocxColor(value?: string): string | undefined {
+  if (!value) return undefined;
+  return value.replace(/^#/, "");
+}
+
+function resolveIndentTwips(indent?: number): number {
+  return typeof indent === "number" ? indent * 360 : 0;
+}
+
+function resolveHeadingLevel(type?: string): any | undefined {
+  switch (type) {
+    case "h1":
+      return HeadingLevel.HEADING_1;
+    case "h2":
+      return HeadingLevel.HEADING_2;
+    case "h3":
+      return HeadingLevel.HEADING_3;
+    case "h4":
+      return HeadingLevel.HEADING_4;
+    case "h5":
+      return HeadingLevel.HEADING_5;
+    case "h6":
+      return HeadingLevel.HEADING_6;
+    default:
+      return undefined;
+  }
+}
+
+function createTextRun(
+  source: Record<string, unknown>,
+  context: {
+    blockType: string;
+    fontFamily?: string;
+    fontSize?: string | number;
+  },
+  text: string,
+  overrides: Record<string, unknown> = {},
+) {
+  const fontFamily =
+    typeof source.fontFamily === "string"
+      ? source.fontFamily
+      : typeof overrides.fontFamily === "string"
+        ? overrides.fontFamily
+        : context.fontFamily;
+  const fontSize =
+    typeof source.fontSize === "string" || typeof source.fontSize === "number"
+      ? source.fontSize
+      : (overrides.fontSize ?? context.fontSize);
+  const color =
+    typeof overrides.color === "string"
+      ? overrides.color
+      : typeof source.color === "string"
+        ? source.color
+        : undefined;
+  const underline = overrides.underline === true || source.underline === true;
+
+  return new TextRun({
+    text,
+    bold: source.bold === true || overrides.bold === true,
+    color: resolveDocxColor(color),
+    font: resolveDocumentFontFamily(
+      "docx",
+      typeof fontFamily === "string" ? fontFamily : DEFAULT_DOCUMENT_FONT_FAMILY,
+    ),
+    italics: source.italic === true || overrides.italic === true,
+    size: resolveDocxFontSize(fontSize, context.blockType),
+    strike: source.strikethrough === true || overrides.strikethrough === true,
+    underline: underline ? {} : undefined,
   });
 }
 
-/**
- * Converts Plate blocks to docx elements
- */
-function blocksToDocxElements(blocks: any[]): any[] {
+function renderInlines(
+  children: unknown[],
+  context: {
+    blockType: string;
+    fontFamily?: string;
+    fontSize?: string | number;
+  },
+  overrides: Record<string, unknown> = {},
+): any[] {
+  return children.flatMap((child) => {
+    if (isTextNode(child)) {
+      return [createTextRun(child, context, child.text, overrides)];
+    }
+
+    if (!isElementNode(child)) {
+      return [];
+    }
+
+    if (child.type === "variable" || child.type === "template_variable") {
+      const rawText =
+        typeof child.value === "string"
+          ? child.value
+          : isTextNode(child.children[0])
+            ? child.children[0].text
+            : typeof child.fieldPath === "string"
+              ? `{{${child.fieldPath}}}`
+              : "";
+
+      return [
+        createTextRun(
+          child,
+          context,
+          applyTextTransform(
+            rawText,
+            typeof child.textTransform === "string" ? child.textTransform : undefined,
+          ),
+          overrides,
+        ),
+      ];
+    }
+
+    if (child.type === "a") {
+      return renderInlines(child.children, context, {
+        ...overrides,
+        color: "#2563eb",
+        underline: true,
+      });
+    }
+
+    return renderInlines(child.children, context, overrides);
+  });
+}
+
+function createParagraphFromBlock(
+  block: Record<string, unknown>,
+  children: any[],
+  extra: Record<string, unknown> = {},
+) {
+  const { indentLeftOverride, lineHeightOverride, ...paragraphExtras } = extra;
+  const spacing = resolveDocxBlockSpacing(block.type);
+  const indentLeft = resolveIndentTwips(
+    typeof block.indent === "number" ? block.indent : undefined,
+  );
+  const lineHeight = resolveDocxLineHeight(
+    block.lineHeight ?? lineHeightOverride ?? DEFAULT_DOCUMENT_LINE_HEIGHT,
+  );
+  const listLevel = Math.max(
+    0,
+    (typeof block.indent === "number" ? Math.round(block.indent) : 1) - 1,
+  );
+
+  return new Paragraph({
+    alignment: mapAlignment(typeof block.align === "string" ? block.align : undefined),
+    children: children.length > 0 ? children : [new TextRun("")],
+    heading: resolveHeadingLevel(typeof block.type === "string" ? block.type : undefined),
+    indent: {
+      left: block.type === "blockquote" ? indentLeft + 480 : (indentLeftOverride ?? indentLeft),
+    },
+    numbering:
+      block.listStyleType === "decimal"
+        ? {
+            level: listLevel,
+            reference: DOCX_NUMBERING_REFERENCE,
+          }
+        : undefined,
+    bullet: block.listStyleType === "disc" ? { level: listLevel } : undefined,
+    spacing: {
+      after: spacing.docxAfter,
+      before: spacing.docxBefore,
+      line: lineHeight,
+      lineRule: LineRuleType.AUTO,
+    },
+    ...paragraphExtras,
+  });
+}
+
+function renderTableCellChildren(
+  cell: Record<string, unknown>,
+  inheritedTableTypography: DocxTypographyContext = {},
+) {
+  const inheritedTypography: DocxTypographyContext = {
+    fontFamily:
+      typeof cell.fontFamily === "string" ? cell.fontFamily : inheritedTableTypography.fontFamily,
+    fontSize:
+      typeof cell.fontSize === "string" || typeof cell.fontSize === "number"
+        ? cell.fontSize
+        : inheritedTableTypography.fontSize,
+    lineHeight:
+      typeof cell.lineHeight === "string" || typeof cell.lineHeight === "number"
+        ? cell.lineHeight
+        : inheritedTableTypography.lineHeight,
+  };
+  const blockChildren = Array.isArray(cell.children) ? cell.children.filter(isElementNode) : [];
+
+  if (blockChildren.length > 0) {
+    return blocksToDocxElements(blockChildren, inheritedTypography);
+  }
+
+  return [
+    createParagraphFromBlock(
+      {
+        align: cell.align,
+        fontFamily: inheritedTypography.fontFamily,
+        fontSize: inheritedTypography.fontSize,
+        lineHeight: inheritedTypography.lineHeight,
+        type: "p",
+      },
+      renderInlines(Array.isArray(cell.children) ? cell.children : [], {
+        blockType: "p",
+        fontFamily: inheritedTypography.fontFamily,
+        fontSize: inheritedTypography.fontSize,
+      }),
+      {
+        lineHeightOverride: inheritedTypography.lineHeight,
+        spacing: {
+          after: 0,
+          before: 0,
+          line: resolveDocxLineHeight(
+            inheritedTypography.lineHeight ?? DEFAULT_DOCUMENT_LINE_HEIGHT,
+          ),
+          lineRule: LineRuleType.AUTO,
+        },
+      },
+    ),
+  ];
+}
+
+function blocksToDocxElements(
+  blocks: unknown[],
+  inheritedTypography: DocxTypographyContext = {},
+): any[] {
   const elements: any[] = [];
 
   for (const block of blocks) {
-    const inlines = renderInlines(block.children || []);
-    const alignment = mapAlignment(block.align);
+    if (!isElementNode(block)) continue;
 
-    switch (block.type) {
-      case "h1":
-        elements.push(
-          new Paragraph({
-            children: inlines,
-            heading: HeadingLevel.HEADING_1,
-            alignment,
-            spacing: { before: 400, after: 200 },
-          }),
-        );
-        break;
-      case "h2":
-        elements.push(
-          new Paragraph({
-            children: inlines,
-            heading: HeadingLevel.HEADING_2,
-            alignment,
-            spacing: { before: 300, after: 150 },
-          }),
-        );
-        break;
-      case "h3":
-        elements.push(
-          new Paragraph({
-            children: inlines,
-            heading: HeadingLevel.HEADING_3,
-            alignment,
-            spacing: { before: 200, after: 100 },
-          }),
-        );
-        break;
-      case "blockquote":
-        elements.push(
-          new Paragraph({
-            children: inlines,
-            indent: { left: 720 },
-            alignment,
-          }),
-        );
-        break;
-      case "table": {
-        const rows = (block.children || []).map((row: any) => {
-          const cells = (row.children || []).map((cell: any) => {
+    const blockTypography: DocxTypographyContext = {
+      fontFamily:
+        typeof block.fontFamily === "string" ? block.fontFamily : inheritedTypography.fontFamily,
+      fontSize:
+        typeof block.fontSize === "string" || typeof block.fontSize === "number"
+          ? block.fontSize
+          : inheritedTypography.fontSize,
+      lineHeight:
+        typeof block.lineHeight === "string" || typeof block.lineHeight === "number"
+          ? block.lineHeight
+          : inheritedTypography.lineHeight,
+    };
+
+    if (block.type === "table") {
+      const rows = block.children.filter(isElementNode).map((row) => {
+        const rowCells = row.children.filter(isElementNode);
+
+        return new TableRow({
+          children: rowCells.map((cell) => {
+            const width = rowCells.length > 0 ? 100 / rowCells.length : 100;
+
             return new TableCell({
-              children: blocksToDocxElements(cell.children || []),
-              width: { size: 100 / row.children.length, type: WidthType.PERCENTAGE },
+              children: renderTableCellChildren(cell, blockTypography),
+              width: { size: width, type: WidthType.PERCENTAGE },
             });
-          });
-          return new TableRow({ children: cells });
-        });
-        elements.push(new Table({ rows, width: { size: 100, type: WidthType.PERCENTAGE } }));
-        break;
-      }
-      case "p":
-      default:
-        // Handle lists via listStyleType or type mapping (if applicable)
-        elements.push(
-          new Paragraph({
-            children: inlines,
-            alignment,
-            spacing: { after: 120 },
           }),
-        );
-        break;
+        });
+      });
+
+      elements.push(
+        new Table({
+          rows,
+          width: { size: 100, type: WidthType.PERCENTAGE },
+        }),
+      );
+      continue;
     }
+
+    if (block.type === "img") {
+      const altText =
+        Array.isArray(block.children) && isTextNode(block.children[0])
+          ? block.children[0].text
+          : "Imagen";
+
+      elements.push(
+        createParagraphFromBlock({ ...block, type: "p" }, [
+          createTextRun(
+            {
+              color: "#6b7280",
+              italic: true,
+            },
+            {
+              blockType: "p",
+              fontFamily: blockTypography.fontFamily,
+              fontSize: blockTypography.fontSize,
+            },
+            `[Imagen: ${altText}]`,
+          ),
+        ]),
+      );
+      continue;
+    }
+
+    const context = {
+      blockType: block.type,
+      fontFamily: blockTypography.fontFamily,
+      fontSize: blockTypography.fontSize,
+    };
+    const inlines = renderInlines(block.children, context);
+
+    elements.push(
+      createParagraphFromBlock(
+        {
+          ...block,
+          fontFamily: blockTypography.fontFamily,
+          fontSize: blockTypography.fontSize,
+          lineHeight: blockTypography.lineHeight,
+        },
+        inlines,
+        {
+          lineHeightOverride: blockTypography.lineHeight,
+        },
+      ),
+    );
   }
 
   return elements;
@@ -190,7 +439,6 @@ Deno.serve(async (req) => {
     }
 
     if (format === "pdf") {
-      // PDF is now handled server-side in the Next.js API Route.
       return new Response(
         JSON.stringify({
           isError: true,
@@ -203,7 +451,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Content Processing
     let fileBytes: Uint8Array;
     const extension = format === "docx" ? "docx" : "txt";
     const mimeType =
@@ -213,18 +460,36 @@ Deno.serve(async (req) => {
 
     if (format === "docx" && blocks) {
       console.log("Generating native DOCX from blocks...");
-      console.log("Packer keys:", Object.keys(Packer || {}));
 
       const doc = new Document({
+        numbering: {
+          config: [
+            {
+              levels: Array.from({ length: 6 }, (_, level) => ({
+                format: LevelFormat.DECIMAL,
+                level,
+                style: {
+                  paragraph: {
+                    indent: {
+                      hanging: 260,
+                      left: 720 + level * 360,
+                    },
+                  },
+                },
+                text: `%${level + 1}.`,
+              })),
+              reference: DOCX_NUMBERING_REFERENCE,
+            },
+          ],
+        },
         sections: [
           {
-            properties: {},
             children: blocksToDocxElements(blocks),
+            properties: {},
           },
         ],
       });
 
-      // Attempt to generate the file using available Packer methods
       if (typeof Packer.toUint8Array === "function") {
         fileBytes = await Packer.toUint8Array(doc);
       } else if (typeof Packer.toBuffer === "function") {
@@ -235,14 +500,12 @@ Deno.serve(async (req) => {
       }
     } else {
       console.log("Falling back to plain text export...");
-      const encoder = new TextEncoder();
-      fileBytes = encoder.encode(text || "");
+      fileBytes = new TextEncoder().encode(text || "");
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     const supabase = createClient(supabaseUrl, supabaseKey);
-
     const fileName = `${accountId}/${templateId}/${recordId}.${extension}`;
 
     const { error: uploadError } = await supabase.storage
@@ -258,7 +521,7 @@ Deno.serve(async (req) => {
 
     const { data: signedUrlData, error: signedUrlError } = await supabase.storage
       .from("exports")
-      .createSignedUrl(fileName, 60 * 60); // 1 hr
+      .createSignedUrl(fileName, 60 * 60);
 
     if (signedUrlError) {
       throw signedUrlError;

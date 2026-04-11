@@ -5,6 +5,8 @@ import type { PlateElementProps } from "platejs/react";
 import { PlateElement } from "platejs/react";
 import * as React from "react";
 
+import { resolveDocumentFontFamily } from "@/shared/lib/document-typography";
+
 const headingVariants = cva("relative mb-1", {
   variants: {
     variant: {
@@ -22,8 +24,22 @@ export function HeadingElement({
   variant = "h1",
   ...props
 }: PlateElementProps & VariantProps<typeof headingVariants>) {
+  const fontFamily =
+    typeof props.element.fontFamily === "string"
+      ? resolveDocumentFontFamily("web", props.element.fontFamily)
+      : undefined;
+  const mergedStyle = {
+    ...(props.attributes.style as React.CSSProperties | undefined),
+    ...(fontFamily ? { fontFamily } : {}),
+  };
+
   return (
-    <PlateElement as={variant!} className={headingVariants({ variant })} {...props}>
+    <PlateElement
+      as={variant!}
+      className={headingVariants({ variant })}
+      style={mergedStyle}
+      {...props}
+    >
       {props.children}
     </PlateElement>
   );

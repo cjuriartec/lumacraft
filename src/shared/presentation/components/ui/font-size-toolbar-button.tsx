@@ -8,6 +8,7 @@ import { KEYS } from "platejs";
 import { useEditorPlugin, useEditorSelector } from "platejs/react";
 import * as React from "react";
 
+import { applyFormattingToVariableNodesInSelection } from "@/modules/template/presentation/lib/template-editor-formatting";
 import { cn } from "@/shared/lib/utils";
 import {
   Popover,
@@ -72,7 +73,9 @@ export function FontSizeToolbarButton() {
       return;
     }
     if (newSize !== toUnitLess(cursorFontSize)) {
-      tf.fontSize.addMark(`${newSize}px`);
+      const nextFontSize = `${newSize}pt`;
+      tf.fontSize.addMark(nextFontSize);
+      applyFormattingToVariableNodesInSelection(editor, { fontSize: nextFontSize });
     }
 
     editor.tf.focus();
@@ -80,7 +83,9 @@ export function FontSizeToolbarButton() {
 
   const handleFontSizeChange = (delta: number) => {
     const newSize = Number(displayValue) + delta;
-    tf.fontSize.addMark(`${newSize}px`);
+    const nextFontSize = `${newSize}pt`;
+    tf.fontSize.addMark(nextFontSize);
+    applyFormattingToVariableNodesInSelection(editor, { fontSize: nextFontSize });
     editor.tf.focus();
   };
 
@@ -126,7 +131,9 @@ export function FontSizeToolbarButton() {
                 "flex h-8 w-full items-center justify-center text-sm hover:bg-accent data-[highlighted=true]:bg-accent",
               )}
               onClick={() => {
-                tf.fontSize.addMark(`${size}px`);
+                const nextFontSize = `${size}pt`;
+                tf.fontSize.addMark(nextFontSize);
+                applyFormattingToVariableNodesInSelection(editor, { fontSize: nextFontSize });
                 setIsFocused(false);
               }}
               data-highlighted={size === displayValue}

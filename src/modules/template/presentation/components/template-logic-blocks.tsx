@@ -10,6 +10,7 @@ import {
   BrainCircuit,
   GitBranch,
   ListTree,
+  Sliders,
   Split,
 } from "lucide-react";
 import { Descendant, TElement } from "platejs";
@@ -24,6 +25,11 @@ import type { ReactNode } from "react";
 import * as React from "react";
 
 import { TemplateBlocks } from "@/modules/template/domain/types/template-blocks";
+import {
+  DOCUMENT_FONT_FAMILY_OPTIONS,
+  resolveDocumentFontFamily,
+  type SupportedDocumentFontFamily,
+} from "@/shared/lib/document-typography";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/presentation/components/ui/button";
 import {
@@ -31,6 +37,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/shared/presentation/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/presentation/components/ui/select";
 import { Textarea } from "@/shared/presentation/components/ui/textarea";
 
 import { useTemplateVariableCatalog } from "../contexts/template-variable-catalog-context";
@@ -48,7 +61,16 @@ export const DEFAULT_TEMPLATE_AI_PROMPT =
 
 type LogicNodeChildren = Descendant[];
 
-export interface TemplateConditionalElementNode extends TElement {
+/** Shared typography options for all logic block types */
+export interface LogicBlockTypographyOptions {
+  align?: "left" | "center" | "right" | "justify";
+  lineHeight?: number;
+  indent?: number;
+  fontSize?: number;
+  fontFamily?: SupportedDocumentFontFamily;
+}
+
+export interface TemplateConditionalElementNode extends TElement, LogicBlockTypographyOptions {
   type: typeof TEMPLATE_CONDITIONAL_TYPE;
   children: LogicNodeChildren;
   fieldPath: string;
@@ -69,7 +91,7 @@ export interface TemplateConditionalElementNode extends TElement {
   elseBlocks?: TemplateBlocks;
 }
 
-export interface TemplateListElementNode extends TElement {
+export interface TemplateListElementNode extends TElement, LogicBlockTypographyOptions {
   type: typeof TEMPLATE_LIST_TYPE;
   children: LogicNodeChildren;
   sourcePath: string;
@@ -86,7 +108,7 @@ export interface TemplateSwitchCaseElement {
   blocks?: TemplateBlocks;
 }
 
-export interface TemplateSwitchElementNode extends TElement {
+export interface TemplateSwitchElementNode extends TElement, LogicBlockTypographyOptions {
   type: typeof TEMPLATE_SWITCH_TYPE;
   children: LogicNodeChildren;
   fieldPath: string;
@@ -95,14 +117,11 @@ export interface TemplateSwitchElementNode extends TElement {
   defaultBlocks?: TemplateBlocks;
 }
 
-export interface TemplateAIElementNode extends TElement {
+export interface TemplateAIElementNode extends TElement, LogicBlockTypographyOptions {
   type: typeof TEMPLATE_AI_TYPE;
   children: LogicNodeChildren;
   promptTemplate: string;
   collectionContext?: TemplateCollectionContext | null;
-  align?: "left" | "center" | "right" | "justify";
-  lineHeight?: number;
-  indent?: number;
 }
 
 function baseChildren(): LogicNodeChildren {
@@ -247,6 +266,152 @@ function BlockShell({
   );
 }
 
+interface LogicBlockStylesPopoverProps {
+  align: "left" | "center" | "right" | "justify";
+  lineHeight: number;
+  fontSize: number;
+  fontFamily: SupportedDocumentFontFamily;
+  onSave: (updates: Partial<LogicBlockTypographyOptions>) => void;
+}
+
+function LogicBlockStylesPopover({
+  align,
+  lineHeight,
+  fontSize,
+  fontFamily,
+  onSave,
+}: LogicBlockStylesPopoverProps) {
+  const [sizeInput, setSizeInput] = React.useState(String(fontSize));
+
+  // Sync local input whenever the prop changes
+  React.useEffect(() => {
+    setSizeInput(String(fontSize));
+  }, [fontSize]);
+
+  const commitFontSize = () => {
+    const parsed = parseInt(sizeInput, 10);
+    if (!isNaN(parsed) && parsed >= 8 && parsed <= 96) {
+      onSave({ fontSize: parsed });
+    } else {
+      setSizeInput(String(fontSize));
+    }
+  };
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 gap-1.5 rounded-md px-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 hover:bg-muted/10 hover:text-foreground"
+        >
+          <Sliders size={12} />
+          Estilos
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-60 border-border/60 bg-surface-hover p-3 shadow-md space-y-4"
+        side="top"
+        align="end"
+      >
+        {/* Alignment */}
+        <div className="space-y-2">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
+            Alineación
+          </span>
+          <div className="grid grid-cols-4 gap-1">
+            {(
+              [
+                { value: "left", icon: <AlignLeft size={16} /> },
+                { value: "center", icon: <AlignCenter size={16} /> },
+                { value: "right", icon: <AlignRight size={16} /> },
+                { value: "justify", icon: <AlignJustify size={16} /> },
+              ] as const
+            ).map((opt) => (
+              <Button
+                key={opt.value}
+                size="icon"
+                variant={align === opt.value ? "secondary" : "ghost"}
+                className={cn(
+                  "h-9 w-full rounded-md",
+                  align === opt.value &&
+                    "bg-primary/10 text-primary border border-primary/20 shadow-sm",
+                )}
+                onClick={() => onSave({ align: opt.value })}
+              >
+                {opt.icon}
+              </Button>
+            ))}
+          </div>
+        </div>
+
+        {/* Font Size */}
+        <div className="space-y-2 border-t border-border/40 pt-3">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
+            Tamaño de texto
+          </span>
+          <input
+            type="number"
+            min={8}
+            max={96}
+            value={sizeInput}
+            onChange={(e) => setSizeInput(e.target.value)}
+            onBlur={commitFontSize}
+            onKeyDown={(e) => e.key === "Enter" && commitFontSize()}
+            className="h-8 w-full rounded-md border border-border/40 bg-muted/10 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary/40"
+          />
+        </div>
+
+        {/* Font Family */}
+        <div className="space-y-2 border-t border-border/40 pt-3">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
+            Tipografía
+          </span>
+          <Select
+            value={fontFamily}
+            onValueChange={(v) => onSave({ fontFamily: v as SupportedDocumentFontFamily })}
+          >
+            <SelectTrigger className="h-8 rounded-md border-border/40 bg-muted/10 text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {DOCUMENT_FONT_FAMILY_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Line Height */}
+        <div className="space-y-2 border-t border-border/40 pt-3">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
+            Interlineado
+          </span>
+          <div className="grid grid-cols-4 gap-1">
+            {[1, 1.2, 1.5, 2].map((val) => (
+              <Button
+                key={val}
+                size="sm"
+                variant={lineHeight === val ? "secondary" : "ghost"}
+                className={cn(
+                  "h-8 text-[11px] font-bold",
+                  lineHeight === val &&
+                    "bg-primary/10 text-primary border border-primary/20 shadow-sm",
+                )}
+                onClick={() => onSave({ lineHeight: val })}
+              >
+                {val}x
+              </Button>
+            ))}
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 function autoResizeTextarea(textarea: HTMLTextAreaElement | null) {
   if (!textarea) return;
 
@@ -352,26 +517,49 @@ export function TemplateConditionalElement(
   const editor = useEditorRef();
 
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
-
-  const handleEdit = () => {
-    setIsDialogOpen(true);
-  };
+  const align = element.align ?? "left";
+  const lineHeight = element.lineHeight ?? 1.5;
+  const fontSize = element.fontSize ?? 16;
+  const fontFamily = element.fontFamily ?? "arial";
 
   const onSave = (updatedElement: Partial<TemplateConditionalElementNode>) => {
     const path = editor.api.findPath(element);
     if (!path) return;
-
     editor.tf.setNodes(updatedElement, { at: path });
   };
 
   return (
     <PlateElement {...props} as="div" attributes={attributes}>
-      <BlockShell icon={<GitBranch size={14} />} title="Conditional Block">
-        <p className="text-xs text-foreground/80">
+      <BlockShell
+        icon={<GitBranch size={14} />}
+        title="Conditional Block"
+        actions={
+          <LogicBlockStylesPopover
+            align={align}
+            lineHeight={lineHeight}
+            fontSize={fontSize}
+            fontFamily={fontFamily}
+            onSave={onSave}
+          />
+        }
+        style={{
+          textAlign: align,
+          lineHeight,
+          fontSize: `${fontSize}pt`,
+          fontFamily: resolveDocumentFontFamily("web", fontFamily),
+        }}
+      >
+        <p className="text-xs text-foreground/80 opacity-60">
           if <b>{element.fieldPath}</b> <b>{element.operator}</b>{" "}
           <b>{String(element.value ?? "")}</b>
         </p>
-        <Button type="button" size="sm" variant="outline" className="mt-2 h-7" onClick={handleEdit}>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="mt-2 h-7"
+          onClick={() => setIsDialogOpen(true)}
+        >
           Editar
         </Button>
       </BlockShell>
@@ -399,25 +587,48 @@ export function TemplateListElement(props: PlateElementProps<TemplateListElement
   const editor = useEditorRef();
 
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
-
-  const handleEdit = () => {
-    setIsDialogOpen(true);
-  };
+  const align = element.align ?? "left";
+  const lineHeight = element.lineHeight ?? 1.5;
+  const fontSize = element.fontSize ?? 16;
+  const fontFamily = element.fontFamily ?? "arial";
 
   const onSave = (updatedElement: Partial<TemplateListElementNode>) => {
     const path = editor.api.findPath(element);
     if (!path) return;
-
     editor.tf.setNodes(updatedElement, { at: path });
   };
 
   return (
     <PlateElement {...props} as="div" attributes={attributes}>
-      <BlockShell icon={<ListTree size={14} />} title="List Block">
-        <p className="text-xs text-foreground/80">
+      <BlockShell
+        icon={<ListTree size={14} />}
+        title="List Block"
+        actions={
+          <LogicBlockStylesPopover
+            align={align}
+            lineHeight={lineHeight}
+            fontSize={fontSize}
+            fontFamily={fontFamily}
+            onSave={onSave}
+          />
+        }
+        style={{
+          textAlign: align,
+          lineHeight,
+          fontSize: `${fontSize}pt`,
+          fontFamily: resolveDocumentFontFamily("web", fontFamily),
+        }}
+      >
+        <p className="text-xs text-foreground/80 opacity-60">
           source: <b>{element.sourcePath}</b> as <b>{element.itemAlias ?? "item"}</b>
         </p>
-        <Button type="button" size="sm" variant="outline" className="mt-2 h-7" onClick={handleEdit}>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="mt-2 h-7"
+          onClick={() => setIsDialogOpen(true)}
+        >
           Editar
         </Button>
       </BlockShell>
@@ -445,25 +656,48 @@ export function TemplateSwitchElement(props: PlateElementProps<TemplateSwitchEle
   const editor = useEditorRef();
 
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
-
-  const handleEdit = () => {
-    setIsDialogOpen(true);
-  };
+  const align = element.align ?? "left";
+  const lineHeight = element.lineHeight ?? 1.5;
+  const fontSize = element.fontSize ?? 16;
+  const fontFamily = element.fontFamily ?? "arial";
 
   const onSave = (updatedElement: Partial<TemplateSwitchElementNode>) => {
     const path = editor.api.findPath(element);
     if (!path) return;
-
     editor.tf.setNodes(updatedElement, { at: path });
   };
 
   return (
     <PlateElement {...props} as="div" attributes={attributes}>
-      <BlockShell icon={<Split size={14} />} title="Switch Block">
-        <p className="text-xs text-foreground/80">
+      <BlockShell
+        icon={<Split size={14} />}
+        title="Switch Block"
+        actions={
+          <LogicBlockStylesPopover
+            align={align}
+            lineHeight={lineHeight}
+            fontSize={fontSize}
+            fontFamily={fontFamily}
+            onSave={onSave}
+          />
+        }
+        style={{
+          textAlign: align,
+          lineHeight,
+          fontSize: `${fontSize}pt`,
+          fontFamily: resolveDocumentFontFamily("web", fontFamily),
+        }}
+      >
+        <p className="text-xs text-foreground/80 opacity-60">
           switch <b>{element.fieldPath}</b> ({element.cases?.length ?? 0} casos)
         </p>
-        <Button type="button" size="sm" variant="outline" className="mt-2 h-7" onClick={handleEdit}>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="mt-2 h-7"
+          onClick={() => setIsDialogOpen(true)}
+        >
           Editar
         </Button>
       </BlockShell>
@@ -489,6 +723,8 @@ export function TemplateAIElement(props: PlateElementProps<TemplateAIElementNode
   const align = element.align ?? "left";
   const lineHeight = element.lineHeight ?? 1.5;
   const indent = element.indent ?? 0;
+  const fontSize = element.fontSize ?? 16;
+  const fontFamily = element.fontFamily ?? "arial";
 
   const promptValue = element.promptTemplate?.trim().length
     ? element.promptTemplate
@@ -497,98 +733,28 @@ export function TemplateAIElement(props: PlateElementProps<TemplateAIElementNode
   const onSave = (updatedElement: Partial<TemplateAIElementNode>) => {
     const path = editor.api.findPath(element);
     if (!path) return;
-
     editor.tf.setNodes(updatedElement, { at: path });
   };
-
-  const aiActions = (
-    <div className="flex items-center gap-0.5">
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 gap-1.5 rounded-md px-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 hover:bg-muted/10 hover:text-foreground"
-          >
-            <AlignCenter size={12} />
-            Estilos
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent
-          className="w-52 border-border/60 bg-surface-hover p-3 shadow-md"
-          side="top"
-          align="end"
-        >
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
-                Alineación
-              </span>
-              <div className="grid grid-cols-4 gap-1">
-                {[
-                  { value: "left", icon: <AlignLeft size={16} /> },
-                  { value: "center", icon: <AlignCenter size={16} /> },
-                  { value: "right", icon: <AlignRight size={16} /> },
-                  { value: "justify", icon: <AlignJustify size={16} /> },
-                ].map((opt) => (
-                  <Button
-                    key={opt.value}
-                    size="icon"
-                    variant={align === opt.value ? "secondary" : "ghost"}
-                    className={cn(
-                      "h-9 w-full rounded-md",
-                      align === opt.value &&
-                        "bg-primary/10 text-primary border border-primary/20 shadow-sm",
-                    )}
-                    onClick={() =>
-                      onSave({
-                        align: opt.value as "left" | "center" | "right" | "justify",
-                      })
-                    }
-                  >
-                    {opt.icon}
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-2 border-t border-border/40 pt-3">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
-                Interlineado
-              </span>
-              <div className="grid grid-cols-4 gap-1">
-                {[1, 1.2, 1.5, 2].map((val) => (
-                  <Button
-                    key={val}
-                    size="sm"
-                    variant={lineHeight === val ? "secondary" : "ghost"}
-                    className={cn(
-                      "h-8 text-[11px] font-bold",
-                      lineHeight === val &&
-                        "bg-primary/10 text-primary border border-primary/20 shadow-sm",
-                    )}
-                    onClick={() => onSave({ lineHeight: val })}
-                  >
-                    {val}x
-                  </Button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </PopoverContent>
-      </Popover>
-    </div>
-  );
 
   return (
     <PlateElement {...props} as="div" attributes={attributes}>
       <BlockShell
         icon={<BrainCircuit size={14} />}
         title="AI Block"
-        actions={aiActions}
+        actions={
+          <LogicBlockStylesPopover
+            align={align}
+            lineHeight={lineHeight}
+            fontSize={fontSize}
+            fontFamily={fontFamily}
+            onSave={onSave}
+          />
+        }
         style={{
           textAlign: align,
           lineHeight,
+          fontSize: `${fontSize}pt`,
+          fontFamily: resolveDocumentFontFamily("web", fontFamily),
           marginLeft: indent ? `${indent * 24}px` : undefined,
         }}
       >

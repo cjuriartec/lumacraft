@@ -18,6 +18,60 @@ interface TemplatePreviewPanelProps {
   warnings?: string[];
 }
 
+function TemplatePreviewSkeleton() {
+  const paragraphWidths = ["w-full", "w-11/12", "w-10/12", "w-9/12"];
+
+  return (
+    <div
+      data-testid="template-preview-skeleton"
+      className="min-h-[1122px] rounded-sm border border-[#e0e0e0] bg-white shadow-[0_2px_20px_rgba(0,0,0,0.12)]"
+    >
+      <div className="flex min-h-[1122px] flex-col px-[96px] pb-[80px] pt-[80px]">
+        <div className="animate-pulse space-y-10">
+          <div className="h-10 w-56 rounded-full bg-slate-200/80" />
+
+          <div className="space-y-4">
+            {paragraphWidths.map((widthClassName, index) => (
+              <div
+                key={`intro-line-${index}`}
+                className={`h-4 rounded-full bg-slate-200/70 ${widthClassName}`}
+              />
+            ))}
+          </div>
+
+          <div className="space-y-3">
+            <div className="h-6 w-44 rounded-full bg-slate-200/80" />
+            {["w-full", "w-full", "w-8/12"].map((widthClassName, index) => (
+              <div
+                key={`body-line-${index}`}
+                className={`h-4 rounded-full bg-slate-200/70 ${widthClassName}`}
+              />
+            ))}
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            {Array.from({ length: 4 }, (_, index) => (
+              <div
+                key={`table-cell-${index}`}
+                className="h-14 rounded-xl border border-slate-200/80 bg-slate-100/70"
+              />
+            ))}
+          </div>
+
+          <div className="space-y-4">
+            {["w-full", "w-11/12", "w-10/12", "w-7/12"].map((widthClassName, index) => (
+              <div
+                key={`footer-line-${index}`}
+                className={`h-4 rounded-full bg-slate-200/70 ${widthClassName}`}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function TemplatePreviewPanel({
   blocks,
   loading,
@@ -35,36 +89,51 @@ export function TemplatePreviewPanel({
     previewEditor.tf.setValue(previewPlateValue);
   }, [previewEditor, previewPlateValue]);
 
+  const showLoadingSkeleton = loading;
+
   return (
     <div className="flex size-full flex-col bg-background p-0">
-      <div className="flex-1 overflow-y-auto bg-background/40 px-6 py-5">
-        <div className="mx-auto max-w-5xl space-y-6">
-          {error && (
-            <div className="rounded-md border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-              {error}
-            </div>
-          )}
-
-          {warnings.length > 0 && (
-            <div className="rounded-md border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-sm text-amber-600 dark:text-amber-400">
-              <div className="space-y-1">
-                {warnings.map((warning, index) => (
-                  <p key={`${warning}-${index}`}>• {warning}</p>
-                ))}
+      <div
+        className={[
+          "flex-1 overflow-y-auto py-10 px-6",
+          "bg-[radial-gradient(circle,rgba(0,0,0,0.08)_1px,transparent_1px)] dark:bg-[radial-gradient(circle,rgba(255,255,255,0.06)_1px,transparent_1px)]",
+          "bg-size-[20px_20px]",
+        ].join(" ")}
+      >
+        {/* Notification banners */}
+        {(error || warnings.length > 0) && (
+          <div className="mx-auto w-[794px] max-w-full mb-4 space-y-2">
+            {error && (
+              <div className="rounded-md border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+                {error}
               </div>
-            </div>
-          )}
+            )}
+            {warnings.length > 0 && (
+              <div className="rounded-md border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-sm text-amber-600 dark:text-amber-400">
+                <div className="space-y-1">
+                  {warnings.map((warning, index) => (
+                    <p key={`${warning}-${index}`}>• {warning}</p>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
+        {/* A4 sheet */}
+        <div className="mx-auto w-[794px] max-w-full">
           <ResizableProvider>
             <div className="relative">
-              {blocks.length > 0 ? (
+              {showLoadingSkeleton ? (
+                <TemplatePreviewSkeleton />
+              ) : blocks.length > 0 ? (
                 <Plate editor={previewEditor} readOnly>
                   <EditorContainer className="p-0 border-none shadow-none bg-transparent">
-                    <Editor readOnly variant="demo" className="min-h-[800px]" placeholder="" />
+                    <Editor readOnly variant="a4" placeholder="" />
                   </EditorContainer>
                 </Plate>
               ) : (
-                <div className="flex h-[400px] items-center justify-center text-sm text-foreground/20 italic">
+                <div className="flex min-h-[1122px] items-center justify-center text-sm text-foreground/20 italic bg-white shadow-[0_2px_20px_rgba(0,0,0,0.12)] border border-[#e0e0e0] rounded-sm">
                   {loading
                     ? "Recomponiendo documento..."
                     : "Selecciona un registro para previsualizar"}

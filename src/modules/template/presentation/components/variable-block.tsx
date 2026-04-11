@@ -20,6 +20,10 @@ import {
 import * as React from "react";
 
 import type { FieldTypeValue } from "@/modules/collection/domain/value-objects/field-type.vo";
+import {
+  resolveDocumentFontFamily,
+  resolveDocumentFontSize,
+} from "@/shared/lib/document-typography";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/presentation/components/ui/button";
 import {
@@ -48,15 +52,20 @@ export const VARIABLE_TYPE = "variable";
 export interface VariableElementNode extends TElement {
   type: typeof VARIABLE_TYPE;
   children: Descendant[];
+  backgroundColor?: string;
+  color?: string;
   fieldPath: string;
   collectionId: string;
   fieldType?: FieldTypeValue;
+  fontFamily?: string;
+  fontSize?: string | number;
   imageWidthPercent?: number;
   imageHeightPx?: number;
   align?: "left" | "center" | "right" | "justify";
   bold?: boolean;
   italic?: boolean;
-  color?: string;
+  underline?: boolean;
+  strikethrough?: boolean;
   textTransform?: "uppercase" | "lowercase" | "capitalize" | "none";
 }
 
@@ -96,6 +105,25 @@ function getImageHeightPx(element: VariableElementNode): number {
   return clampNumber(raw, IMAGE_HEIGHT_MIN, IMAGE_HEIGHT_MAX);
 }
 
+function resolveVariableTextDecoration(
+  underline?: boolean,
+  strikethrough?: boolean,
+): string | undefined {
+  if (underline && strikethrough) {
+    return "underline line-through";
+  }
+
+  if (underline) {
+    return "underline";
+  }
+
+  if (strikethrough) {
+    return "line-through";
+  }
+
+  return undefined;
+}
+
 export function VariableElement(props: PlateElementProps<VariableElementNode>) {
   const { children, element, attributes } = props;
   const isImage = element.fieldType === "IMAGE";
@@ -120,10 +148,22 @@ export function VariableElement(props: PlateElementProps<VariableElementNode>) {
     const bold = element.bold ?? false;
     const italic = element.italic ?? false;
     const color = element.color;
+    const backgroundColor = element.backgroundColor;
+    const fontFamily =
+      typeof element.fontFamily === "string"
+        ? resolveDocumentFontFamily("web", element.fontFamily)
+        : undefined;
+    const fontSize =
+      typeof element.fontSize === "string" || typeof element.fontSize === "number"
+        ? `${resolveDocumentFontSize(element.fontSize)}pt`
+        : undefined;
+    const textDecoration = resolveVariableTextDecoration(element.underline, element.strikethrough);
     const textTransform = element.textTransform ?? "none";
 
     const updateFormatting = (
-      patch: Partial<Pick<VariableElementNode, "bold" | "italic" | "color" | "textTransform">>,
+      patch: Partial<
+        Pick<VariableElementNode, "bold" | "italic" | "color" | "backgroundColor" | "textTransform">
+      >,
     ) => {
       const path = editor.api.findPath(element);
       if (!path) return;
@@ -135,15 +175,19 @@ export function VariableElement(props: PlateElementProps<VariableElementNode>) {
         {...attributes}
         contentEditable={false}
         className={cn(
-          "mx-0.5 inline-flex items-center rounded-md px-1.5 py-0.5 text-sm font-medium ring-1 ring-inset select-none cursor-pointer transition-all hover:ring-primary/40",
-          !color && "bg-primary/10 text-primary ring-primary/20",
-          bold && "font-bold",
-          italic && "italic",
+          "mx-0.5 inline-flex max-w-full items-baseline rounded-md px-[0.35em] py-[0.08em] ring-1 ring-inset select-none cursor-pointer transition-all hover:ring-primary/40",
+          !color && !backgroundColor && "bg-primary/10 text-primary ring-primary/20",
         )}
         style={{
-          color: color,
-          backgroundColor: color ? `${color}15` : undefined,
+          backgroundColor: backgroundColor ?? (color ? `${color}15` : undefined),
           boxShadow: color ? `inset 0 0 0 1px ${color}30` : undefined,
+          color: color ?? "inherit",
+          fontFamily: fontFamily ?? "inherit",
+          fontSize: fontSize ?? "inherit",
+          fontStyle: italic ? "italic" : "inherit",
+          fontWeight: bold ? 700 : "inherit",
+          lineHeight: "inherit",
+          textDecoration: textDecoration ?? "inherit",
           textTransform:
             textTransform === "capitalize"
               ? "none"
@@ -153,7 +197,7 @@ export function VariableElement(props: PlateElementProps<VariableElementNode>) {
       >
         <span className="opacity-70">{"{{"}</span>
         <span
-          className="px-0.5 leading-none"
+          className="max-w-full truncate px-0.5 leading-[inherit]"
           style={{
             textTransform:
               textTransform === "capitalize"

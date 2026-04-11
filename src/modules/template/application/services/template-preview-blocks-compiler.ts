@@ -40,6 +40,17 @@ interface PlateElementNode {
 
 type PlateDescendantNode = PlateElementNode | PlateTextNode;
 
+interface TemplateTextMarks {
+  backgroundColor?: string;
+  bold?: boolean;
+  color?: string;
+  fontFamily?: string;
+  fontSize?: string | number;
+  italic?: boolean;
+  strikethrough?: boolean;
+  underline?: boolean;
+}
+
 interface CompileTemplatePreviewBlocksParams {
   requestId: string;
   blocks: TemplateBlocks;
@@ -154,15 +165,17 @@ function isElementNode(value: unknown): value is PlateElementNode {
   return isRecord(value) && typeof value.type === "string" && Array.isArray(value.children);
 }
 
-function toPlateText(
-  text: string,
-  marks?: { bold?: boolean; italic?: boolean; color?: string },
-): PlateTextNode {
+function toPlateText(text: string, marks?: TemplateTextMarks): PlateTextNode {
   return {
     text,
-    bold: !!marks?.bold,
-    italic: !!marks?.italic,
-    color: marks?.color,
+    ...(marks?.backgroundColor ? { backgroundColor: marks.backgroundColor } : {}),
+    ...(marks?.bold ? { bold: true } : {}),
+    ...(marks?.color ? { color: marks.color } : {}),
+    ...(marks?.fontFamily ? { fontFamily: marks.fontFamily } : {}),
+    ...(marks?.fontSize ? { fontSize: marks.fontSize } : {}),
+    ...(marks?.italic ? { italic: true } : {}),
+    ...(marks?.strikethrough ? { strikethrough: true } : {}),
+    ...(marks?.underline ? { underline: true } : {}),
   };
 }
 
@@ -172,15 +185,53 @@ function toParagraph(
     align?: string;
     lineHeight?: number;
     indent?: number;
-    marks?: { bold?: boolean; italic?: boolean; color?: string };
+    fontSize?: number;
+    fontFamily?: string;
+    marks?: TemplateTextMarks;
   },
 ): PlateElementNode {
+  const fontSize = options?.fontSize ? `${options.fontSize}pt` : undefined;
+  const inheritedMarks: TemplateTextMarks = {
+    ...(options?.marks ?? {}),
+    ...(fontSize ? { fontSize } : {}),
+    ...(options?.fontFamily ? { fontFamily: options.fontFamily } : {}),
+  };
   return {
     type: "p",
     ...(options?.align ? { align: options.align } : {}),
     ...(options?.lineHeight ? { lineHeight: options.lineHeight } : {}),
     ...(options?.indent ? { indent: options.indent } : {}),
-    children: [toPlateText(text, options?.marks)],
+    ...(fontSize ? { fontSize } : {}),
+    ...(options?.fontFamily ? { fontFamily: options.fontFamily } : {}),
+    children: [
+      toPlateText(text, Object.keys(inheritedMarks).length > 0 ? inheritedMarks : undefined),
+    ],
+  };
+}
+
+function extractTextMarks(
+  node: Record<string, unknown>,
+  options?: {
+    fallbackFontFamily?: string;
+  },
+): TemplateTextMarks {
+  return {
+    backgroundColor: typeof node.backgroundColor === "string" ? node.backgroundColor : undefined,
+    bold: node.bold === true ? true : undefined,
+    color: typeof node.color === "string" ? node.color : undefined,
+    fontFamily:
+      typeof node.fontFamily === "string"
+        ? node.fontFamily
+        : typeof options?.fallbackFontFamily === "string"
+          ? options.fallbackFontFamily
+          : undefined,
+    fontSize:
+      typeof node.fontSize === "string" || typeof node.fontSize === "number"
+        ? node.fontSize
+        : undefined,
+    italic: node.italic === true ? true : undefined,
+    strikethrough: node.strikethrough === true ? true : undefined,
+    underline: node.underline === true ? true : undefined,
   };
 }
 
@@ -491,14 +542,29 @@ async function parseLineToBlock(
   line: string,
   compileContext: CompileContext,
   warnings: string[],
-  options?: { align?: string; lineHeight?: number; indent?: number },
+  options?: {
+    align?: string;
+    lineHeight?: number;
+    indent?: number;
+    fontSize?: number;
+    fontFamily?: string;
+  },
 ): Promise<PlateElementNode> {
   const trimmed = line.trim();
   const align = options?.align ?? "left";
   const lineHeight = options?.lineHeight;
   const baseIndent = options?.indent ?? 0;
+  const fontSizeRaw = options?.fontSize;
+  const fontSize = fontSizeRaw ? `${fontSizeRaw}pt` : undefined;
+  const fontFamily = options?.fontFamily;
+  const typographyMarks: TemplateTextMarks = {
+    ...(fontSize ? { fontSize } : {}),
+    ...(fontFamily ? { fontFamily } : {}),
+  };
+  const hasMarks = Object.keys(typographyMarks).length > 0;
 
-  if (trimmed.length === 0) return toParagraph("", { align, lineHeight });
+  if (trimmed.length === 0)
+    return toParagraph("", { align, lineHeight, fontSize: fontSizeRaw, fontFamily });
 
   const headingMatch = /^(#{1,3})\s+(.+)$/.exec(trimmed);
   if (headingMatch) {
@@ -508,7 +574,9 @@ async function parseLineToBlock(
       ...(align !== "left" ? { align } : {}),
       ...(lineHeight ? { lineHeight } : {}),
       ...(baseIndent > 0 ? { indent: baseIndent } : {}),
-      children: [toPlateText(headingMatch[2])],
+      ...(fontSize ? { fontSize } : {}),
+      ...(fontFamily ? { fontFamily } : {}),
+      children: [toPlateText(headingMatch[2], hasMarks ? typographyMarks : undefined)],
     };
   }
   const unorderedMatch = /^[-*]\s+(.+)$/.exec(trimmed);
@@ -517,9 +585,11 @@ async function parseLineToBlock(
       type: "p",
       align,
       ...(lineHeight ? { lineHeight } : {}),
+      ...(fontSize ? { fontSize } : {}),
+      ...(fontFamily ? { fontFamily } : {}),
       listStyleType: "disc",
       indent: baseIndent + 1,
-      children: [toPlateText(unorderedMatch[1])],
+      children: [toPlateText(unorderedMatch[1], hasMarks ? typographyMarks : undefined)],
     };
   }
   const orderedMatch = /^\d+\.\s+(.+)$/.exec(trimmed);
@@ -528,9 +598,11 @@ async function parseLineToBlock(
       type: "p",
       align,
       ...(lineHeight ? { lineHeight } : {}),
+      ...(fontSize ? { fontSize } : {}),
+      ...(fontFamily ? { fontFamily } : {}),
       listStyleType: "decimal",
       indent: baseIndent + 1,
-      children: [toPlateText(orderedMatch[1])],
+      children: [toPlateText(orderedMatch[1], hasMarks ? typographyMarks : undefined)],
     };
   }
   const quoteMatch = /^>\s+(.+)$/.exec(trimmed);
@@ -540,7 +612,9 @@ async function parseLineToBlock(
       align,
       ...(lineHeight ? { lineHeight } : {}),
       ...(baseIndent > 0 ? { indent: baseIndent } : {}),
-      children: [toPlateText(quoteMatch[1])],
+      ...(fontSize ? { fontSize } : {}),
+      ...(fontFamily ? { fontFamily } : {}),
+      children: [toPlateText(quoteMatch[1], hasMarks ? typographyMarks : undefined)],
     };
   }
   const imageMatch = /^!\[([^\]]*)\]\(([^)]+)\)$/.exec(trimmed);
@@ -554,7 +628,7 @@ async function parseLineToBlock(
       align: align as "left" | "center" | "right" | "justify",
     });
   }
-  return toParagraph(trimmed, { align, lineHeight });
+  return toParagraph(trimmed, { align, lineHeight, fontSize: fontSizeRaw, fontFamily });
 }
 
 async function renderTemplateToBlocks(
@@ -562,7 +636,13 @@ async function renderTemplateToBlocks(
   scope: TemplateRuntimeScope,
   compileContext: CompileContext,
   warnings: string[],
-  options?: { align?: string; lineHeight?: number; indent?: number },
+  options?: {
+    align?: string;
+    lineHeight?: number;
+    indent?: number;
+    fontSize?: number;
+    fontFamily?: string;
+  },
 ): Promise<PlateElementNode[]> {
   const rendered = interpolateTemplateString(template, scope);
   if (rendered.trim().length === 0) return [];
@@ -594,15 +674,29 @@ async function structuredBlockToPlate(
   block: StructuredAIDocumentBlock,
   compileContext: CompileContext,
   warnings: string[],
-  options?: { align?: string; lineHeight?: number; indent?: number },
+  options?: {
+    align?: string;
+    lineHeight?: number;
+    indent?: number;
+    fontSize?: number;
+    fontFamily?: string;
+  },
 ): Promise<PlateElementNode[]> {
   const align = options?.align ?? "left";
   const lineHeight = options?.lineHeight;
   const baseIndent = options?.indent ?? 0;
+  const fontSizeRaw = options?.fontSize;
+  const fontSize = fontSizeRaw ? `${fontSizeRaw}pt` : undefined;
+  const fontFamily = options?.fontFamily;
+  const typographyMarks: TemplateTextMarks = {
+    ...(fontSize ? { fontSize } : {}),
+    ...(fontFamily ? { fontFamily } : {}),
+  };
+  const hasMarks = Object.keys(typographyMarks).length > 0;
 
   switch (block.type) {
     case "paragraph":
-      return [toParagraph(block.text, { align, lineHeight })];
+      return [toParagraph(block.text, { align, lineHeight, fontSize: fontSizeRaw, fontFamily })];
     case "heading":
       return [
         {
@@ -610,7 +704,9 @@ async function structuredBlockToPlate(
           ...(align !== "left" ? { align } : {}),
           ...(lineHeight ? { lineHeight } : {}),
           ...(baseIndent > 0 ? { indent: baseIndent } : {}),
-          children: [toPlateText(block.text)],
+          ...(fontSize ? { fontSize } : {}),
+          ...(fontFamily ? { fontFamily } : {}),
+          children: [toPlateText(block.text, hasMarks ? typographyMarks : undefined)],
         },
       ];
     case "quote":
@@ -620,7 +716,9 @@ async function structuredBlockToPlate(
           align,
           ...(lineHeight ? { lineHeight } : {}),
           ...(baseIndent > 0 ? { indent: baseIndent } : {}),
-          children: [toPlateText(block.text)],
+          ...(fontSize ? { fontSize } : {}),
+          ...(fontFamily ? { fontFamily } : {}),
+          children: [toPlateText(block.text, hasMarks ? typographyMarks : undefined)],
         },
       ];
     case "bullet_list":
@@ -628,18 +726,22 @@ async function structuredBlockToPlate(
         type: "p",
         align,
         ...(lineHeight ? { lineHeight } : {}),
+        ...(fontSize ? { fontSize } : {}),
+        ...(fontFamily ? { fontFamily } : {}),
         listStyleType: "disc",
         indent: baseIndent + 1,
-        children: [toPlateText(item)],
+        children: [toPlateText(item, hasMarks ? typographyMarks : undefined)],
       }));
     case "ordered_list":
       return block.items.map((item) => ({
         type: "p",
         align,
         ...(lineHeight ? { lineHeight } : {}),
+        ...(fontSize ? { fontSize } : {}),
+        ...(fontFamily ? { fontFamily } : {}),
         listStyleType: "decimal",
         indent: baseIndent + 1,
-        children: [toPlateText(item)],
+        children: [toPlateText(item, hasMarks ? typographyMarks : undefined)],
       }));
     case "image": {
       const path = block.url;
@@ -667,7 +769,13 @@ async function parseStructuredAIDocument(
   raw: string,
   compileContext: CompileContext,
   warnings: string[],
-  options?: { align?: string; lineHeight?: number; indent?: number },
+  options?: {
+    align?: string;
+    lineHeight?: number;
+    indent?: number;
+    fontSize?: number;
+    fontFamily?: string;
+  },
 ): Promise<PlateElementNode[] | null> {
   const candidate = extractJsonCandidate(raw);
   if (!candidate) return null;
@@ -860,6 +968,8 @@ async function compileTemplateAiNodeStreamed(
     align: typeof node.align === "string" ? node.align : undefined,
     lineHeight: typeof node.lineHeight === "number" ? node.lineHeight : undefined,
     indent: typeof node.indent === "number" ? node.indent : undefined,
+    fontSize: typeof node.fontSize === "number" ? node.fontSize : undefined,
+    fontFamily: typeof node.fontFamily === "string" ? node.fontFamily : undefined,
   });
   if (structuredBlocks && structuredBlocks.length > 0) {
     return structuredBlocks;
@@ -873,6 +983,8 @@ async function compileTemplateAiNodeStreamed(
         align: typeof node.align === "string" ? node.align : undefined,
         lineHeight: typeof node.lineHeight === "number" ? node.lineHeight : undefined,
         indent: typeof node.indent === "number" ? node.indent : undefined,
+        fontSize: typeof node.fontSize === "number" ? node.fontSize : undefined,
+        fontFamily: typeof node.fontFamily === "string" ? node.fontFamily : undefined,
       }),
     );
   }
@@ -927,9 +1039,9 @@ async function compileParagraphNode(
 
       compiledChildren.push(
         toPlateText(transformedText, {
-          bold: !!child.bold,
-          italic: !!child.italic,
-          color: typeof child.color === "string" ? child.color : undefined,
+          ...extractTextMarks(child, {
+            fallbackFontFamily: typeof node.fontFamily === "string" ? node.fontFamily : undefined,
+          }),
         }),
       );
       continue;
@@ -1053,6 +1165,8 @@ async function compileTemplateConditionalNode(
     align: typeof node.align === "string" ? node.align : undefined,
     lineHeight: typeof node.lineHeight === "number" ? node.lineHeight : undefined,
     indent: typeof node.indent === "number" ? node.indent : undefined,
+    fontSize: typeof node.fontSize === "number" ? node.fontSize : undefined,
+    fontFamily: typeof node.fontFamily === "string" ? node.fontFamily : undefined,
   });
 }
 
@@ -1119,6 +1233,8 @@ async function compileTemplateSwitchNode(
     align: typeof node.align === "string" ? node.align : undefined,
     lineHeight: typeof node.lineHeight === "number" ? node.lineHeight : undefined,
     indent: typeof node.indent === "number" ? node.indent : undefined,
+    fontSize: typeof node.fontSize === "number" ? node.fontSize : undefined,
+    fontFamily: typeof node.fontFamily === "string" ? node.fontFamily : undefined,
   });
 }
 
@@ -1151,6 +1267,8 @@ async function compileTemplateListNode(
       align: typeof node.align === "string" ? node.align : undefined,
       lineHeight: typeof node.lineHeight === "number" ? node.lineHeight : undefined,
       indent: typeof node.indent === "number" ? node.indent : undefined,
+      fontSize: typeof node.fontSize === "number" ? node.fontSize : undefined,
+      fontFamily: typeof node.fontFamily === "string" ? node.fontFamily : undefined,
     });
   }
 
@@ -1184,6 +1302,8 @@ async function compileTemplateListNode(
             align: typeof node.align === "string" ? node.align : undefined,
             lineHeight: typeof node.lineHeight === "number" ? node.lineHeight : undefined,
             indent: typeof node.indent === "number" ? node.indent : undefined,
+            fontSize: typeof node.fontSize === "number" ? node.fontSize : undefined,
+            fontFamily: typeof node.fontFamily === "string" ? node.fontFamily : undefined,
           });
 
     if (listStyle === "bullet" || listStyle === "number") {
@@ -1273,11 +1393,7 @@ async function compileNode(
           align: typeof node.align === "string" ? node.align : "justify",
           lineHeight: typeof node.lineHeight === "number" ? node.lineHeight : undefined,
           indent: typeof node.indent === "number" ? node.indent : undefined,
-          marks: {
-            bold: !!node.bold,
-            italic: !!node.italic,
-            color: typeof node.color === "string" ? node.color : undefined,
-          },
+          marks: extractTextMarks(node),
         }),
       ];
     }
@@ -1298,6 +1414,49 @@ async function compileNode(
         }
 
         if (!isElementNode(child)) {
+          continue;
+        }
+
+        if (child.type === "variable") {
+          const fieldPath = typeof child.fieldPath === "string" ? child.fieldPath : "";
+          const value = fieldPath ? resolveTemplatePath(scope, fieldPath) : undefined;
+          const rawText = resolveVariableText(value);
+          const transform =
+            typeof child.textTransform === "string" ? child.textTransform : undefined;
+          const transformedText = applyTextTransform(rawText, transform);
+
+          compiledChildren.push(
+            toPlateText(transformedText, {
+              ...extractTextMarks(child, {
+                fallbackFontFamily:
+                  typeof node.fontFamily === "string" ? node.fontFamily : undefined,
+              }),
+            }),
+          );
+          continue;
+        }
+
+        if (child.type === "template_ai") {
+          const aiBlocks = await compileTemplateAiNodeStreamed(
+            child,
+            scope,
+            compileContext,
+            warnings,
+            blockMeta,
+          );
+          const aiText = aiBlocks
+            .map((block) =>
+              block.children
+                .filter(isTextNode)
+                .map((textNode) => textNode.text)
+                .join(" "),
+            )
+            .join(" ")
+            .trim();
+
+          if (aiText.length > 0) {
+            compiledChildren.push(toPlateText(aiText));
+          }
           continue;
         }
 

@@ -316,4 +316,50 @@ describe("compileTemplatePreviewBlocks", () => {
     expect(JSON.stringify(result.value.blocks)).toContain('"width":"30%"');
     expect(JSON.stringify(result.value.blocks)).toContain('"height":160');
   });
+
+  it("preserves font size and font family when resolving inline variables", async () => {
+    const templateBlocks: TemplateBlocks = [
+      {
+        type: "p",
+        fontFamily: "times",
+        children: [
+          { text: "Cliente: ", fontSize: "20px", fontFamily: "times" },
+          {
+            type: "variable",
+            fieldPath: "nombre",
+            fontFamily: "times",
+            fontSize: "20px",
+            color: "#111111",
+            underline: true,
+            children: [{ text: "" }],
+          },
+        ],
+      },
+    ];
+
+    const context: TemplateRuntimeContext = {
+      recordId: "record-1",
+      collectionId: "collection-1",
+      collectionName: "Clientes",
+      root: {
+        nombre: "Coti1",
+      },
+    };
+
+    const result = await compileTemplatePreviewBlocks({
+      requestId: "req-inline-fonts",
+      blocks: templateBlocks,
+      context,
+      aiProviderFactory: new StructuredAIProviderFactory(),
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const compiledText = JSON.stringify(result.value.blocks);
+    expect(compiledText).toContain('"text":"Coti1"');
+    expect(compiledText).toContain('"fontSize":"20px"');
+    expect(compiledText).toContain('"fontFamily":"times"');
+    expect(compiledText).toContain('"underline":true');
+  });
 });

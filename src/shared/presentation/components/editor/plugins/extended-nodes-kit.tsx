@@ -4,6 +4,7 @@ import { BasicBlocksPlugin, BasicMarksPlugin } from "@platejs/basic-nodes/react"
 import {
   FontBackgroundColorPlugin,
   FontColorPlugin,
+  FontFamilyPlugin,
   FontSizePlugin,
   LineHeightPlugin,
   TextAlignPlugin,
@@ -40,6 +41,7 @@ export const ExtendedNodesKit = [
     },
   }),
   FontSizePlugin,
+  FontFamilyPlugin,
   FontColorPlugin,
   FontBackgroundColorPlugin,
   LineHeightPlugin.configure({
