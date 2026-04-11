@@ -220,7 +220,7 @@ npx supabase db push
 npx supabase migration list
 
 # Desplegar Edge Functions
-# NOTA: document-exporter ya sólo maneja el fallback txt/docx.
+# NOTA: document-exporter ya sólo maneja el fallback txt.
 # El PDF export se ejecuta en el proceso de Next.js (no requiere deploy de Edge Function).
 npx supabase functions deploy document-exporter --no-verify-jwt
 npx supabase functions deploy ai-provider --no-verify-jwt

@@ -5,6 +5,7 @@ import { Field } from "@/modules/collection/domain/entities/field.entity";
 import { DataRecord } from "@/modules/collection/domain/entities/record.entity";
 import { FieldConfig } from "@/modules/collection/domain/value-objects/field-config.vo";
 import { FieldType, FieldTypeValue } from "@/modules/collection/domain/value-objects/field-type.vo";
+import { RecordDocument } from "@/modules/document/domain/entities/record-document.entity";
 import { Template } from "@/modules/template/domain/entities/template.entity";
 import { TemplateBlocks } from "@/modules/template/domain/types/template-blocks";
 import { Workspace } from "@/modules/workspace/domain/entities/workspace.entity";
@@ -283,6 +284,63 @@ export function makeTemplate(
     ],
     version: overrides.version ?? 1,
     createdBy: overrides.createdBy ?? `user-${String(order).padStart(4, "0")}`,
+    createdAt: overrides.createdAt ?? dateFor(order),
+    updatedAt: overrides.updatedAt ?? dateFor(order),
+  });
+
+  if (!result.ok) {
+    throw result.error;
+  }
+
+  return result.value;
+}
+
+export function makeRecordDocument(
+  overrides: Partial<{
+    id: string;
+    accountId: string;
+    collectionId: string;
+    recordId: string;
+    templateId: string;
+    compiledBlocks: TemplateBlocks;
+    editedBlocks: TemplateBlocks;
+    sourceTemplateVersion: number;
+    version: number;
+    compiledAt: Date;
+    lastEditedAt: Date;
+    createdBy: string;
+    updatedBy: string;
+    createdAt: Date;
+    updatedAt: Date;
+  }> = {},
+) {
+  const order = nextSequence();
+
+  const result = RecordDocument.create({
+    id: overrides.id ?? `record-document-${String(order).padStart(4, "0")}`,
+    accountId: overrides.accountId ?? `workspace-${String(order).padStart(4, "0")}`,
+    collectionId: overrides.collectionId ?? `collection-${String(order).padStart(4, "0")}`,
+    recordId: overrides.recordId ?? `record-${String(order).padStart(4, "0")}`,
+    templateId: overrides.templateId ?? `template-${String(order).padStart(4, "0")}`,
+    compiledBlocks: overrides.compiledBlocks ?? [
+      {
+        type: "p",
+        children: [{ text: `Compiled ${order}` }],
+      },
+    ],
+    editedBlocks: overrides.editedBlocks ??
+      overrides.compiledBlocks ?? [
+        {
+          type: "p",
+          children: [{ text: `Compiled ${order}` }],
+        },
+      ],
+    sourceTemplateVersion: overrides.sourceTemplateVersion ?? 1,
+    version: overrides.version ?? 1,
+    compiledAt: overrides.compiledAt ?? dateFor(order),
+    lastEditedAt: overrides.lastEditedAt ?? dateFor(order),
+    createdBy: overrides.createdBy ?? `user-${String(order).padStart(4, "0")}`,
+    updatedBy: overrides.updatedBy ?? `user-${String(order).padStart(4, "0")}`,
     createdAt: overrides.createdAt ?? dateFor(order),
     updatedAt: overrides.updatedAt ?? dateFor(order),
   });

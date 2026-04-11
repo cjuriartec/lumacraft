@@ -9,8 +9,6 @@ import {
   resolveDocumentFontFamily,
   resolveDocumentFontSize,
   resolveDocumentLineHeight,
-  resolveDocxFontSize,
-  resolveDocxLineHeight,
 } from "@/shared/lib/document-typography";
 
 describe("document-typography", () => {
@@ -23,22 +21,18 @@ describe("document-typography", () => {
     expect(normalizeSupportedDocumentFontFamily("Papyrus")).toBe(DEFAULT_DOCUMENT_FONT_FAMILY);
   });
 
-  it("maps each supported family to web, pdf and docx equivalents", () => {
+  it("maps each supported family to web, pdf equivalents", () => {
     expect(resolveDocumentFontFamily("web", "arial")).toBe("Arial, Helvetica, sans-serif");
     expect(resolveDocumentFontFamily("pdf", "arial")).toBe("Helvetica");
-    expect(resolveDocumentFontFamily("docx", "arial")).toBe("Arial");
 
     expect(resolveDocumentFontFamily("web", "roboto")).toBe('"Roboto", Arial, sans-serif');
     expect(resolveDocumentFontFamily("pdf", "roboto")).toBe("Roboto");
-    expect(resolveDocumentFontFamily("docx", "roboto")).toBe("Roboto");
 
     expect(resolveDocumentFontFamily("web", "times")).toBe('"Times New Roman", Times, serif');
     expect(resolveDocumentFontFamily("pdf", "times")).toBe("Times-Roman");
-    expect(resolveDocumentFontFamily("docx", "times")).toBe("Times New Roman");
 
     expect(resolveDocumentFontFamily("web", "courier")).toBe('"Courier New", Courier, monospace');
     expect(resolveDocumentFontFamily("pdf", "courier")).toBe("Courier");
-    expect(resolveDocumentFontFamily("docx", "courier")).toBe("Courier New");
   });
 
   it("exposes single-name labels for the font picker", () => {
@@ -50,18 +44,16 @@ describe("document-typography", () => {
     ]);
   });
 
-  it("resolves canonical block font sizes and docx size conversion", () => {
+  it("resolves canonical block font sizes", () => {
     expect(resolveDocumentFontSize(undefined, "p")).toBe(DEFAULT_DOCUMENT_FONT_SIZE);
     expect(resolveDocumentFontSize(undefined, "h1")).toBe(36);
     expect(resolveDocumentFontSize(undefined, "h4")).toBe(18);
     expect(resolveDocumentFontSize("22px", "p")).toBe(22);
-    expect(resolveDocxFontSize("22px", "p")).toBe(44);
   });
 
   it("resolves and clamps line height consistently", () => {
     expect(resolveDocumentLineHeight(undefined)).toBe(DEFAULT_DOCUMENT_LINE_HEIGHT);
     expect(resolveDocumentLineHeight("2")).toBe(2);
     expect(resolveDocumentLineHeight("9")).toBe(3);
-    expect(resolveDocxLineHeight("1.5")).toBe(360);
   });
 });

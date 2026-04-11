@@ -46,6 +46,7 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { can, isOwner, isSuperAdmin } = usePermissions();
+  const canRead = can(collectionId, "read");
   const canCreate = can(collectionId, "create");
   const canUpdate = can(collectionId, "update");
   const canDelete = can(collectionId, "delete");
@@ -250,6 +251,7 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
                   onAddRecord={handleCreateRecord}
                   reverseLookupResults={reverseLookupResults}
                   canCreate={canCreate}
+                  canRead={canRead}
                   canUpdate={canUpdate}
                   canDelete={canDelete}
                 />

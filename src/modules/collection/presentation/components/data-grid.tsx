@@ -5,6 +5,7 @@ import {
   ChevronUp,
   Download,
   Edit2,
+  Eye,
   ListFilter,
   Loader2,
   Plus,
@@ -13,6 +14,7 @@ import {
 } from "lucide-react";
 import React, { useEffect, useMemo, useState } from "react";
 
+import { RecordDocumentSelectorModal } from "@/modules/document/presentation/components/record-document-selector-modal";
 import { cn } from "@/shared/lib/utils";
 import { Badge } from "@/shared/presentation/components/ui/badge";
 import { Button } from "@/shared/presentation/components/ui/button";
@@ -44,7 +46,6 @@ import { ColumnFilter } from "../../domain/types/pagination.types";
 import { ReverseLookupResults } from "../hooks/use-records";
 import { RelationOption, useRelationRecords } from "../hooks/use-relation-records";
 import { useStorage } from "../hooks/use-storage";
-import { ExportRecordModal } from "./export-record-modal";
 
 interface DataGridProps {
   collectionId?: string;
@@ -67,6 +68,7 @@ interface DataGridProps {
   reverseLookupResults?: ReverseLookupResults;
   initialFilterValues?: Record<string, string>;
   canCreate?: boolean;
+  canRead?: boolean;
   canUpdate?: boolean;
   canDelete?: boolean;
 }
@@ -293,6 +295,7 @@ export function DataGrid({
   reverseLookupResults = {},
   initialFilterValues,
   canCreate = true,
+  canRead = true,
   canUpdate = true,
   canDelete = true,
 }: DataGridProps) {
@@ -300,7 +303,7 @@ export function DataGrid({
   const [downloadingFiles, setDownloadingFiles] = useState<Record<string, boolean>>({});
   const [draftValue, setDraftValue] = useState<string>("");
   const [updatingCell, setUpdatingCell] = useState(false);
-  const [exportRecordId, setExportRecordId] = useState<string | null>(null);
+  const [documentRecordId, setDocumentRecordId] = useState<string | null>(null);
   const [filterValues, setFilterValues] = useState<Record<string, string>>(
     initialFilterValues || {},
   );
@@ -922,7 +925,7 @@ export function DataGrid({
                     </TableCell>
                   ))}
                   <TableCell className="text-right py-4 px-4">
-                    {(canUpdate || canDelete) && (
+                    {(canRead || canUpdate || canDelete) && (
                       <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         {canUpdate && (
                           <Button
@@ -935,15 +938,15 @@ export function DataGrid({
                             <Edit2 size={14} />
                           </Button>
                         )}
-                        {collectionId && (
+                        {collectionId && canRead && (
                           <Button
                             variant="ghost"
                             size="icon"
-                            aria-label={`Exportar registro ${record.id}`}
+                            aria-label={`Abrir documento del registro ${record.id}`}
                             className="h-8 w-8 text-muted hover:text-primary hover:bg-primary/10"
-                            onClick={() => setExportRecordId(record.id)}
+                            onClick={() => setDocumentRecordId(record.id)}
                           >
-                            <Download size={14} />
+                            <Eye size={14} />
                           </Button>
                         )}
                         {canDelete && (
@@ -968,11 +971,11 @@ export function DataGrid({
       </div>
 
       {collectionId && (
-        <ExportRecordModal
-          isOpen={!!exportRecordId}
-          onOpenChange={(open) => !open && setExportRecordId(null)}
+        <RecordDocumentSelectorModal
+          isOpen={!!documentRecordId}
+          onOpenChange={(open) => !open && setDocumentRecordId(null)}
           collectionId={collectionId}
-          recordId={exportRecordId}
+          recordId={documentRecordId}
         />
       )}
 

@@ -4,6 +4,7 @@ import {
   makeCollection,
   makeField,
   makeRecord,
+  makeRecordDocument,
   makeTemplate,
 } from "@/__tests__/factories/domain-factories";
 import {
@@ -18,6 +19,8 @@ import { SupabaseCollectionRepository } from "@/modules/collection/infrastructur
 import { SupabaseFieldRepository } from "@/modules/collection/infrastructure/repositories/supabase-field.repository";
 import { SupabaseRecordRepository } from "@/modules/collection/infrastructure/repositories/supabase-record.repository";
 import { SupabaseRelationRepository } from "@/modules/collection/infrastructure/repositories/supabase-relation.repository";
+import { RecordDocument } from "@/modules/document/domain/entities/record-document.entity";
+import { SupabaseRecordDocumentRepository } from "@/modules/document/infrastructure/repositories/supabase-record-document.repository";
 import { Template } from "@/modules/template/domain/entities/template.entity";
 import { SupabaseTemplateRepository } from "@/modules/template/infrastructure/repositories/supabase-template.repository";
 
@@ -298,6 +301,117 @@ describeIfLocalSupabase("Supabase repositories integration", () => {
       expect(count.value).toBe(1);
     }
     expect(outsiderCreate.ok).toBe(false);
+  });
+
+  it("persists per-record documents with RLS and optimistic version checks", async () => {
+    const ownerCollections = new SupabaseCollectionRepository(owner.client);
+    const ownerTemplates = new SupabaseTemplateRepository(owner.client);
+    const ownerRecords = new SupabaseRecordRepository(owner.client);
+    const ownerDocuments = new SupabaseRecordDocumentRepository(owner.client);
+    const memberDocuments = new SupabaseRecordDocumentRepository(member.client);
+    const outsiderDocuments = new SupabaseRecordDocumentRepository(outsider.client);
+
+    const collection = await ownerCollections.create(
+      makeCollection({
+        id: crypto.randomUUID(),
+        accountId,
+        name: `docs_${crypto.randomUUID().slice(0, 6)}`,
+        displayName: "Document playground",
+      }),
+    );
+
+    if (!collection.ok) throw collection.error;
+
+    const template = await ownerTemplates.create(
+      makeTemplate({
+        id: crypto.randomUUID(),
+        accountId,
+        collectionId: collection.value.id,
+        name: `template_${crypto.randomUUID().slice(0, 6)}`,
+        createdBy: owner.id,
+      }),
+    );
+
+    if (!template.ok) throw template.error;
+
+    const record = await ownerRecords.create(
+      makeRecord({
+        id: crypto.randomUUID(),
+        collectionId: collection.value.id,
+        accountId,
+        createdBy: owner.id,
+        data: { title: "Client contract" },
+      }),
+    );
+
+    if (!record.ok) throw record.error;
+
+    const created = await ownerDocuments.create(
+      makeRecordDocument({
+        id: crypto.randomUUID(),
+        accountId,
+        collectionId: collection.value.id,
+        recordId: record.value.id,
+        templateId: template.value.id,
+        sourceTemplateVersion: template.value.version,
+        createdBy: owner.id,
+        updatedBy: owner.id,
+      }),
+    );
+
+    expect(created.ok).toBe(true);
+    if (!created.ok) throw created.error;
+
+    const visibleToMember = await memberDocuments.findByTemplateAndRecord(
+      template.value.id,
+      record.value.id,
+    );
+    const visibleToOutsider = await outsiderDocuments.findByTemplateAndRecord(
+      template.value.id,
+      record.value.id,
+    );
+
+    expect(visibleToMember.ok).toBe(true);
+    if (visibleToMember.ok) {
+      expect(visibleToMember.value?.id).toBe(created.value.id);
+    }
+    expect(visibleToOutsider.ok).toBe(true);
+    if (visibleToOutsider.ok) {
+      expect(visibleToOutsider.value).toBeNull();
+    }
+
+    const updatedResult = RecordDocument.create({
+      id: created.value.id,
+      accountId,
+      collectionId: collection.value.id,
+      recordId: record.value.id,
+      templateId: template.value.id,
+      compiledBlocks: created.value.compiledBlocks,
+      editedBlocks: [{ type: "p", children: [{ text: "Edited persisted version" }] }],
+      sourceTemplateVersion: template.value.version,
+      version: created.value.version + 1,
+      compiledAt: created.value.compiledAt,
+      lastEditedAt: new Date(),
+      createdBy: created.value.createdBy,
+      updatedBy: owner.id,
+      createdAt: created.value.createdAt,
+      updatedAt: created.value.updatedAt,
+    });
+
+    if (!updatedResult.ok) {
+      throw updatedResult.error;
+    }
+
+    const firstUpdate = await ownerDocuments.update(updatedResult.value, created.value.version);
+    const staleUpdate = await ownerDocuments.update(updatedResult.value, created.value.version);
+
+    expect(firstUpdate.ok).toBe(true);
+    expect(staleUpdate.ok).toBe(false);
+    if (!staleUpdate.ok) {
+      expect((staleUpdate.error as Error & { code?: string }).code).toBe(
+        "DOCUMENT_VERSION_CONFLICT",
+      );
+    }
   });
 
   it("enforces relation graph RLS and cardinality checks", async () => {
