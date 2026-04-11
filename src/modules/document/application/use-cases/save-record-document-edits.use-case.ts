@@ -26,6 +26,10 @@ export class SaveRecordDocumentEditsUseCase {
       return fail(new DomainError("Record document not found", "DOCUMENT_NOT_FOUND"));
     }
 
+    if (current.value.version !== params.expectedVersion) {
+      return fail(new DomainError("Record document version conflict", "DOCUMENT_VERSION_CONFLICT"));
+    }
+
     const now = new Date();
     const updated = RecordDocument.create({
       ...current.value.toJSON(),

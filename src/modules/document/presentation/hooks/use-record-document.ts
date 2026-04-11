@@ -27,6 +27,10 @@ interface ApiResult<T> {
   error?: string;
 }
 
+function areTemplateBlocksEqual(left: TemplateBlocks, right: TemplateBlocks): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
 async function requestJson<T>(input: RequestInfo, init?: RequestInit): Promise<ApiResult<T>> {
   const response = await fetch(input, init);
   const json = (await response.json().catch(() => null)) as ApiSuccess | ApiFailure | null;
@@ -64,9 +68,11 @@ export function useRecordDocument(params: {
   const [editorRevision, setEditorRevision] = useState(0);
 
   const payloadRef = useRef<RecordDocumentPreviewPayload | null>(null);
+  const documentVersionRef = useRef<number | null>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const statusTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const saveRequestIdRef = useRef(0);
+  const isSavingRef = useRef(false);
+  const queuedBlocksRef = useRef<TemplateBlocks | null>(null);
   const isMountedRef = useRef(true);
 
   useEffect(() => {
@@ -83,6 +89,8 @@ export function useRecordDocument(params: {
 
   const applyPayload = useCallback(
     (nextPayload: RecordDocumentPreviewPayload, hardReset: boolean) => {
+      payloadRef.current = nextPayload;
+      documentVersionRef.current = nextPayload.document.version;
       setPayload(nextPayload);
       setError(null);
       if (hardReset) {
@@ -136,12 +144,20 @@ export function useRecordDocument(params: {
   }, [load]);
 
   const saveDocument = useCallback(
-    async (editedBlocks: TemplateBlocks) => {
+    async function saveDocument(editedBlocks: TemplateBlocks) {
       const currentPayload = payloadRef.current;
       if (!currentPayload?.permissions.canUpdate) return;
+      const expectedVersion = documentVersionRef.current ?? currentPayload.document.version;
+      const optimisticNextVersion = expectedVersion + 1;
 
-      const requestId = saveRequestIdRef.current + 1;
-      saveRequestIdRef.current = requestId;
+      isSavingRef.current = true;
+      queuedBlocksRef.current = null;
+      documentVersionRef.current = optimisticNextVersion;
+
+      if (statusTimeoutRef.current) {
+        clearTimeout(statusTimeoutRef.current);
+      }
+
       if (isMountedRef.current) setSaveStatus("saving");
 
       const saveResult = await requestJson<RecordDocumentPreviewPayload>(endpointBase, {
@@ -151,15 +167,20 @@ export function useRecordDocument(params: {
         },
         body: JSON.stringify({
           editedBlocks,
-          version: currentPayload.document.version,
+          version: expectedVersion,
         }),
       });
 
-      if (!isMountedRef.current || requestId !== saveRequestIdRef.current) {
+      if (!isMountedRef.current) {
+        isSavingRef.current = false;
         return;
       }
 
       if (!saveResult.ok) {
+        queuedBlocksRef.current = null;
+        isSavingRef.current = false;
+        documentVersionRef.current = expectedVersion;
+
         if (saveResult.status === 409) {
           await load();
           setSaveStatus("error");
@@ -172,9 +193,27 @@ export function useRecordDocument(params: {
         return;
       }
 
+      const nextPayload = saveResult.payload;
       if (saveResult.payload) {
+        documentVersionRef.current = saveResult.payload.document.version;
         applyPayload(saveResult.payload, false);
+      } else {
+        documentVersionRef.current = optimisticNextVersion;
       }
+
+      const pendingBlocks = queuedBlocksRef.current;
+      queuedBlocksRef.current = null;
+      isSavingRef.current = false;
+
+      if (
+        pendingBlocks &&
+        nextPayload &&
+        !areTemplateBlocksEqual(pendingBlocks, nextPayload.document.editedBlocks)
+      ) {
+        void saveDocument(pendingBlocks);
+        return;
+      }
+
       setSaveStatus("saved");
 
       if (statusTimeoutRef.current) {
@@ -198,8 +237,18 @@ export function useRecordDocument(params: {
         clearTimeout(saveTimeoutRef.current);
       }
 
-      setSaveStatus("idle");
+      if (!isSavingRef.current) {
+        setSaveStatus("idle");
+      }
+
       saveTimeoutRef.current = setTimeout(() => {
+        saveTimeoutRef.current = null;
+
+        if (isSavingRef.current) {
+          queuedBlocksRef.current = editedBlocks;
+          return;
+        }
+
         void saveDocument(editedBlocks);
       }, 1200);
     },

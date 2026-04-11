@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye, FileText } from "lucide-react";
+import { Eye } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
@@ -9,7 +9,6 @@ import { Button } from "@/shared/presentation/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/shared/presentation/components/ui/dialog";
@@ -70,9 +69,6 @@ export function RecordDocumentSelectorModal({
             <DialogTitle className="text-[1.5rem] tracking-[-0.01em] font-semibold">
               Abrir Documento
             </DialogTitle>
-            <DialogDescription className="text-[11px] font-medium uppercase tracking-[0.12em] opacity-50">
-              Documento persistido por plantilla
-            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-3">
@@ -119,11 +115,6 @@ export function RecordDocumentSelectorModal({
               <Eye size={14} />
               Abrir
             </Button>
-          </div>
-
-          <div className="rounded-xl border border-primary/10 bg-primary/5 px-4 py-3 text-[12px] text-primary/80 flex items-center gap-3">
-            <FileText size={14} className="shrink-0" />
-            La primera vez se compila el documento. Luego se abrirá siempre la versión guardada.
           </div>
         </div>
       </DialogContent>

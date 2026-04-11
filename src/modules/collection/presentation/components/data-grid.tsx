@@ -5,7 +5,7 @@ import {
   ChevronUp,
   Download,
   Edit2,
-  Eye,
+  FileText,
   ListFilter,
   Loader2,
   Plus,
@@ -946,7 +946,7 @@ export function DataGrid({
                             className="h-8 w-8 text-muted hover:text-primary hover:bg-primary/10"
                             onClick={() => setDocumentRecordId(record.id)}
                           >
-                            <Eye size={14} />
+                            <FileText size={14} />
                           </Button>
                         )}
                         {canDelete && (

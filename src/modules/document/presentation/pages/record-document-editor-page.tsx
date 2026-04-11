@@ -2,7 +2,6 @@
 
 import {
   BoldPlugin,
-  CodePlugin,
   HighlightPlugin,
   ItalicPlugin,
   StrikethroughPlugin,
@@ -18,6 +17,8 @@ import {
   Cloud,
   Download,
   FileText,
+  Highlighter,
+  PaintBucket,
   RefreshCw,
   RotateCw,
   Strikethrough,
@@ -105,6 +106,8 @@ export default function RecordDocumentEditorPage({
   });
 
   const [isRegenerateDialogOpen, setIsRegenerateDialogOpen] = React.useState(false);
+  const skipEditorSyncChangeRef = React.useRef(false);
+  const lastAppliedEditorRevisionRef = React.useRef<number | null>(null);
   const collection = collections.find((item) => item.id === collectionId) ?? null;
   const collectionName = collection?.displayName || collection?.name || "Colección";
   const recordLabel = payload?.record.label ?? recordId.slice(0, 8);
@@ -115,6 +118,7 @@ export default function RecordDocumentEditorPage({
     { label: "Colecciones", href: "/collections" },
     { label: collectionName, href: `/collections/${collectionId}` },
     { label: recordLabel },
+    { label: templateName },
   ]);
 
   const editor = usePlateEditor({
@@ -125,8 +129,22 @@ export default function RecordDocumentEditorPage({
 
   React.useEffect(() => {
     if (!payload) return;
+    if (lastAppliedEditorRevisionRef.current === editorRevision) return;
+
+    lastAppliedEditorRevisionRef.current = editorRevision;
+    skipEditorSyncChangeRef.current = true;
     editor.tf.setValue(templateBlocksToPlateValue(payload.document.editedBlocks));
+    queueMicrotask(() => {
+      skipEditorSyncChangeRef.current = false;
+    });
   }, [editor, editorRevision, payload]);
+
+  const handleConfirmRegenerate = React.useCallback(async () => {
+    const success = await regenerate();
+    if (success) {
+      setIsRegenerateDialogOpen(false);
+    }
+  }, [regenerate]);
 
   if (loading) {
     return (
@@ -172,9 +190,15 @@ export default function RecordDocumentEditorPage({
         editor={editor}
         readOnly={!canUpdate}
         onChange={({ value }) => {
-          if (canUpdate) {
-            handleBlocksChange(plateValueToTemplateBlocks(value));
+          if (!canUpdate) {
+            return;
           }
+
+          if (skipEditorSyncChangeRef.current) {
+            return;
+          }
+
+          handleBlocksChange(plateValueToTemplateBlocks(value));
         }}
       >
         <TooltipProvider disableHoverableContent>
@@ -199,9 +223,6 @@ export default function RecordDocumentEditorPage({
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    Documento persistido para este registro. PDF disponible desde esta pantalla.
-                  </p>
                 </div>
               </div>
 
@@ -236,20 +257,19 @@ export default function RecordDocumentEditorPage({
                 )}
 
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
-                  className="h-9 gap-2"
+                  className="h-9 gap-2 cursor-pointer"
                   onClick={() => window.open(pdfUrl, "_blank", "noopener")}
                 >
                   <Download size={14} />
-                  Descargar PDF
                 </Button>
 
                 {canUpdate && (
                   <Button
                     size="sm"
-                    variant="default"
-                    className="h-9 gap-2"
+                    variant="secondary"
+                    className="h-9 gap-2 cursor-pointer"
                     disabled={regenerating}
                     onClick={() => setIsRegenerateDialogOpen(true)}
                   >
@@ -303,16 +323,10 @@ export default function RecordDocumentEditorPage({
                         <Strikethrough size={16} />
                       </MarkToolbarButton>
                       <MarkToolbarButton
-                        nodeType={CodePlugin.key}
-                        tooltip={`Código (${getShortcutText()}E)`}
-                      >
-                        <span className="font-mono text-xs">{"</>"}</span>
-                      </MarkToolbarButton>
-                      <MarkToolbarButton
                         nodeType={HighlightPlugin.key}
                         tooltip={`Resaltar (${getShortcutText()}H)`}
                       >
-                        <span className="text-xs font-semibold">HL</span>
+                        <Highlighter size={16} />
                       </MarkToolbarButton>
                     </ToolbarGroup>
 
@@ -327,7 +341,7 @@ export default function RecordDocumentEditorPage({
                         nodeType={FontBackgroundColorPlugin.key}
                         tooltip="Color de fondo"
                       >
-                        <span className="text-xs font-semibold">Bg</span>
+                        <PaintBucket size={16} />
                       </FontColorToolbarButton>
                     </ToolbarGroup>
 
@@ -395,7 +409,14 @@ export default function RecordDocumentEditorPage({
         </TooltipProvider>
       </Plate>
 
-      <AlertDialog open={isRegenerateDialogOpen} onOpenChange={setIsRegenerateDialogOpen}>
+      <AlertDialog
+        open={isRegenerateDialogOpen}
+        onOpenChange={(open) => {
+          if (!regenerating) {
+            setIsRegenerateDialogOpen(open);
+          }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Regenerar documento</AlertDialogTitle>
@@ -405,19 +426,22 @@ export default function RecordDocumentEditorPage({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={regenerating}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
+              disabled={regenerating}
               onClick={(event) => {
                 event.preventDefault();
-                void (async () => {
-                  const success = await regenerate();
-                  if (success) {
-                    setIsRegenerateDialogOpen(false);
-                  }
-                })();
+                void handleConfirmRegenerate();
               }}
             >
-              Regenerar
+              {regenerating ? (
+                <>
+                  <RotateCw className="animate-spin" />
+                  Regenerando...
+                </>
+              ) : (
+                "Regenerar"
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
