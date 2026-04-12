@@ -46,16 +46,16 @@ Este proyecto implementa **Screaming Architecture** (las carpetas gritan el domi
 
 ## 🛠️ Stack Tecnológico
 
-| Capa               | Tecnología                                         |
-| :----------------- | :------------------------------------------------- |
-| **Frontend**       | Next.js 16 (App Router), React 19, Tailwind CSS 4  |
-| **Backend (BaaS)** | Supabase (PostgreSQL, Auth, Storage, RLS Granular) |
-| **IA Engine**      | Google Gemini (Contextual Generation)              |
+| Capa               | Tecnología                                             |
+| :----------------- | :----------------------------------------------------- |
+| **Frontend**       | Next.js 16 (App Router), React 19, Tailwind CSS 4      |
+| **Backend (BaaS)** | Supabase (PostgreSQL, Auth, Storage, RLS Granular)     |
+| **IA Engine**      | Google Gemini (Contextual Generation)                  |
 | **PDF Export**     | @react-pdf/renderer (High-Fidelity Document Rendering) |
-| **Editor**         | Plate.js (Highly Extensible WYSIWYG)               |
-| **Validación**     | Domain VOs (Internal), Zod (API/Form Boundaries)   |
-| **Testing**        | Vitest (Unit/Integration), Playwright (E2E)        |
-| **Componentes**    | Radix UI, Lucide Icons, Noir Minimalist Custom CSS |
+| **Editor**         | Plate.js (Highly Extensible WYSIWYG)                   |
+| **Validación**     | Domain VOs (Internal), Zod (API/Form Boundaries)       |
+| **Testing**        | Vitest (Unit/Integration), Playwright (E2E)            |
+| **Componentes**    | Radix UI, Lucide Icons, Noir Minimalist Custom CSS     |
 
 ---
 
@@ -91,19 +91,21 @@ Este proyecto implementa **Screaming Architecture** (las carpetas gritan el domi
     ```
 3.  **Configurar el entorno local**:
     Lumacraft incluye un script automatizado para levantar Supabase y configurar las variables de entorno necesarias:
+
     ```bash
     npm run supabase:local
     ```
-    *Este script levantará los contenedores de Docker, aplicará las migraciones y generará las variables para tu `.env.local`.*
+
+    _Este script levantará los contenedores de Docker, aplicará las migraciones y generará las variables para tu `.env.local`._
 
     Las variables requeridas son:
 
-    | Variable | Descripción | Requerida para |
-    | --- | --- | --- |
-    | `NEXT_PUBLIC_SUPABASE_URL` | URL pública del proyecto Supabase | Todo |
-    | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Clave anónima (segura para el cliente) | Auth, DB queries |
-    | `SUPABASE_SECRET_KEY` | Service role key — bypasea RLS | **PDF Export**, admin ops |
-    | `AI_SETTINGS_MASTER_KEY` | Clave de cifrado para secrets de IA | AI Engine |
+    | Variable                               | Descripción                            | Requerida para            |
+    | -------------------------------------- | -------------------------------------- | ------------------------- |
+    | `NEXT_PUBLIC_SUPABASE_URL`             | URL pública del proyecto Supabase      | Todo                      |
+    | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Clave anónima (segura para el cliente) | Auth, DB queries          |
+    | `SUPABASE_SECRET_KEY`                  | Service role key — bypasea RLS         | **PDF Export**, admin ops |
+    | `AI_SETTINGS_MASTER_KEY`               | Clave de cifrado para secrets de IA    | AI Engine                 |
 
     > **Importante**: `SUPABASE_SECRET_KEY` es obligatoria para que la exportación de PDF funcione. Sin ella, el servidor no puede subir archivos al bucket `exports` de Storage (bloqueado por RLS).
 

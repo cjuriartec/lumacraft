@@ -79,6 +79,14 @@ export interface ResolvedAccountAISettings {
   decryptedSecrets: Partial<Record<AIProviderId, string>>;
 }
 
+interface CachedResolvedAccountAISettings {
+  expiresAt: number;
+  value: ResolvedAccountAISettings;
+}
+
+const RESOLVED_SETTINGS_CACHE_TTL_MS = 30_000;
+const resolvedAccountSettingsCache = new Map<string, CachedResolvedAccountAISettings>();
+
 export class AccountScopedAISettingsResolver {
   constructor(
     private readonly getSettingsUseCase: GetAccountAISettingsUseCase,
@@ -125,6 +133,19 @@ export class AccountScopedAISettingsResolver {
       }
     }
 
+    const cacheKey = `${accountId}:${settings.updatedAt?.toISOString() ?? "bootstrap"}`;
+    const cached = resolvedAccountSettingsCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return {
+        ok: true,
+        value: {
+          settings,
+          providerFactory: cached.value.providerFactory,
+          decryptedSecrets: cached.value.decryptedSecrets,
+        },
+      };
+    }
+
     const decryptedSecrets: Partial<Record<AIProviderId, string>> = {};
 
     for (const providerId of AI_PROVIDER_IDS) {
@@ -146,23 +167,30 @@ export class AccountScopedAISettingsResolver {
       decryptedSecrets[providerId] = decryptedSecretResult.value;
     }
 
+    const resolvedValue: ResolvedAccountAISettings = {
+      settings,
+      providerFactory: new DefaultAIProviderFactory({
+        defaultProvider: settings.defaultProvider,
+        defaultModel: settings.defaultModel,
+        defaultTemperature: settings.defaultTemperature,
+        defaultMaxTokens: settings.defaultMaxTokens,
+        requestTimeoutMs: settings.requestTimeoutMs,
+        providerOptions: settings.providerOptions,
+        geminiApiKey: decryptedSecrets.GEMINI,
+        openaiApiKey: decryptedSecrets.OPENAI,
+        anthropicApiKey: decryptedSecrets.ANTHROPIC,
+      }),
+      decryptedSecrets,
+    };
+
+    resolvedAccountSettingsCache.set(cacheKey, {
+      expiresAt: Date.now() + RESOLVED_SETTINGS_CACHE_TTL_MS,
+      value: resolvedValue,
+    });
+
     return {
       ok: true,
-      value: {
-        settings,
-        providerFactory: new DefaultAIProviderFactory({
-          defaultProvider: settings.defaultProvider,
-          defaultModel: settings.defaultModel,
-          defaultTemperature: settings.defaultTemperature,
-          defaultMaxTokens: settings.defaultMaxTokens,
-          requestTimeoutMs: settings.requestTimeoutMs,
-          providerOptions: settings.providerOptions,
-          geminiApiKey: decryptedSecrets.GEMINI,
-          openaiApiKey: decryptedSecrets.OPENAI,
-          anthropicApiKey: decryptedSecrets.ANTHROPIC,
-        }),
-        decryptedSecrets,
-      },
+      value: resolvedValue,
     };
   }
 }

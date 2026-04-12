@@ -20,7 +20,10 @@ import {
 import { RecordDocument } from "@/modules/document/domain/entities/record-document.entity";
 import { IRecordDocumentRepository } from "@/modules/document/domain/ports/record-document-repository.port";
 import { Template } from "@/modules/template/domain/entities/template.entity";
-import { ITemplateRepository } from "@/modules/template/domain/ports/template-repository.port";
+import {
+  ITemplateRepository,
+  TemplateHeader,
+} from "@/modules/template/domain/ports/template-repository.port";
 import { Workspace } from "@/modules/workspace/domain/entities/workspace.entity";
 import { IWorkspaceRepository } from "@/modules/workspace/domain/ports/workspace-repository.port";
 import { DomainError, fail, ok, Result } from "@/shared/domain/result";
@@ -127,6 +130,7 @@ export class InMemoryTemplateRepository implements ITemplateRepository {
   constructor(public items: Template[] = []) {}
 
   public findByIdResult?: Result<Template | null>;
+  public findHeaderByIdResult?: Result<TemplateHeader | null>;
   public findByAccountIdResult?: Result<Template[]>;
   public createResult?: Result<Template>;
   public updateResult?: Result<Template>;
@@ -134,6 +138,24 @@ export class InMemoryTemplateRepository implements ITemplateRepository {
 
   public findById = vi.fn(async (id: string) => {
     return this.findByIdResult ?? ok(this.items.find((template) => template.id === id) ?? null);
+  });
+
+  public findHeaderById = vi.fn(async (id: string) => {
+    if (this.findHeaderByIdResult) {
+      return this.findHeaderByIdResult;
+    }
+
+    const template = this.items.find((item) => item.id === id) ?? null;
+    if (!template) {
+      return ok(null);
+    }
+
+    return ok({
+      id: template.id,
+      accountId: template.accountId,
+      collectionId: template.collectionId ?? null,
+      version: template.version,
+    });
   });
 
   public findByAccountId = vi.fn(async (accountId: string) => {

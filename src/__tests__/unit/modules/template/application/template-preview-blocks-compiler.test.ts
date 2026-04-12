@@ -50,8 +50,27 @@ class StructuredAIProvider implements AIProviderPort {
   }
 }
 
+class DelayedStructuredAIProvider extends StructuredAIProvider {
+  override async *stream(): AsyncGenerator<Result<AIGenerationChunk, DomainError>, void, void> {
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    yield* super.stream();
+  }
+}
+
 class StructuredAIProviderFactory implements AIProviderFactoryPort {
   private readonly provider = new StructuredAIProvider();
+
+  getDefaultProviderId() {
+    return "GEMINI" as const;
+  }
+
+  create() {
+    return ok(this.provider);
+  }
+}
+
+class DelayedStructuredAIProviderFactory implements AIProviderFactoryPort {
+  private readonly provider = new DelayedStructuredAIProvider();
 
   getDefaultProviderId() {
     return "GEMINI" as const;
@@ -361,5 +380,54 @@ describe("compileTemplatePreviewBlocks", () => {
     expect(compiledText).toContain('"fontSize":"20px"');
     expect(compiledText).toContain('"fontFamily":"times"');
     expect(compiledText).toContain('"underline":true');
+  });
+
+  it("keeps final block order stable even when resolved events arrive out of order", async () => {
+    const events: string[] = [];
+    const templateBlocks: TemplateBlocks = [
+      {
+        id: "slow-ai",
+        type: "template_ai",
+        promptTemplate: "Genera un resumen para {{nombre}}",
+        children: [{ text: "" }],
+      },
+      {
+        id: "fast-text",
+        type: "p",
+        children: [{ text: "Bloque rapido" }],
+      },
+    ];
+
+    const context: TemplateRuntimeContext = {
+      recordId: "record-1",
+      collectionId: "collection-1",
+      collectionName: "Clientes",
+      root: {
+        nombre: "Ana",
+      },
+    };
+
+    const result = await compileTemplatePreviewBlocks({
+      requestId: "req-out-of-order",
+      blocks: templateBlocks,
+      context,
+      aiProviderFactory: new DelayedStructuredAIProviderFactory(),
+      onEvent: (event) => {
+        if (event.type === "resolved") {
+          events.push(event.blockId);
+        }
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const compiledText = JSON.stringify(result.value.blocks);
+
+    expect(events[0]).toBe("fast-text");
+    expect(events[1]).toBe("slow-ai");
+    expect(compiledText.indexOf("Informe tÃ©cnico generado")).toBeLessThan(
+      compiledText.indexOf("Bloque rapido"),
+    );
   });
 });

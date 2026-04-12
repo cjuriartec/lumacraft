@@ -2,7 +2,10 @@ import { z } from "zod";
 
 import { buildGroundedPrompt } from "@/modules/ai/application/services/prompt-builder";
 import { AIProviderFactoryPort } from "@/modules/ai/domain/ports/ai-provider-factory.port";
+import { TemplateAIBlockCachePort } from "@/modules/template/application/ports/template-ai-block-cache.port";
 import { DomainError, fail, ok, Result } from "@/shared/domain/result";
+import { createAsyncLimiter, parallelMapLimit } from "@/shared/lib/async-limiter";
+import { hashStableValue } from "@/shared/lib/stable-hash";
 
 import {
   isTemplateBlocks,
@@ -56,11 +59,17 @@ interface CompileTemplatePreviewBlocksParams {
   blocks: TemplateBlocks;
   context: TemplateRuntimeContext;
   aiProviderFactory: AIProviderFactoryPort;
+  accountId?: string;
   aiSystemInstruction?: string;
   assetUrlResolver?: TemplateAssetUrlResolverPort;
+  aiBlockCache?: TemplateAIBlockCachePort;
   onEvent?: (event: TemplatePreviewEvent) => void;
   enableAI?: boolean;
   enableLogic?: boolean;
+  emitPendingEvents?: boolean;
+  maxCompileConcurrency?: number;
+  maxAiConcurrency?: number;
+  maxAssetConcurrency?: number;
   signal?: AbortSignal;
 }
 
@@ -73,12 +82,19 @@ interface CompileContext {
   requestId: string;
   context: TemplateRuntimeContext;
   aiProviderFactory: AIProviderFactoryPort;
+  accountId?: string;
   aiSystemInstruction?: string;
   assetUrlResolver?: TemplateAssetUrlResolverPort;
+  aiBlockCache?: TemplateAIBlockCachePort;
   imageUrlCache: Map<string, string>;
+  imageUrlPromiseCache: Map<string, Promise<string>>;
   onEvent?: (event: TemplatePreviewEvent) => void;
   enableAI: boolean;
   enableLogic: boolean;
+  emitPendingEvents: boolean;
+  maxCompileConcurrency: number;
+  aiLimiter: ReturnType<typeof createAsyncLimiter>;
+  assetLimiter: ReturnType<typeof createAsyncLimiter>;
   signal?: AbortSignal;
 }
 
@@ -150,6 +166,11 @@ const AI_DOCUMENT_RESPONSE_SCHEMA: Record<string, unknown> = {
   },
   required: ["blocks"],
 };
+
+const aiBlockInFlightCache = new Map<
+  string,
+  Promise<Result<{ blocks: TemplateBlocks; warnings: string[] }, DomainError>>
+>();
 
 const LOGIC_NODE_TYPES = new Set(["template_conditional", "template_list", "template_switch"]);
 
@@ -452,23 +473,38 @@ async function resolveImageStorageUrl(
     return cached;
   }
 
-  if (compileContext.assetUrlResolver) {
-    const signedUrlResult = await compileContext.assetUrlResolver.resolveImageUrl({
-      bucket: normalizedBucket,
-      path: normalizedPath,
-    });
-    if (signedUrlResult.ok) {
-      compileContext.imageUrlCache.set(cacheKey, signedUrlResult.value);
-      return signedUrlResult.value;
-    }
-    warnings.push(
-      `No se pudo firmar URL de imagen (${normalizedBucket}/${normalizedPath}): ${signedUrlResult.error.message}`,
-    );
+  const pending = compileContext.imageUrlPromiseCache.get(cacheKey);
+  if (pending) {
+    return pending;
   }
 
-  const fallbackUrl = normalizeStorageUrl(normalizedPath, normalizedBucket);
-  compileContext.imageUrlCache.set(cacheKey, fallbackUrl);
-  return fallbackUrl;
+  const resolution = compileContext.assetLimiter.run(async () => {
+    if (compileContext.assetUrlResolver) {
+      const signedUrlResult = await compileContext.assetUrlResolver.resolveImageUrl({
+        bucket: normalizedBucket,
+        path: normalizedPath,
+      });
+      if (signedUrlResult.ok) {
+        compileContext.imageUrlCache.set(cacheKey, signedUrlResult.value);
+        return signedUrlResult.value;
+      }
+      warnings.push(
+        `No se pudo firmar URL de imagen (${normalizedBucket}/${normalizedPath}): ${signedUrlResult.error.message}`,
+      );
+    }
+
+    const fallbackUrl = normalizeStorageUrl(normalizedPath, normalizedBucket);
+    compileContext.imageUrlCache.set(cacheKey, fallbackUrl);
+    return fallbackUrl;
+  });
+
+  compileContext.imageUrlPromiseCache.set(cacheKey, resolution);
+
+  try {
+    return await resolution;
+  } finally {
+    compileContext.imageUrlPromiseCache.delete(cacheKey);
+  }
 }
 
 function resolveVariableText(value: unknown): string {
@@ -857,6 +893,34 @@ function emitPreviewEvent(compileContext: CompileContext, event: TemplatePreview
   compileContext.onEvent?.(event);
 }
 
+function cloneSerializableBlocks(blocks: TemplateBlocks): PlateElementNode[] {
+  return JSON.parse(JSON.stringify(blocks)) as PlateElementNode[];
+}
+
+async function persistAiBlockCache(
+  compileContext: CompileContext,
+  params: {
+    cacheKey: string;
+    providerId: string;
+    model: string;
+    blocks: TemplateBlocks;
+    warnings: string[];
+  },
+) {
+  if (!compileContext.aiBlockCache || !compileContext.accountId) {
+    return;
+  }
+
+  await compileContext.aiBlockCache.save({
+    cacheKey: params.cacheKey,
+    accountId: compileContext.accountId,
+    providerId: params.providerId,
+    model: params.model,
+    blocks: params.blocks,
+    warnings: params.warnings,
+  });
+}
+
 async function compileStructuredSubtreeBlocks(
   blocks: TemplateBlocks,
   scope: TemplateRuntimeScope,
@@ -864,17 +928,19 @@ async function compileStructuredSubtreeBlocks(
   warnings: string[],
   blockMeta: TemplatePreviewBlockMeta,
 ): Promise<PlateElementNode[]> {
-  const compiled: PlateElementNode[] = [];
+  const compiledGroups = await parallelMapLimit(
+    blocks,
+    compileContext.maxCompileConcurrency,
+    async (block) => {
+      if (!isElementNode(block)) {
+        return [];
+      }
 
-  for (const block of blocks) {
-    if (!isElementNode(block)) {
-      continue;
-    }
+      return compileNode(block, scope, compileContext, warnings, blockMeta);
+    },
+  );
 
-    compiled.push(...(await compileNode(block, scope, compileContext, warnings, blockMeta)));
-  }
-
-  return compiled;
+  return compiledGroups.flat();
 }
 
 async function compileTemplateAiNodeStreamed(
@@ -900,7 +966,11 @@ async function compileTemplateAiNodeStreamed(
     return [];
   }
 
-  const providerResult = compileContext.aiProviderFactory.create();
+  const requestedProvider =
+    typeof node.provider === "string" && node.provider.length > 0
+      ? (node.provider as "GEMINI" | "OPENAI" | "ANTHROPIC")
+      : undefined;
+  const providerResult = compileContext.aiProviderFactory.create(requestedProvider);
   if (!providerResult.ok) {
     warnings.push(providerResult.error.message);
     return [toParagraph(`AI no disponible: ${providerResult.error.message}`, { align: "justify" })];
@@ -919,6 +989,9 @@ async function compileTemplateAiNodeStreamed(
 
   const request = {
     prompt: groundedPrompt.prompt,
+    model: typeof node.model === "string" ? node.model : undefined,
+    temperature: typeof node.temperature === "number" ? node.temperature : undefined,
+    maxTokens: typeof node.maxTokens === "number" ? node.maxTokens : undefined,
     groundingContext: groundedPrompt.contextSnapshot,
     metadata: {
       usedPaths: groundedPrompt.usedPaths,
@@ -930,73 +1003,160 @@ async function compileTemplateAiNodeStreamed(
     },
   };
 
-  let aiText = "";
-  let streamError: DomainError | null = null;
-
-  for await (const chunkResult of providerResult.value.stream(request, compileContext.signal)) {
-    if (!chunkResult.ok) {
-      streamError = chunkResult.error;
-      break;
-    }
-
-    aiText += chunkResult.value.text;
-    emitPreviewEvent(compileContext, {
-      type: "ai_chunk",
-      requestId: compileContext.requestId,
-      blockId: blockMeta.blockId,
-      blockIndex: blockMeta.blockIndex,
-      blockType: blockMeta.blockType,
-      text: chunkResult.value.text,
-    });
-  }
-
-  if (streamError && aiText.trim().length === 0) {
-    warnings.push(streamError.message);
-    return [
-      toParagraph(`AI error: ${streamError.message}`, {
-        align: typeof node.align === "string" ? node.align : undefined,
-        lineHeight: typeof node.lineHeight === "number" ? node.lineHeight : undefined,
-      }),
-    ];
-  }
-
-  if (streamError) {
-    warnings.push(`${streamError.message}. Se mostrara el contenido parcial recibido.`);
-  }
-
-  const structuredBlocks = await parseStructuredAIDocument(aiText, compileContext, warnings, {
-    align: typeof node.align === "string" ? node.align : undefined,
-    lineHeight: typeof node.lineHeight === "number" ? node.lineHeight : undefined,
-    indent: typeof node.indent === "number" ? node.indent : undefined,
-    fontSize: typeof node.fontSize === "number" ? node.fontSize : undefined,
-    fontFamily: typeof node.fontFamily === "string" ? node.fontFamily : undefined,
+  const aiCacheKey = hashStableValue({
+    providerId: providerResult.value.id,
+    requestedProvider,
+    model: request.model ?? "default",
+    temperature: request.temperature ?? "default",
+    maxTokens: request.maxTokens ?? "default",
+    prompt: request.prompt,
+    groundingContext: request.groundingContext,
+    metadata: request.metadata,
+    responseFormat: request.responseFormat,
   });
-  if (structuredBlocks && structuredBlocks.length > 0) {
-    return structuredBlocks;
+
+  if (compileContext.aiBlockCache) {
+    const cachedResult = await compileContext.aiBlockCache.findByKey(aiCacheKey);
+    if (cachedResult.ok && cachedResult.value) {
+      warnings.push(...cachedResult.value.warnings);
+      return cloneSerializableBlocks(cachedResult.value.blocks);
+    }
   }
 
-  const lines = aiText ? aiText.split("\n") : [];
-  const fallbackBlocks: PlateElementNode[] = [];
-  for (const line of lines) {
-    fallbackBlocks.push(
-      await parseLineToBlock(line, compileContext, warnings, {
-        align: typeof node.align === "string" ? node.align : undefined,
-        lineHeight: typeof node.lineHeight === "number" ? node.lineHeight : undefined,
-        indent: typeof node.indent === "number" ? node.indent : undefined,
-        fontSize: typeof node.fontSize === "number" ? node.fontSize : undefined,
-        fontFamily: typeof node.fontFamily === "string" ? node.fontFamily : undefined,
-      }),
-    );
+  let pendingCompilation = aiBlockInFlightCache.get(aiCacheKey);
+  if (!pendingCompilation) {
+    pendingCompilation = compileContext.aiLimiter.run(async () => {
+      let aiText = "";
+      let streamError: DomainError | null = null;
+      const aiWarnings: string[] = [];
+
+      for await (const chunkResult of providerResult.value.stream(request, compileContext.signal)) {
+        if (!chunkResult.ok) {
+          streamError = chunkResult.error;
+          break;
+        }
+
+        aiText += chunkResult.value.text;
+        emitPreviewEvent(compileContext, {
+          type: "ai_chunk",
+          requestId: compileContext.requestId,
+          blockId: blockMeta.blockId,
+          blockIndex: blockMeta.blockIndex,
+          blockType: blockMeta.blockType,
+          text: chunkResult.value.text,
+        });
+      }
+
+      if (streamError && aiText.trim().length === 0) {
+        aiWarnings.push(streamError.message);
+        const fallbackBlocks = [
+          toParagraph(`AI error: ${streamError.message}`, {
+            align: typeof node.align === "string" ? node.align : undefined,
+            lineHeight: typeof node.lineHeight === "number" ? node.lineHeight : undefined,
+          }),
+        ];
+
+        const serializedFallback = toSerializableBlocks(fallbackBlocks);
+        if (!serializedFallback.ok) {
+          return fail(serializedFallback.error);
+        }
+
+        await persistAiBlockCache(compileContext, {
+          cacheKey: aiCacheKey,
+          providerId: providerResult.value.id,
+          model: request.model ?? "default",
+          blocks: serializedFallback.value,
+          warnings: aiWarnings,
+        });
+
+        return ok({
+          blocks: serializedFallback.value,
+          warnings: aiWarnings,
+        });
+      }
+
+      if (streamError) {
+        aiWarnings.push(`${streamError.message}. Se mostrara el contenido parcial recibido.`);
+      }
+
+      const parseWarnings = [...aiWarnings];
+      const structuredBlocks = await parseStructuredAIDocument(
+        aiText,
+        compileContext,
+        parseWarnings,
+        {
+          align: typeof node.align === "string" ? node.align : undefined,
+          lineHeight: typeof node.lineHeight === "number" ? node.lineHeight : undefined,
+          indent: typeof node.indent === "number" ? node.indent : undefined,
+          fontSize: typeof node.fontSize === "number" ? node.fontSize : undefined,
+          fontFamily: typeof node.fontFamily === "string" ? node.fontFamily : undefined,
+        },
+      );
+
+      const finalBlocks =
+        structuredBlocks && structuredBlocks.length > 0
+          ? structuredBlocks
+          : await Promise.all(
+              (aiText ? aiText.split("\n") : []).map((line) =>
+                parseLineToBlock(line, compileContext, parseWarnings, {
+                  align: typeof node.align === "string" ? node.align : undefined,
+                  lineHeight: typeof node.lineHeight === "number" ? node.lineHeight : undefined,
+                  indent: typeof node.indent === "number" ? node.indent : undefined,
+                  fontSize: typeof node.fontSize === "number" ? node.fontSize : undefined,
+                  fontFamily: typeof node.fontFamily === "string" ? node.fontFamily : undefined,
+                }),
+              ),
+            );
+
+      const normalizedBlocks =
+        finalBlocks.length > 0
+          ? finalBlocks
+          : [
+              toParagraph("AI no devolvio contenido para este bloque.", {
+                align: typeof node.align === "string" ? node.align : undefined,
+                lineHeight: typeof node.lineHeight === "number" ? node.lineHeight : undefined,
+              }),
+            ];
+
+      const serializedBlocks = toSerializableBlocks(normalizedBlocks);
+      if (!serializedBlocks.ok) {
+        return fail(serializedBlocks.error);
+      }
+
+      await persistAiBlockCache(compileContext, {
+        cacheKey: aiCacheKey,
+        providerId: providerResult.value.id,
+        model: request.model ?? "default",
+        blocks: serializedBlocks.value,
+        warnings: parseWarnings,
+      });
+
+      return ok({
+        blocks: serializedBlocks.value,
+        warnings: parseWarnings,
+      });
+    });
+
+    aiBlockInFlightCache.set(aiCacheKey, pendingCompilation);
   }
 
-  return fallbackBlocks.length > 0
-    ? fallbackBlocks
-    : [
-        toParagraph("AI no devolvio contenido para este bloque.", {
+  try {
+    const compiledResult = await pendingCompilation;
+    if (!compiledResult.ok) {
+      warnings.push(compiledResult.error.message);
+      return [
+        toParagraph(`AI error: ${compiledResult.error.message}`, {
           align: typeof node.align === "string" ? node.align : undefined,
           lineHeight: typeof node.lineHeight === "number" ? node.lineHeight : undefined,
         }),
       ];
+    }
+
+    warnings.push(...compiledResult.value.warnings);
+    return cloneSerializableBlocks(compiledResult.value.blocks);
+  } finally {
+    aiBlockInFlightCache.delete(aiCacheKey);
+  }
 }
 
 async function compileParagraphNode(
@@ -1278,49 +1438,51 @@ async function compileTemplateListNode(
   const listStyle = typeof node.listStyle === "string" ? node.listStyle : "none";
   const structuredBlocks = asTemplateBlocks(node.blocks);
 
-  const blocks: PlateElementNode[] = [];
-  for (let i = 0; i < sourceValue.length; i += 1) {
-    const item = sourceValue[i];
-    const itemScope: TemplateRuntimeScope = {
-      root: scope.root,
-      locals: {
-        ...scope.locals,
-        [itemAlias]: item,
-      },
-    };
+  const compiledItems = await parallelMapLimit(
+    sourceValue,
+    compileContext.maxCompileConcurrency,
+    async (item) => {
+      const itemScope: TemplateRuntimeScope = {
+        root: scope.root,
+        locals: {
+          ...scope.locals,
+          [itemAlias]: item,
+        },
+      };
 
-    const itemBlocks =
-      structuredBlocks !== null
-        ? await compileStructuredSubtreeBlocks(
-            structuredBlocks,
-            itemScope,
-            compileContext,
-            warnings,
-            blockMeta,
-          )
-        : await renderTemplateToBlocks(itemTemplate, itemScope, compileContext, warnings, {
-            align: typeof node.align === "string" ? node.align : undefined,
-            lineHeight: typeof node.lineHeight === "number" ? node.lineHeight : undefined,
-            indent: typeof node.indent === "number" ? node.indent : undefined,
-            fontSize: typeof node.fontSize === "number" ? node.fontSize : undefined,
-            fontFamily: typeof node.fontFamily === "string" ? node.fontFamily : undefined,
-          });
+      const itemBlocks =
+        structuredBlocks !== null
+          ? await compileStructuredSubtreeBlocks(
+              structuredBlocks,
+              itemScope,
+              compileContext,
+              warnings,
+              blockMeta,
+            )
+          : await renderTemplateToBlocks(itemTemplate, itemScope, compileContext, warnings, {
+              align: typeof node.align === "string" ? node.align : undefined,
+              lineHeight: typeof node.lineHeight === "number" ? node.lineHeight : undefined,
+              indent: typeof node.indent === "number" ? node.indent : undefined,
+              fontSize: typeof node.fontSize === "number" ? node.fontSize : undefined,
+              fontFamily: typeof node.fontFamily === "string" ? node.fontFamily : undefined,
+            });
 
-    if (listStyle === "bullet" || listStyle === "number") {
-      itemBlocks.forEach((block, blockIndex) => {
-        if (blockIndex === 0) {
-          block.listStyleType = listStyle === "bullet" ? "disc" : "decimal";
-          block.indent = 1;
-        } else {
-          block.indent = (typeof block.indent === "number" ? block.indent : 0) + 2;
-        }
-      });
-    }
+      if (listStyle === "bullet" || listStyle === "number") {
+        itemBlocks.forEach((block, blockIndex) => {
+          if (blockIndex === 0) {
+            block.listStyleType = listStyle === "bullet" ? "disc" : "decimal";
+            block.indent = 1;
+          } else {
+            block.indent = (typeof block.indent === "number" ? block.indent : 0) + 2;
+          }
+        });
+      }
 
-    blocks.push(...itemBlocks);
-  }
+      return itemBlocks;
+    },
+  );
 
-  return blocks;
+  return compiledItems.flat();
 }
 
 async function compileNode(
@@ -1480,57 +1642,86 @@ async function compileBlocks(
   compileContext: CompileContext,
   warnings: string[],
 ): Promise<Result<PlateElementNode[], DomainError>> {
-  const result: PlateElementNode[] = [];
   const blockMetadata = getTemplatePreviewBlockMetadata(blocks);
+  const compiledGroups = await parallelMapLimit(
+    blockMetadata,
+    compileContext.maxCompileConcurrency,
+    async (blockMeta) => {
+      if (compileContext.emitPendingEvents) {
+        emitPreviewEvent(compileContext, {
+          type: "pending",
+          requestId: compileContext.requestId,
+          blockId: blockMeta.blockId,
+          blockIndex: blockMeta.blockIndex,
+          blockType: blockMeta.blockType,
+        });
+      }
 
-  for (const blockMeta of blockMetadata) {
-    emitPreviewEvent(compileContext, {
-      type: "pending",
-      requestId: compileContext.requestId,
-      blockId: blockMeta.blockId,
-      blockIndex: blockMeta.blockIndex,
-      blockType: blockMeta.blockType,
-    });
+      const rawBlock = blocks[blockMeta.blockIndex];
+      if (!isElementNode(rawBlock)) {
+        emitPreviewEvent(compileContext, {
+          type: "resolved",
+          requestId: compileContext.requestId,
+          blockId: blockMeta.blockId,
+          blockIndex: blockMeta.blockIndex,
+          blockType: blockMeta.blockType,
+          blocks: [],
+        });
 
-    const rawBlock = blocks[blockMeta.blockIndex];
-    if (!isElementNode(rawBlock)) {
+        return ok({
+          blockIndex: blockMeta.blockIndex,
+          compiled: [] as PlateElementNode[],
+        });
+      }
+
+      const compiled = await compileNode(rawBlock, scope, compileContext, warnings, blockMeta);
+      const serializableBlockResult = toSerializableBlocks(compiled);
+      if (!serializableBlockResult.ok) {
+        emitPreviewEvent(compileContext, {
+          type: "error",
+          requestId: compileContext.requestId,
+          code: serializableBlockResult.error.code ?? "TEMPLATE_COMPILE_ERROR",
+          message: serializableBlockResult.error.message,
+          blockId: blockMeta.blockId,
+          blockIndex: blockMeta.blockIndex,
+          blockType: blockMeta.blockType,
+        });
+
+        return fail(serializableBlockResult.error);
+      }
+
       emitPreviewEvent(compileContext, {
         type: "resolved",
         requestId: compileContext.requestId,
         blockId: blockMeta.blockId,
         blockIndex: blockMeta.blockIndex,
         blockType: blockMeta.blockType,
-        blocks: [],
+        blocks: serializableBlockResult.value,
       });
-      continue;
-    }
 
-    const compiled = await compileNode(rawBlock, scope, compileContext, warnings, blockMeta);
-    result.push(...compiled);
-
-    const serializableBlockResult = toSerializableBlocks(compiled);
-    if (!serializableBlockResult.ok) {
-      emitPreviewEvent(compileContext, {
-        type: "error",
-        requestId: compileContext.requestId,
-        code: serializableBlockResult.error.code ?? "TEMPLATE_COMPILE_ERROR",
-        message: serializableBlockResult.error.message,
-        blockId: blockMeta.blockId,
+      return ok({
         blockIndex: blockMeta.blockIndex,
-        blockType: blockMeta.blockType,
+        compiled,
       });
-      return fail(serializableBlockResult.error);
-    }
+    },
+  );
 
-    emitPreviewEvent(compileContext, {
-      type: "resolved",
-      requestId: compileContext.requestId,
-      blockId: blockMeta.blockId,
-      blockIndex: blockMeta.blockIndex,
-      blockType: blockMeta.blockType,
-      blocks: serializableBlockResult.value,
-    });
+  const result: PlateElementNode[] = [];
+  for (const compiledGroup of compiledGroups) {
+    if (!compiledGroup.ok) {
+      return fail(compiledGroup.error);
+    }
   }
+
+  compiledGroups
+    .map((group) => (group.ok ? group.value : null))
+    .filter(
+      (group): group is { blockIndex: number; compiled: PlateElementNode[] } => group !== null,
+    )
+    .sort((left, right) => left.blockIndex - right.blockIndex)
+    .forEach((group) => {
+      result.push(...group.compiled);
+    });
 
   return ok(result);
 }
@@ -1551,12 +1742,19 @@ export async function compileTemplatePreviewBlocks(
       requestId: params.requestId,
       context: params.context,
       aiProviderFactory: params.aiProviderFactory,
+      accountId: params.accountId,
       aiSystemInstruction: params.aiSystemInstruction,
       assetUrlResolver: params.assetUrlResolver,
+      aiBlockCache: params.aiBlockCache,
       imageUrlCache: new Map<string, string>(),
+      imageUrlPromiseCache: new Map<string, Promise<string>>(),
       onEvent: params.onEvent,
       enableAI: params.enableAI ?? true,
       enableLogic: params.enableLogic ?? true,
+      emitPendingEvents: params.emitPendingEvents ?? true,
+      maxCompileConcurrency: Math.max(1, params.maxCompileConcurrency ?? 4),
+      aiLimiter: createAsyncLimiter(Math.max(1, params.maxAiConcurrency ?? 3)),
+      assetLimiter: createAsyncLimiter(Math.max(1, params.maxAssetConcurrency ?? 6)),
       signal: params.signal,
     },
     warnings,

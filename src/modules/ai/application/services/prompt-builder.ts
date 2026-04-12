@@ -82,6 +82,16 @@ function extractPromptPaths(promptTemplate: string): string[] {
   return Array.from(uniquePaths);
 }
 
+function requiresFullContext(paths: string[]): boolean {
+  return (
+    paths.length === 0 ||
+    paths.some((path) => {
+      const normalizedPath = path.trim();
+      return !normalizedPath || normalizedPath === "root" || normalizedPath === "record";
+    })
+  );
+}
+
 function projectContextByPaths(
   context: Record<string, unknown>,
   paths: string[],
@@ -204,13 +214,7 @@ export function buildGroundedPrompt(input: BuildPromptInput): BuildPromptOutput 
   };
 
   const usedPaths = extractPromptPaths(input.promptTemplate);
-  // Always include root context so AI has full record data
-  const contextPaths =
-    usedPaths.length > 0
-      ? usedPaths.includes("root")
-        ? usedPaths
-        : ["root", ...usedPaths]
-      : ["root"];
+  const contextPaths = requiresFullContext(usedPaths) ? ["root"] : usedPaths;
   const projectedContext = projectContextByPaths(mergedContext, contextPaths);
   const metadata = buildFieldMetadataSnapshot(
     mergedContext,

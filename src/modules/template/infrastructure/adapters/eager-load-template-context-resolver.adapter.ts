@@ -17,6 +17,43 @@ interface MetadataResolveParams {
   depth: number;
   cache: Map<string, Field[]>;
   visitedCollections: Set<string>;
+  referencedPaths?: string[];
+}
+
+function isRelevantPath(path: string, referencedPaths?: string[]): boolean {
+  if (!referencedPaths || referencedPaths.length === 0) {
+    return true;
+  }
+
+  return referencedPaths.some(
+    (referencedPath) => referencedPath === path || referencedPath.startsWith(`${path}.`),
+  );
+}
+
+function hasNestedRelevantPath(path: string, referencedPaths?: string[]): boolean {
+  if (!referencedPaths || referencedPaths.length === 0) {
+    return true;
+  }
+
+  return referencedPaths.some((referencedPath) => referencedPath.startsWith(`${path}.`));
+}
+
+function getTopLevelRelationFields(paths?: string[]): string[] | undefined {
+  if (!paths || paths.length === 0) {
+    return undefined;
+  }
+
+  const fields = Array.from(
+    new Set(
+      paths
+        .map((path) => path.split(".")[0]?.trim())
+        .filter(
+          (fieldName): fieldName is string => typeof fieldName === "string" && fieldName.length > 0,
+        ),
+    ),
+  );
+
+  return fields.length > 0 ? fields : undefined;
 }
 
 export class EagerLoadTemplateContextResolverAdapter implements TemplateRuntimeContextResolverPort {
@@ -72,45 +109,60 @@ export class EagerLoadTemplateContextResolverAdapter implements TemplateRuntimeC
 
     const metadataByPath: Record<string, TemplateRuntimeFieldMetadata> = {};
 
-    for (const field of fieldsResult.value) {
-      const path = params.prefix ? `${params.prefix}.${field.name}` : field.name;
+    const nestedMetadata = await Promise.all(
+      fieldsResult.value.map(async (field) => {
+        const path = params.prefix ? `${params.prefix}.${field.name}` : field.name;
+        if (!isRelevantPath(path, params.referencedPaths)) {
+          return {};
+        }
 
-      metadataByPath[path] = {
-        path,
-        displayName: field.displayName || field.name,
-        description: field.description,
-        fieldType: field.fieldType.value,
-        enumOptions: this.getFieldEnumOptions(field),
-        collectionId: params.collectionId,
-        relationType: this.getFieldRelationType(field),
-        isRequired: field.isRequired,
-        isUnique: field.isUnique,
-      };
+        const metadata: Record<string, TemplateRuntimeFieldMetadata> = {
+          [path]: {
+            path,
+            displayName: field.displayName || field.name,
+            description: field.description,
+            fieldType: field.fieldType.value,
+            enumOptions: this.getFieldEnumOptions(field),
+            collectionId: params.collectionId,
+            relationType: this.getFieldRelationType(field),
+            isRequired: field.isRequired,
+            isUnique: field.isUnique,
+          },
+        };
 
-      if (field.fieldType.value !== "RELATION") {
-        continue;
-      }
+        if (field.fieldType.value !== "RELATION") {
+          return metadata;
+        }
 
-      const targetCollectionId = this.getFieldTargetCollectionId(field);
-      if (!targetCollectionId) {
-        continue;
-      }
+        const targetCollectionId = this.getFieldTargetCollectionId(field);
+        if (!targetCollectionId || params.visitedCollections.has(targetCollectionId)) {
+          return metadata;
+        }
 
-      if (params.visitedCollections.has(targetCollectionId)) {
-        continue;
-      }
+        if (!hasNestedRelevantPath(path, params.referencedPaths)) {
+          return metadata;
+        }
 
-      const nextVisited = new Set(params.visitedCollections);
-      nextVisited.add(targetCollectionId);
-      const nestedMetadata = await this.resolveFieldMetadata({
-        collectionId: targetCollectionId,
-        prefix: path,
-        depth: params.depth - 1,
-        cache: params.cache,
-        visitedCollections: nextVisited,
-      });
+        const nextVisited = new Set(params.visitedCollections);
+        nextVisited.add(targetCollectionId);
+        const relationMetadata = await this.resolveFieldMetadata({
+          collectionId: targetCollectionId,
+          prefix: path,
+          depth: params.depth - 1,
+          cache: params.cache,
+          visitedCollections: nextVisited,
+          referencedPaths: params.referencedPaths,
+        });
 
-      Object.assign(metadataByPath, nestedMetadata);
+        return {
+          ...metadata,
+          ...relationMetadata,
+        };
+      }),
+    );
+
+    for (const entry of nestedMetadata) {
+      Object.assign(metadataByPath, entry);
     }
 
     return metadataByPath;
@@ -120,30 +172,44 @@ export class EagerLoadTemplateContextResolverAdapter implements TemplateRuntimeC
     collectionId: string;
     recordId: string;
     depth?: number;
+    dependencyPlan?: {
+      depth: number;
+      referencedPaths: string[];
+      relationPaths: string[];
+    };
   }): Promise<Result<TemplateRuntimeContext>> {
-    const collectionResult = await this.getCollectionUseCase.execute(params.collectionId);
+    const resolvedDepth = Math.max(
+      1,
+      Math.min(params.dependencyPlan?.depth ?? params.depth ?? 2, 5),
+    );
+    const includeRelationPaths = params.dependencyPlan?.relationPaths;
+    const [collectionResult, eagerResult] = await Promise.all([
+      this.getCollectionUseCase.execute(params.collectionId),
+      this.eagerLoadRecordUseCase.execute({
+        collectionId: params.collectionId,
+        recordId: params.recordId,
+        depth: resolvedDepth,
+        includeFields: getTopLevelRelationFields(includeRelationPaths),
+        includeRelationPaths,
+      }),
+    ]);
+
     if (!collectionResult.ok) {
       return fail(new DomainError(collectionResult.error.message, "TEMPLATE_CONTEXT_NOT_FOUND"));
     }
-
-    const eagerResult = await this.eagerLoadRecordUseCase.execute({
-      collectionId: params.collectionId,
-      recordId: params.recordId,
-      depth: params.depth,
-    });
 
     if (!eagerResult.ok) {
       return fail(new DomainError(eagerResult.error.message, "TEMPLATE_CONTEXT_NOT_FOUND"));
     }
 
     const root = mapEagerRecordToTemplateRoot(eagerResult.value);
-    const metadataDepth = Math.max(1, Math.min(params.depth ?? 2, 5));
     const fieldMetadataByPath = await this.resolveFieldMetadata({
       collectionId: params.collectionId,
       prefix: "",
-      depth: metadataDepth,
+      depth: resolvedDepth,
       cache: new Map<string, Field[]>(),
       visitedCollections: new Set<string>([params.collectionId]),
+      referencedPaths: params.dependencyPlan?.referencedPaths,
     });
 
     return ok({

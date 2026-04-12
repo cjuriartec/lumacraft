@@ -4,7 +4,7 @@ import { DomainError, fail, ok, Result } from "@/shared/domain/result";
 import { BaseRepository } from "@/shared/infrastructure/base-repository";
 
 import { Template } from "../../domain/entities/template.entity";
-import { ITemplateRepository } from "../../domain/ports/template-repository.port";
+import { ITemplateRepository, TemplateHeader } from "../../domain/ports/template-repository.port";
 import { isTemplateBlocks, TemplateBlocks } from "../../domain/types/template-blocks";
 
 interface TemplateRow {
@@ -54,6 +54,28 @@ export class SupabaseTemplateRepository extends BaseRepository implements ITempl
     }
 
     return this.toEntityResult(data as TemplateRow);
+  }
+
+  public async findHeaderById(id: string): Promise<Result<TemplateHeader | null>> {
+    const { data, error } = await this.table
+      .select("id, account_id, collection_id, version")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (error) {
+      return fail(new DomainError(error.message, "DB_ERROR"));
+    }
+
+    if (!data) {
+      return ok(null);
+    }
+
+    return ok({
+      id: data.id,
+      accountId: data.account_id,
+      collectionId: data.collection_id ?? null,
+      version: data.version ?? 1,
+    });
   }
 
   public async findByAccountId(accountId: string): Promise<Result<Template[]>> {

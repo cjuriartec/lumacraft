@@ -29,28 +29,30 @@ function createMockRepository(data: {
       const rels = data.relations?.[`${fieldId}:${sourceId}`] || [];
       return ok(rels.map((r) => r.target_record_id));
     }),
-    getReverseRelations: vi.fn(async (_targetColId, _targetFieldName, _sourceId) => {
+    getReverseRelations: vi.fn(async (_targetFieldId, _sourceId) => {
       return ok([]);
     }),
-    resolveRecursive: vi.fn(async (recordId, collectionId, _depth, _visited, _includeFields) => {
-      // For unit tests of the UseCase, we can either mock the whole recursion
-      // or implement a simple version here. Since the UseCase now just delegates,
-      // we check if it delegates correctly.
+    resolveRecursive: vi.fn(
+      async (recordId, collectionId, _depth, _visited, _includeFields, _includeRelationPaths) => {
+        // For unit tests of the UseCase, we can either mock the whole recursion
+        // or implement a simple version here. Since the UseCase now just delegates,
+        // we check if it delegates correctly.
 
-      const col = data.collections?.[collectionId];
-      if (!col) return fail(new DomainError("Collection not found", "NOT_FOUND"));
+        const col = data.collections?.[collectionId];
+        if (!col) return fail(new DomainError("Collection not found", "NOT_FOUND"));
 
-      const rec = data.records?.[recordId];
-      if (!rec) return fail(new DomainError("Record not found", "NOT_FOUND"));
+        const rec = data.records?.[recordId];
+        if (!rec) return fail(new DomainError("Record not found", "NOT_FOUND"));
 
-      return ok({
-        id: recordId,
-        collectionId,
-        collectionName: col.display_name || col.name,
-        data: rec.data,
-        relations: {},
-      });
-    }),
+        return ok({
+          id: recordId,
+          collectionId,
+          collectionName: col.display_name || col.name,
+          data: rec.data,
+          relations: {},
+        });
+      },
+    ),
   };
   return repo;
 }
@@ -101,6 +103,7 @@ describe("EagerLoadRecordUseCase", () => {
       "col-1",
       5,
       expect.any(Set),
+      undefined,
       undefined,
     );
   });

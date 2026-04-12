@@ -34,11 +34,10 @@ describe("buildGroundedPrompt", () => {
     });
 
     expect(result.usedPaths).toEqual(["cliente.nombre", "cliente.estado"]);
-    // root is always included in context even if not explicitly in the prompt
     expect(result.contextSnapshot).toContain('"nombre": "Ana"');
     expect(result.contextSnapshot).toContain('"estado": "ACTIVO"');
-    // root context means full data is available (including edad, total, etc.)
-    expect(result.contextSnapshot).toContain('"edad"');
+    expect(result.contextSnapshot).not.toContain('"edad"');
+    expect(result.contextSnapshot).not.toContain('"total"');
     expect(result.metadataSnapshot).toContain("Nombre");
     expect(result.metadataSnapshot).toContain("ENUM");
     expect(result.prompt).toContain("Resume a Ana con estado ACTIVO");
@@ -64,7 +63,7 @@ describe("buildGroundedPrompt", () => {
     expect(result.prompt).toContain("Item actual: Laptop");
   });
 
-  it("always includes root context even when prompt has no variable tokens", () => {
+  it("includes full root context when prompt has no variable tokens", () => {
     const result = buildGroundedPrompt({
       promptTemplate: "Escribe un resumen ejecutivo.",
       context: {
@@ -74,9 +73,9 @@ describe("buildGroundedPrompt", () => {
     });
 
     expect(result.usedPaths).toEqual([]);
-    // root context is always injected for AI grounding
     expect(result.contextSnapshot).toContain('"cliente"');
     expect(result.contextSnapshot).toContain('"Ana"');
+    expect(result.contextSnapshot).toContain('"total"');
   });
 
   it("includes collection context in the prompt when provided", () => {
