@@ -239,29 +239,49 @@ function BlockShell({
   title,
   style,
   actions,
+  variant = "default",
 }: {
   icon: ReactNode;
   title: string;
   children: ReactNode;
   style?: React.CSSProperties;
   actions?: ReactNode;
+  variant?: "default" | "ai";
 }) {
   return (
     <div
       contentEditable={false}
-      className="my-2 rounded-lg border border-border/40 bg-card p-2.5 transition-all hover:border-border/60"
+      className={cn(
+        "my-4 rounded-xl border p-4 transition-all duration-200",
+        // Force light styles since background is always white
+        variant === "ai"
+          ? "bg-[#f5f3ff]/50 border-indigo-200/60 shadow-[0_2px_12px_-3px_rgba(99,102,241,0.1)]"
+          : "bg-slate-50/50 border-slate-200/80 shadow-sm",
+      )}
       style={style}
     >
-      <div className="mb-2 flex items-center justify-between px-0.5">
-        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/50">
-          <div className="flex h-5 w-5 items-center justify-center rounded-md bg-muted/10 text-foreground/40">
+      <div className="mb-3 flex items-center justify-between px-0.5">
+        <div
+          className={cn(
+            "flex items-center gap-2.5 text-[10px] font-bold uppercase tracking-[0.25em]",
+            variant === "ai" ? "text-indigo-500/80" : "text-slate-500/60",
+          )}
+        >
+          <div
+            className={cn(
+              "flex h-6 w-6 items-center justify-center rounded-lg shadow-sm ring-1",
+              variant === "ai"
+                ? "bg-white text-indigo-500 ring-indigo-100"
+                : "bg-white text-slate-400 ring-slate-100",
+            )}
+          >
             {icon}
           </div>
           {title}
         </div>
         <div className="flex items-center gap-1.5">{actions}</div>
       </div>
-      <div className="px-0.5">{children}</div>
+      <div className="px-0.5 text-[#1a1a1a]">{children}</div>
     </div>
   );
 }
@@ -303,7 +323,7 @@ function LogicBlockStylesPopover({
         <Button
           variant="ghost"
           size="sm"
-          className="h-7 gap-1.5 rounded-md px-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 hover:bg-muted/10 hover:text-foreground"
+          className="h-7 gap-1.5 rounded-md px-2 text-[10px] font-bold uppercase tracking-wider text-slate-500/80 hover:bg-slate-200/50 hover:text-slate-900 transition-colors"
         >
           <Sliders size={12} />
           Estilos
@@ -481,7 +501,7 @@ export function TemplateAIInlinePromptEditor({
         value={localValue}
         onChange={(event) => handleChange(event.target.value)}
         placeholder="Escribe tu prompt aquí..."
-        className="min-h-[96px] w-full resize-none border-none bg-transparent p-2 text-sm leading-6 focus-visible:ring-0"
+        className="min-h-[96px] w-full resize-none border-none bg-transparent p-2 text-sm leading-6 text-slate-700 placeholder:text-slate-400 focus-visible:ring-0"
       />
       <div className="absolute bottom-1 right-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
         <VariableSelector
@@ -549,18 +569,19 @@ export function TemplateConditionalElement(
           fontFamily: resolveDocumentFontFamily("web", fontFamily),
         }}
       >
-        <p className="text-xs text-foreground/80 opacity-60">
-          if <b>{element.fieldPath}</b> <b>{element.operator}</b>{" "}
-          <b>{String(element.value ?? "")}</b>
+        <p className="text-[12px] font-medium text-slate-500/80">
+          si <b className="text-slate-700">{element.fieldPath}</b>{" "}
+          <b className="text-slate-700">{element.operator}</b>{" "}
+          <b className="text-slate-700">{String(element.value ?? "")}</b>
         </p>
         <Button
           type="button"
           size="sm"
-          variant="outline"
-          className="mt-2 h-7"
+          variant="ghost"
+          className="mt-2.5 h-7 px-2 text-[11px] font-bold uppercase tracking-wider text-primary/70 hover:bg-primary/5 hover:text-primary transition-colors"
           onClick={() => setIsDialogOpen(true)}
         >
-          Editar
+          Configurar Condición
         </Button>
       </BlockShell>
       <LogicBlockEditorDialog
@@ -619,17 +640,18 @@ export function TemplateListElement(props: PlateElementProps<TemplateListElement
           fontFamily: resolveDocumentFontFamily("web", fontFamily),
         }}
       >
-        <p className="text-xs text-foreground/80 opacity-60">
-          source: <b>{element.sourcePath}</b> as <b>{element.itemAlias ?? "item"}</b>
+        <p className="text-[12px] font-medium text-slate-500/80">
+          origen: <b className="text-slate-700">{element.sourcePath}</b> como{" "}
+          <b className="text-slate-700">{element.itemAlias ?? "item"}</b>
         </p>
         <Button
           type="button"
           size="sm"
-          variant="outline"
-          className="mt-2 h-7"
+          variant="ghost"
+          className="mt-2.5 h-7 px-2 text-[11px] font-bold uppercase tracking-wider text-primary/70 hover:bg-primary/5 hover:text-primary transition-colors"
           onClick={() => setIsDialogOpen(true)}
         >
-          Editar
+          Configurar Bucle
         </Button>
       </BlockShell>
       <LogicBlockEditorDialog
@@ -688,17 +710,18 @@ export function TemplateSwitchElement(props: PlateElementProps<TemplateSwitchEle
           fontFamily: resolveDocumentFontFamily("web", fontFamily),
         }}
       >
-        <p className="text-xs text-foreground/80 opacity-60">
-          switch <b>{element.fieldPath}</b> ({element.cases?.length ?? 0} casos)
+        <p className="text-[12px] font-medium text-slate-500/80">
+          switch <b className="text-slate-700">{element.fieldPath}</b> ({element.cases?.length ?? 0}{" "}
+          casos)
         </p>
         <Button
           type="button"
           size="sm"
-          variant="outline"
-          className="mt-2 h-7"
+          variant="ghost"
+          className="mt-2.5 h-7 px-2 text-[11px] font-bold uppercase tracking-wider text-primary/70 hover:bg-primary/5 hover:text-primary transition-colors"
           onClick={() => setIsDialogOpen(true)}
         >
-          Editar
+          Configurar Casos
         </Button>
       </BlockShell>
       <LogicBlockEditorDialog
@@ -739,8 +762,9 @@ export function TemplateAIElement(props: PlateElementProps<TemplateAIElementNode
   return (
     <PlateElement {...props} as="div" attributes={attributes}>
       <BlockShell
+        variant="ai"
         icon={<BrainCircuit size={14} />}
-        title="AI Block"
+        title="IA Dinámica"
         actions={
           <LogicBlockStylesPopover
             align={align}

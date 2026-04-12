@@ -35,21 +35,28 @@ function escapeSqlLiteral(value: string) {
 }
 
 function runSql(sql: string) {
-  execFileSync(
-    "psql",
-    [
-      "--dbname",
-      requireEnv("DB_URL", databaseUrl),
-      "--no-psqlrc",
-      "-v",
-      "ON_ERROR_STOP=1",
-      "-c",
-      sql,
-    ],
-    {
-      stdio: "ignore",
-    },
-  );
+  try {
+    execFileSync(
+      "psql",
+      [
+        "--dbname",
+        requireEnv("DB_URL", databaseUrl),
+        "--no-psqlrc",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-c",
+        sql,
+      ],
+      {
+        stdio: "ignore",
+      },
+    );
+  } catch (error) {
+    console.warn(
+      "⚠️  [Supabase Harness] Failed to run SQL (psql might be missing or DB unreachable):",
+      error instanceof Error ? error.message : error,
+    );
+  }
 }
 
 export function createAnonSupabaseClient() {

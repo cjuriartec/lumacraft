@@ -1,7 +1,9 @@
 import { vi } from "vitest";
 
 import { User } from "@/modules/auth/domain/entities/user.entity";
+import { UserProfile } from "@/modules/auth/domain/entities/user-profile.entity";
 import { IAuthProvider } from "@/modules/auth/domain/ports/auth-provider.port";
+import { IUserProfileRepository } from "@/modules/auth/domain/ports/user-profile-repository.port";
 import { Collection } from "@/modules/collection/domain/entities/collection.entity";
 import { Field } from "@/modules/collection/domain/entities/field.entity";
 import { DataRecord } from "@/modules/collection/domain/entities/record.entity";
@@ -115,6 +117,10 @@ export class InMemoryCollectionRepository implements ICollectionRepository {
     this.items = this.items.filter((collection) => collection.id !== id);
     return ok(undefined);
   });
+
+  public count = vi.fn(async (accountId: string) => {
+    return ok(this.items.filter((col) => col.accountId === accountId).length);
+  });
 }
 
 export class InMemoryTemplateRepository implements ITemplateRepository {
@@ -162,6 +168,10 @@ export class InMemoryTemplateRepository implements ITemplateRepository {
     if (this.deleteResult) return this.deleteResult;
     this.items = this.items.filter((template) => template.id !== id);
     return ok(undefined);
+  });
+
+  public count = vi.fn(async (accountId: string) => {
+    return ok(this.items.filter((item) => item.accountId === accountId).length);
   });
 }
 
@@ -222,6 +232,10 @@ export class InMemoryFieldRepository implements IFieldRepository {
       .sort((left, right) => left.sortOrder - right.sortOrder);
 
     return this.findByCollectionIdResult ?? ok(fields);
+  });
+
+  public findByAccountId = vi.fn(async (_accountId: string) => {
+    return ok(this.items);
   });
 
   public findById = vi.fn(async (id: string) => {
@@ -368,13 +382,13 @@ export class InMemoryRecordRepository implements IRecordRepository {
     return this.findByIdResult ?? ok(this.items.find((record) => record.id === id) ?? null);
   });
 
-  public create = vi.fn(async (record: DataRecord) => {
+  public create = vi.fn(async (record: DataRecord, _omitFields?: string[]) => {
     if (this.createResult) return this.createResult;
     this.items.push(record);
     return ok(record);
   });
 
-  public update = vi.fn(async (record: DataRecord) => {
+  public update = vi.fn(async (record: DataRecord, _omitFields?: string[]) => {
     if (this.updateResult) return this.updateResult;
     this.items = this.items.map((item) => (item.id === record.id ? record : item));
     return ok(record);
@@ -395,6 +409,10 @@ export class InMemoryRecordRepository implements IRecordRepository {
       this.countResult ??
       ok(this.items.filter((record) => record.collectionId === collectionId).length)
     );
+  });
+
+  public countAll = vi.fn(async (_accountId: string) => {
+    return ok(this.items.length);
   });
 
   public findByFieldValue = vi.fn(
@@ -481,6 +499,28 @@ export class InMemoryRelationRepository implements IRelationRepository {
     }));
 
     this.items = [...base, ...next];
+    return ok(undefined);
+  });
+}
+
+export class InMemoryUserProfileRepository implements IUserProfileRepository {
+  constructor(public items: UserProfile[] = []) {}
+
+  public findByIdResult?: Result<UserProfile>;
+  public saveResult?: Result<void>;
+
+  public findById = vi.fn(async (userId: string) => {
+    if (this.findByIdResult) return this.findByIdResult;
+    const item = this.items.find((i) => i.id === userId);
+    return item ? ok(item) : UserProfile.create({ id: userId });
+  });
+
+  public save = vi.fn(async (profile: UserProfile) => {
+    if (this.saveResult) return this.saveResult;
+    this.items = this.items.map((i) => (i.id === profile.id ? profile : i));
+    if (!this.items.find((i) => i.id === profile.id)) {
+      this.items.push(profile);
+    }
     return ok(undefined);
   });
 }

@@ -10,7 +10,6 @@ import {
   Sun,
   User as UserIcon,
 } from "lucide-react";
-import { useTheme } from "next-themes";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/presentation/components/ui/avatar";
 import {
@@ -26,17 +25,18 @@ import {
 } from "@/shared/presentation/components/ui/dropdown-menu";
 
 import { useAuth } from "../providers/auth-provider";
+import { useUserPreferences } from "../providers/user-preferences-provider";
 
 export default function UserMenu() {
   const { user, signOut } = useAuth();
-  const { setTheme, theme } = useTheme();
+  const { setTheme, theme } = useUserPreferences();
 
   if (!user) return null;
 
   const initials = user.fullName
     ? user.fullName
         .split(" ")
-        .map((n) => n[0])
+        .map((n: string) => n[0])
         .join("")
         .toUpperCase()
         .slice(0, 2)
@@ -120,9 +120,9 @@ export default function UserMenu() {
                 className="bg-surface border-border/50 rounded-xl p-1.5 min-w-[130px] animate-in fade-in slide-in-from-right-1 duration-200"
               >
                 {[
-                  { id: "light", label: "Claro", icon: Sun },
-                  { id: "dark", label: "Oscuro", icon: Moon },
-                  { id: "system", label: "Sistema", icon: Laptop },
+                  { id: "light" as const, label: "Claro", icon: Sun },
+                  { id: "dark" as const, label: "Oscuro", icon: Moon },
+                  { id: "system" as const, label: "Sistema", icon: Laptop },
                 ].map(({ id, label, icon: Icon }) => (
                   <DropdownMenuItem
                     key={id}

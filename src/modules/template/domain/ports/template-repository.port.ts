@@ -8,4 +8,5 @@ export interface ITemplateRepository {
   create(template: Template): Promise<Result<Template>>;
   update(template: Template, expectedVersion: number): Promise<Result<Template>>;
   delete(id: string): Promise<Result<void>>;
+  count(accountId: string): Promise<Result<number>>;
 }

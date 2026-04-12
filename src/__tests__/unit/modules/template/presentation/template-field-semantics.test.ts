@@ -13,6 +13,8 @@ describe("template field semantics", () => {
     expect(getFieldSemantics("FILE").operators).toEqual(["is_empty", "not_empty"]);
     expect(getFieldSemantics("IMAGE").operators).toEqual(["is_empty", "not_empty"]);
     expect(getFieldSemantics("RELATION").switchComparable).toBe(false);
+    expect(getFieldSemantics("REVERSE_LOOKUP").operators).toEqual(["is_empty", "not_empty"]);
+    expect(getFieldSemantics("REVERSE_LOOKUP").switchComparable).toBe(false);
   });
 
   it("supports switch comparability only for comparable scalar fields", () => {

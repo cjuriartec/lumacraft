@@ -86,6 +86,8 @@
     "@udecode/plate-node-id": "^48.0.6",
     "@udecode/plate-reset-node": "^48.0.0",
     "@udecode/plate-trailing-block": "^48.0.0",
+    "@xyflow/react": "^12.10.2",
+    "@xyflow/system": "^0.0.76",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "framer-motion": "^12.38.0",

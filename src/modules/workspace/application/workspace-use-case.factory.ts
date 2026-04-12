@@ -1,8 +1,13 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 
+import { SupabaseCollectionRepository } from "@/modules/collection/infrastructure/repositories/supabase-collection.repository";
+import { SupabaseRecordRepository } from "@/modules/collection/infrastructure/repositories/supabase-record.repository";
+import { SupabaseTemplateRepository } from "@/modules/template/infrastructure/repositories/supabase-template.repository";
+
 import { SupabaseRoleRepository } from "../infrastructure/repositories/supabase-role.repository";
 import { SupabaseWorkspaceRepository } from "../infrastructure/repositories/supabase-workspace.repository";
 import { SupabaseWorkspaceMemberRepository } from "../infrastructure/repositories/supabase-workspace-member.repository";
+import { GetWorkspaceStatsUseCase } from "./use-cases/get-workspace-stats.use-case";
 import { GetWorkspacesByUserUseCase } from "./use-cases/get-workspaces-by-user.use-case";
 import { ManageMembersUseCase } from "./use-cases/manage-members.use-case";
 import { ManageRolesUseCase } from "./use-cases/manage-roles.use-case";
@@ -18,6 +23,9 @@ class WorkspaceUseCaseFactoryImpl {
     workspace: SupabaseWorkspaceRepository;
     member: SupabaseWorkspaceMemberRepository;
     role: SupabaseRoleRepository;
+    collection: SupabaseCollectionRepository;
+    record: SupabaseRecordRepository;
+    template: SupabaseTemplateRepository;
   };
 
   constructor(supabase: SupabaseClient) {
@@ -25,6 +33,9 @@ class WorkspaceUseCaseFactoryImpl {
       workspace: new SupabaseWorkspaceRepository(supabase),
       member: new SupabaseWorkspaceMemberRepository(supabase),
       role: new SupabaseRoleRepository(supabase),
+      collection: new SupabaseCollectionRepository(supabase),
+      record: new SupabaseRecordRepository(supabase),
+      template: new SupabaseTemplateRepository(supabase),
     };
   }
 
@@ -38,5 +49,13 @@ class WorkspaceUseCaseFactoryImpl {
 
   public manageRoles() {
     return new ManageRolesUseCase(this.repositories.role);
+  }
+
+  public getWorkspaceStats() {
+    return new GetWorkspaceStatsUseCase(
+      this.repositories.collection,
+      this.repositories.record,
+      this.repositories.template,
+    );
   }
 }

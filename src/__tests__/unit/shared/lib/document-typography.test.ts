@@ -25,7 +25,9 @@ describe("document-typography", () => {
     expect(resolveDocumentFontFamily("web", "arial")).toBe("Arial, Helvetica, sans-serif");
     expect(resolveDocumentFontFamily("pdf", "arial")).toBe("Helvetica");
 
-    expect(resolveDocumentFontFamily("web", "roboto")).toBe('"Roboto", Arial, sans-serif');
+    expect(resolveDocumentFontFamily("web", "roboto")).toBe(
+      "var(--font-roboto), Arial, sans-serif",
+    );
     expect(resolveDocumentFontFamily("pdf", "roboto")).toBe("Roboto");
 
     expect(resolveDocumentFontFamily("web", "times")).toBe('"Times New Roman", Times, serif');
