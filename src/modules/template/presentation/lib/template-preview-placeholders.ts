@@ -50,7 +50,7 @@ function buildStateLine(state: TemplatePreviewBlockState | undefined): string | 
     return state.message;
   }
 
-  return state.status === "resolved" ? "Resuelto" : "Generando preview...";
+  return null;
 }
 
 function createPlaceholderNode(
