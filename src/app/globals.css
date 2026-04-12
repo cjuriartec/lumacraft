@@ -106,7 +106,6 @@ body {
 /* Selection */
 ::selection {
   background: rgba(16, 185, 129, 0.2);
-  color: var(--foreground);
 }
 
 /* Focus ring override for our custom theme */
