@@ -264,7 +264,7 @@ export default function RecordDocumentEditorPage({
                     rel="noopener noreferrer"
                   >
                     <ExternalLink size={14} />
-                    <span className="text-[11px]">Template</span>
+                    <span className="text-[11px]">Plantilla</span>
                   </Link>
                 </Button>
 

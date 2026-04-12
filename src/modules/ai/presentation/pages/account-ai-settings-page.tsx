@@ -463,6 +463,7 @@ export default function AccountAISettingsPage() {
             }
             placeholder="Opcional. Si lo dejas vacío, Lumacraft usará su prompt interno por defecto."
             className="min-h-[140px] rounded-xl border-border/40 bg-background/70"
+            enableAI={true}
           />
         </div>
       </section>
