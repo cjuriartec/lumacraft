@@ -16,6 +16,7 @@ import {
   CheckCircle2,
   Cloud,
   Download,
+  ExternalLink,
   FileText,
   Highlighter,
   PaintBucket,
@@ -256,6 +257,17 @@ export default function RecordDocumentEditorPage({
                   </div>
                 )}
 
+                <Button variant="ghost" size="sm" asChild className="h-9 gap-2 cursor-pointer">
+                  <Link
+                    href={`/collections/${collectionId}/templates/${templateId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <ExternalLink size={14} />
+                    <span className="text-[11px]">Template</span>
+                  </Link>
+                </Button>
+
                 <Button
                   variant="ghost"
                   size="sm"
@@ -418,7 +430,7 @@ export default function RecordDocumentEditorPage({
           }
         }}
       >
-        <AlertDialogContent>
+        <AlertDialogContent className="border-0 bg-surface">
           <AlertDialogHeader>
             <AlertDialogTitle>Regenerar documento</AlertDialogTitle>
             <AlertDialogDescription>
