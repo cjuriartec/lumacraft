@@ -1,14 +1,14 @@
 "use client";
 
-import { render, screen, waitFor } from "@testing-library/react";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { makeCollection, makeField, resetFactories } from "@/__tests__/factories/domain-factories";
-import SupabaseProvider from "@/shared/presentation/providers/supabase-provider";
 import { useVariableFields } from "@/modules/template/presentation/hooks/use-variable-fields";
 import { isIterableRelation } from "@/modules/template/presentation/lib/template-field-semantics";
 import type { TemplateVariableCatalogNode } from "@/modules/template/presentation/types/template-variable-catalog";
+import SupabaseProvider from "@/shared/presentation/providers/supabase-provider";
 
 const collectionFactoryState = vi.hoisted(() => ({
   fieldsByCollectionId: new Map<string, ReturnType<typeof makeField>[]>(),
@@ -208,14 +208,18 @@ describe("useVariableFields regression coverage", () => {
     );
 
     await waitFor(() => {
-      const nodes = JSON.parse(screen.getByTestId("nodes").textContent ?? "[]") as TemplateVariableCatalogNode[];
+      const nodes = JSON.parse(
+        screen.getByTestId("nodes").textContent ?? "[]",
+      ) as TemplateVariableCatalogNode[];
       const flattened = flattenNodes(nodes);
 
       expect(flattened.some((node) => node.path === "billing_contact.orders")).toBe(true);
       expect(flattened.some((node) => node.path === "shipping_contact.orders")).toBe(true);
     });
 
-    const nodes = JSON.parse(screen.getByTestId("nodes").textContent ?? "[]") as TemplateVariableCatalogNode[];
+    const nodes = JSON.parse(
+      screen.getByTestId("nodes").textContent ?? "[]",
+    ) as TemplateVariableCatalogNode[];
     const flattened = flattenNodes(nodes);
     const billingOrders = flattened.find((node) => node.path === "billing_contact.orders");
     const shippingOrders = flattened.find((node) => node.path === "shipping_contact.orders");
