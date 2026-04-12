@@ -42,7 +42,7 @@ const DOCUMENT_FONT_FAMILY_DEFINITIONS: Record<
   roboto: {
     label: "Roboto",
     pdf: "Roboto",
-    web: '"Roboto", Arial, sans-serif',
+    web: 'var(--font-roboto), Arial, sans-serif',
   },
   times: {
     label: "Times New Roman",
