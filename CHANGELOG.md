@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.6](https://github.com/cjuriartec/lumacraft/compare/v0.1.5...v0.1.6) (2026-04-12)
+
+
+### 💄 Styling
+
+* add group class to template logic block containers for hover state support ([e8fe985](https://github.com/cjuriartec/lumacraft/commit/e8fe9850df85cf4833a103f687eeb606a7a70c6e))
+* remove text color from selection styling in globals.css ([f1ea50a](https://github.com/cjuriartec/lumacraft/commit/f1ea50aff431b04a43e7c777299f63ff0d93cd51))
+
+
+### 🚀 Performance Improvements
+
+* optimize template compilation pipeline & fix TS/lint errors ([4816f8e](https://github.com/cjuriartec/lumacraft/commit/4816f8e208c1eb92a5c34e18cef894c3f124cfcf))
+
+
+### ♻️ Code Refactoring
+
+* improve code formatting and add aria-selected attribute to select item mock ([64a11df](https://github.com/cjuriartec/lumacraft/commit/64a11dfbfa10667eb9e91e8edc4d7e76bad8bca0))
+* update template preview placeholder logic and add completion tracking to hook state ([f6d23f3](https://github.com/cjuriartec/lumacraft/commit/f6d23f3a862a964498069c1dc56a95ae6a1acdfb))
+
+
+### ✨ Features
+
+* add description to record document selector modal for improved accessibility ([48c3fb8](https://github.com/cjuriartec/lumacraft/commit/48c3fb8f4b073e8047518a4daddb772cc7f13a60))
+* implement AI text improvement component and integrate into UI forms ([a08caff](https://github.com/cjuriartec/lumacraft/commit/a08caffb4fb873a5b3b0700e33ce6ba0db2a82e8))
+
 ### [0.1.5](https://github.com/cjuriartec/lumacraft/compare/v0.1.4...v0.1.5) (2026-04-12)
 
 ### ♻️ Code Refactoring
