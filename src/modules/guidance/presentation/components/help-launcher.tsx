@@ -187,21 +187,22 @@ export function HelpLauncher() {
         type="button"
         aria-label="Abrir centro de ayuda"
         onClick={() => setLauncherOpen(!launcherOpen)}
-        className="group relative flex h-14 items-center gap-3 rounded-full border border-border/50 bg-surface/95 px-4 text-foreground shadow-[0_16px_40px_rgba(0,0,0,0.16)] backdrop-blur-xl transition-transform hover:-translate-y-0.5"
+        className="group relative flex h-12 w-12 items-center justify-start overflow-hidden rounded-full border border-border/50 bg-surface/95 text-foreground shadow-[0_16px_40px_rgba(0,0,0,0.16)] backdrop-blur-xl transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] hover:w-[190px] hover:-translate-y-0.5"
       >
-        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/12 text-primary">
-          <LifeBuoy size={18} />
+        <div className="flex h-11 min-w-[46px] items-center justify-center rounded-full text-primary">
+          <LifeBuoy
+            size={20}
+            className="transition-transform duration-500 group-hover:rotate-12 group-hover:scale-110"
+          />
         </div>
-        <div className="hidden text-left sm:block">
-          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-foreground/45">
-            Ayuda
+        <div className="flex flex-col whitespace-nowrap pr-5 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-foreground/45">
+            Centro de Ayuda
           </p>
-          <p className="text-sm font-semibold text-foreground">Guías y manual</p>
+          <p className="text-[13px] font-semibold text-foreground">Guías y manual</p>
         </div>
         {hasNewHelpNudge && (
-          <span className="absolute -right-1 -top-1 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] text-background">
-            Nuevo
-          </span>
+          <span className="absolute right-3 top-3 h-2 w-2 rounded-full bg-primary ring-4 ring-primary/20" />
         )}
       </button>
     </div>

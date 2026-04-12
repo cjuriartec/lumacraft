@@ -170,7 +170,7 @@ export function GuidanceCoachmark({
             exit={{ opacity: 0, y: 12, scale: 0.98 }}
             transition={{ duration: 0.18 }}
             className={cn(
-              "fixed z-[60] rounded-[1.4rem] border border-border/60 bg-surface/95 text-foreground shadow-[0_28px_80px_rgba(0,0,0,0.24)] backdrop-blur-xl",
+              "fixed z-60 rounded-[1.4rem] border border-border/60 bg-surface/95 text-foreground shadow-[0_28px_80px_rgba(0,0,0,0.24)] backdrop-blur-xl",
               isMobile || !panelPosition ? "inset-x-4 bottom-4" : "w-[360px]",
             )}
             style={
