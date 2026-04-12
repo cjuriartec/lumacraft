@@ -25,11 +25,11 @@ export class CompileRecordDocumentIfMissingUseCase {
     templateVersion: number;
     userId?: string;
     compilePreview: CompileDocumentPreviewPort;
+    existingDocument?: RecordDocument | null;
   }): Promise<Result<CompileRecordDocumentIfMissingResult, DomainError>> {
-    const existing = await this.repository.findByTemplateAndRecord(
-      params.templateId,
-      params.recordId,
-    );
+    const existing = params.existingDocument
+      ? ok(params.existingDocument)
+      : await this.repository.findByTemplateAndRecord(params.templateId, params.recordId);
     if (!existing.ok) {
       return fail(existing.error);
     }

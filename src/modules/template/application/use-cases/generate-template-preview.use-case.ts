@@ -5,11 +5,14 @@ import { DomainError, fail, ok, Result } from "@/shared/domain/result";
 import { Template } from "../../domain/entities/template.entity";
 import { ITemplateRepository } from "../../domain/ports/template-repository.port";
 import { TemplateBlocks } from "../../domain/types/template-blocks";
+import { TemplateRuntimeContext } from "../../domain/types/template-runtime-context";
+import { TemplateAIBlockCachePort } from "../ports/template-ai-block-cache.port";
 import { TemplateAssetUrlResolverPort } from "../ports/template-asset-url-resolver.port";
+import { TemplatePreviewCachePort } from "../ports/template-preview-cache.port";
 import { TemplateRuntimeContextResolverPort } from "../ports/template-runtime-context-resolver.port";
+import { TemplateCompilationService } from "../services/template-compilation.service";
+import { analyzeTemplateDependencies } from "../services/template-dependency-analyzer";
 import { TemplatePreviewEvent, TemplatePreviewResult } from "../services/template-preview.types";
-import { getTemplatePreviewBlockMetadata } from "../services/template-preview-block-metadata";
-import { compileTemplatePreviewBlocks } from "../services/template-preview-blocks-compiler";
 
 interface GenerateTemplatePreviewParams {
   requestId: string;
@@ -19,9 +22,16 @@ interface GenerateTemplatePreviewParams {
   recordId: string;
   blocks: TemplateBlocks;
   aiSystemInstruction?: string;
+  aiSettingsHash?: string;
   depth?: number;
   onEvent?: (event: TemplatePreviewEvent) => void;
   signal?: AbortSignal;
+  template?: Template;
+  context?: TemplateRuntimeContext;
+  emitMetaEvent?: boolean;
+  emitPendingEvents?: boolean;
+  previewCache?: TemplatePreviewCachePort;
+  aiBlockCache?: TemplateAIBlockCachePort;
   options?: {
     enableAI?: boolean;
     enableLogic?: boolean;
@@ -37,73 +47,13 @@ function failWith(code: string, message: string): Result<never, DomainError> {
   return fail(new DomainError(message, code));
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function countAiBlocks(blocks: TemplateBlocks, enableAI: boolean, enableLogic: boolean): number {
-  if (!enableAI) {
-    return 0;
-  }
-
-  let count = 0;
-
-  for (const block of blocks) {
-    if (!isRecord(block) || typeof block.type !== "string") {
-      continue;
-    }
-
-    if (block.type === "template_ai") {
-      count += 1;
-      continue;
-    }
-
-    if (!enableLogic) {
-      continue;
-    }
-
-    if (Array.isArray(block.children)) {
-      count += countAiBlocks(block.children as TemplateBlocks, enableAI, enableLogic);
-    }
-
-    if (block.type === "template_conditional") {
-      if (Array.isArray(block.thenBlocks)) {
-        count += countAiBlocks(block.thenBlocks as TemplateBlocks, enableAI, enableLogic);
-      }
-
-      if (Array.isArray(block.elseBlocks)) {
-        count += countAiBlocks(block.elseBlocks as TemplateBlocks, enableAI, enableLogic);
-      }
-    }
-
-    if (block.type === "template_list" && Array.isArray(block.blocks)) {
-      count += countAiBlocks(block.blocks as TemplateBlocks, enableAI, enableLogic);
-    }
-
-    if (block.type === "template_switch") {
-      if (Array.isArray(block.defaultBlocks)) {
-        count += countAiBlocks(block.defaultBlocks as TemplateBlocks, enableAI, enableLogic);
-      }
-
-      if (Array.isArray(block.cases)) {
-        for (const switchCase of block.cases) {
-          if (isRecord(switchCase) && Array.isArray(switchCase.blocks)) {
-            count += countAiBlocks(switchCase.blocks as TemplateBlocks, enableAI, enableLogic);
-          }
-        }
-      }
-    }
-  }
-
-  return count;
-}
-
 export class GenerateTemplatePreviewUseCase {
   constructor(
     private readonly templateRepository: ITemplateRepository,
     private readonly contextResolver: TemplateRuntimeContextResolverPort,
     private readonly aiProviderFactory: AIProviderFactoryPort,
     private readonly assetUrlResolver?: TemplateAssetUrlResolverPort,
+    private readonly compilationService = new TemplateCompilationService(),
   ) {}
 
   public async execute(
@@ -122,7 +72,9 @@ export class GenerateTemplatePreviewUseCase {
       );
     }
 
-    const templateResult = await this.templateRepository.findById(params.templateId);
+    const templateResult = params.template
+      ? ok(params.template)
+      : await this.templateRepository.findById(params.templateId);
     if (!templateResult.ok) {
       return fail(templateResult.error);
     }
@@ -149,66 +101,40 @@ export class GenerateTemplatePreviewUseCase {
       );
     }
 
-    const enableAI = params.options?.enableAI ?? true;
-    const enableLogic = params.options?.enableLogic ?? true;
-    const maxAiBlocks = Math.max(1, params.options?.maxAiBlocks ?? 3);
-
-    if (countAiBlocks(params.blocks, enableAI, enableLogic) > maxAiBlocks) {
-      return failWith(
-        "TEMPLATE_COMPILE_ERROR",
-        `Template exceeds AI block limit (${maxAiBlocks}) for a single preview execution`,
-      );
-    }
-
-    const contextResult = await this.contextResolver.resolve({
-      collectionId: params.collectionId,
-      recordId: params.recordId,
-      depth: params.depth ?? TEMPLATE_PREVIEW_MAX_EAGER_DEPTH,
-    });
+    const dependencyPlan = analyzeTemplateDependencies(params.blocks);
+    const contextResult = params.context
+      ? ok(params.context)
+      : await this.contextResolver.resolve({
+          collectionId: params.collectionId,
+          recordId: params.recordId,
+          depth: params.depth ?? Math.min(TEMPLATE_PREVIEW_MAX_EAGER_DEPTH, dependencyPlan.depth),
+          dependencyPlan,
+        });
 
     if (!contextResult.ok) {
       return fail(contextResult.error);
     }
 
-    params.onEvent?.({
-      type: "meta",
+    return this.compilationService.compile({
       requestId: params.requestId,
       templateId: params.templateId,
-      blocks: getTemplatePreviewBlockMetadata(params.blocks),
-      warnings: [],
-    });
-
-    const compiledBlocksResult = await compileTemplatePreviewBlocks({
-      requestId: params.requestId,
+      templateVersion: templateResult.value.version,
+      accountId: params.accountId,
+      collectionId: params.collectionId,
+      recordId: params.recordId,
       blocks: params.blocks,
       context: contextResult.value,
       aiProviderFactory: this.aiProviderFactory,
       aiSystemInstruction: params.aiSystemInstruction,
+      aiSettingsHash: params.aiSettingsHash,
       assetUrlResolver: this.assetUrlResolver,
+      previewCache: params.previewCache,
+      aiBlockCache: params.aiBlockCache,
       onEvent: params.onEvent,
-      enableAI,
-      enableLogic,
+      emitMetaEvent: params.emitMetaEvent,
+      emitPendingEvents: params.emitPendingEvents,
       signal: params.signal,
+      options: params.options,
     });
-
-    if (!compiledBlocksResult.ok) {
-      const code = compiledBlocksResult.error.code ?? "TEMPLATE_COMPILE_ERROR";
-      return fail(new DomainError(compiledBlocksResult.error.message, code));
-    }
-
-    const result: TemplatePreviewResult = {
-      requestId: params.requestId,
-      warnings: compiledBlocksResult.value.warnings,
-      blocks: compiledBlocksResult.value.blocks,
-    };
-
-    params.onEvent?.({
-      type: "done",
-      requestId: result.requestId,
-      warnings: result.warnings,
-      blocks: result.blocks,
-    });
-
-    return ok(result);
   }
 }

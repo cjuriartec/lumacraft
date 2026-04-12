@@ -5,6 +5,8 @@ export interface EagerLoadRequest {
   depth?: number;
   /** Optional: only resolve these field names */
   includeFields?: string[];
+  /** Optional: resolve only these relation paths across the recursive graph */
+  includeRelationPaths?: string[];
 }
 
 export interface EagerLoadedRecord {

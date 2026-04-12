@@ -10,8 +10,9 @@ import { EdgeFunctionAIProviderFactory } from "@/modules/ai/infrastructure/facto
 import { SupabaseAccountAISettingsRepository } from "@/modules/ai/infrastructure/repositories/supabase-account-ai-settings.repository";
 import { CollectionUseCaseFactory } from "@/modules/collection/application/collection-use-case.factory";
 import { TEMPLATE_PREVIEW_MAX_EAGER_DEPTH } from "@/modules/template/application/constants/template-preview.constants";
+import { TemplateCompilationService } from "@/modules/template/application/services/template-compilation.service";
+import { analyzeTemplateDependencies } from "@/modules/template/application/services/template-dependency-analyzer";
 import { TemplatePreviewEvent } from "@/modules/template/application/services/template-preview.types";
-import { GenerateTemplatePreviewUseCase } from "@/modules/template/application/use-cases/generate-template-preview.use-case";
 import {
   isTemplateBlocks,
   type TemplateBlocks,
@@ -19,9 +20,13 @@ import {
 import { EagerLoadTemplateContextResolverAdapter } from "@/modules/template/infrastructure/adapters/eager-load-template-context-resolver.adapter";
 import { SupabaseTemplateAssetUrlResolverAdapter } from "@/modules/template/infrastructure/adapters/supabase-template-asset-url-resolver.adapter";
 import { SupabaseTemplateRepository } from "@/modules/template/infrastructure/repositories/supabase-template.repository";
+import { SupabaseTemplateAIBlockCacheRepository } from "@/modules/template/infrastructure/repositories/supabase-template-ai-block-cache.repository";
+import { SupabaseTemplatePreviewCacheRepository } from "@/modules/template/infrastructure/repositories/supabase-template-preview-cache.repository";
+import { DomainError, fail, Result } from "@/shared/domain/result";
 import { resolveAccountAccess } from "@/shared/infrastructure/supabase/account-access";
 import { createAdminClientOrNull } from "@/shared/infrastructure/supabase/admin";
 import { createClient } from "@/shared/infrastructure/supabase/server";
+import { hashStableValue } from "@/shared/lib/stable-hash";
 
 const bodySchema = z.object({
   accountId: z.string().min(1),
@@ -63,6 +68,21 @@ function encodeSseEvent(event: TemplatePreviewEvent): string {
   return `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`;
 }
 
+function statusForError(code?: string) {
+  if (code === "UNAUTHORIZED") return 401;
+  if (code === "FORBIDDEN") return 403;
+  if (code === "NOT_FOUND") return 404;
+  if (
+    code === "DB_ERROR" ||
+    code === "ACCOUNT_AI_SETTINGS_ERROR" ||
+    code === "AI_EDGE_FUNCTION_NOT_CONFIGURED"
+  ) {
+    return 500;
+  }
+
+  return 400;
+}
+
 function createRepositoryClient(supabase: SupabaseClient) {
   return createAdminClientOrNull() ?? supabase;
 }
@@ -80,6 +100,16 @@ function resolveEdgeFunctionKey(): string | null {
   return (
     process.env.SUPABASE_SECRET_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? null
   );
+}
+
+function buildTemplateAISettingsHash(params: {
+  settings: Record<string, unknown>;
+  systemInstruction: string;
+}) {
+  return hashStableValue({
+    settings: params.settings,
+    systemInstruction: params.systemInstruction,
+  });
 }
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
@@ -139,6 +169,66 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   }
 
   const templateRepository = new SupabaseTemplateRepository(supabase);
+  const templateHeaderResult = await templateRepository.findHeaderById(templateId);
+  if (!templateHeaderResult.ok) {
+    return NextResponse.json(toErrorPayload(templateHeaderResult.error, "DB_ERROR"), {
+      status: 500,
+    });
+  }
+
+  if (!templateHeaderResult.value) {
+    return NextResponse.json(
+      {
+        error: {
+          code: "NOT_FOUND",
+          message: "Template not found",
+        },
+      },
+      { status: 404 },
+    );
+  }
+
+  if (templateHeaderResult.value.accountId !== bodyResult.data.accountId) {
+    return NextResponse.json(
+      {
+        error: {
+          code: "TEMPLATE_ACCOUNT_MISMATCH",
+          message: "Template does not belong to the provided account",
+        },
+      },
+      { status: 400 },
+    );
+  }
+
+  if (!templateHeaderResult.value.collectionId) {
+    return NextResponse.json(
+      {
+        error: {
+          code: "TEMPLATE_CONTEXT_NOT_FOUND",
+          message: "Template has no linked collection",
+        },
+      },
+      { status: 400 },
+    );
+  }
+
+  if (templateHeaderResult.value.collectionId !== bodyResult.data.collectionId) {
+    return NextResponse.json(
+      {
+        error: {
+          code: "TEMPLATE_CONTEXT_MISMATCH",
+          message: "Template collection does not match the preview request collection",
+        },
+      },
+      { status: 400 },
+    );
+  }
+
+  const templateHeader = templateHeaderResult.value;
+
+  const dependencyPlan = analyzeTemplateDependencies(bodyResult.data.blocks);
+  const previewDepth = Math.min(TEMPLATE_PREVIEW_MAX_EAGER_DEPTH, dependencyPlan.depth);
+  const shouldStream = bodyResult.data.options?.stream ?? true;
   const collectionFactory = CollectionUseCaseFactory.create(supabase);
   const eagerLoadUseCase = collectionFactory.eagerLoadRecord();
   const listFieldsUseCase = collectionFactory.listFields();
@@ -149,93 +239,119 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     getCollectionUseCase,
   );
   const assetUrlResolver = new SupabaseTemplateAssetUrlResolverAdapter(supabase);
-  const accountAISettingsRepository = new SupabaseAccountAISettingsRepository(
-    createRepositoryClient(supabase),
-  );
-  const accountAISettingsResolver = new AccountScopedAISettingsResolver(
-    new GetAccountAISettingsUseCase(accountAISettingsRepository),
-    new SaveAccountAISettingsUseCase(accountAISettingsRepository),
-  );
-  const resolvedAccountAISettings = await accountAISettingsResolver.resolve(
-    bodyResult.data.accountId,
-    process.env,
-    {
-      persistBootstrap: accessResult.value.isAdmin,
-    },
-  );
+  const repositoryClient = createRepositoryClient(supabase);
+  const previewCacheRepository = new SupabaseTemplatePreviewCacheRepository(repositoryClient);
+  const aiBlockCacheRepository = new SupabaseTemplateAIBlockCacheRepository(repositoryClient);
+  const compilationService = new TemplateCompilationService();
 
-  if (!resolvedAccountAISettings.ok) {
-    return NextResponse.json(
-      toErrorPayload(resolvedAccountAISettings.error, "ACCOUNT_AI_SETTINGS_ERROR"),
+  const executePreview = async (options: {
+    onEvent?: (event: TemplatePreviewEvent) => void;
+    signal?: AbortSignal;
+    emitMetaEvent?: boolean;
+    emitPendingEvents?: boolean;
+  }): Promise<Result<unknown, DomainError>> => {
+    const accountAISettingsRepository = new SupabaseAccountAISettingsRepository(repositoryClient);
+    const accountAISettingsResolver = new AccountScopedAISettingsResolver(
+      new GetAccountAISettingsUseCase(accountAISettingsRepository),
+      new SaveAccountAISettingsUseCase(accountAISettingsRepository),
+    );
+    const resolvedAccountAISettings = await accountAISettingsResolver.resolve(
+      bodyResult.data.accountId,
+      process.env,
       {
-        status: 500,
+        persistBootstrap: accessResult.value.isAdmin,
       },
     );
-  }
 
-  const accountAISettings = resolvedAccountAISettings.value.settings;
-  const edgeFunctionUrl = resolveEdgeFunctionUrl("ai-provider");
-  const edgeFunctionKey = resolveEdgeFunctionKey();
+    if (!resolvedAccountAISettings.ok) {
+      return fail(resolvedAccountAISettings.error);
+    }
 
-  if (!edgeFunctionUrl || !edgeFunctionKey) {
-    return NextResponse.json(
-      {
-        error: {
-          code: "AI_EDGE_FUNCTION_NOT_CONFIGURED",
-          message: "Missing Supabase Edge Function configuration",
-        },
+    const edgeFunctionUrl = resolveEdgeFunctionUrl("ai-provider");
+    const edgeFunctionKey = resolveEdgeFunctionKey();
+    if (!edgeFunctionUrl || !edgeFunctionKey) {
+      return fail(
+        new DomainError(
+          "Missing Supabase Edge Function configuration",
+          "AI_EDGE_FUNCTION_NOT_CONFIGURED",
+        ),
+      );
+    }
+
+    const accountAISettings = resolvedAccountAISettings.value.settings;
+    const aiProviderFactory = new EdgeFunctionAIProviderFactory({
+      accountId: bodyResult.data.accountId,
+      functionUrl: edgeFunctionUrl,
+      functionKey: edgeFunctionKey,
+      defaultProvider: accountAISettings.defaultProvider,
+      defaultModel: accountAISettings.defaultModel,
+      defaultTemperature: accountAISettings.defaultTemperature,
+      defaultMaxTokens: accountAISettings.defaultMaxTokens,
+      requestTimeoutMs: accountAISettings.requestTimeoutMs,
+      providerOptions: accountAISettings.providerOptions,
+      providerApiKeys: resolvedAccountAISettings.value.decryptedSecrets,
+    });
+    const aiSystemInstruction = composeAccountAISystemPrompt({
+      settings: accountAISettings,
+      mode: "structured_preview",
+    });
+    const aiSettingsHash = buildTemplateAISettingsHash({
+      settings: {
+        defaultProvider: accountAISettings.defaultProvider,
+        defaultModel: accountAISettings.defaultModel,
+        defaultTemperature: accountAISettings.defaultTemperature,
+        defaultMaxTokens: accountAISettings.defaultMaxTokens,
+        requestTimeoutMs: accountAISettings.requestTimeoutMs,
+        providerOptions: accountAISettings.providerOptions,
+        featureTemplateAI: accountAISettings.featureTemplateAI,
+        featureTemplateLogic: accountAISettings.featureTemplateLogic,
+        templatePreviewMaxAIBlocks: accountAISettings.templatePreviewMaxAIBlocks,
       },
-      { status: 500 },
-    );
-  }
+      systemInstruction: aiSystemInstruction,
+    });
+    const contextResult = await contextResolver.resolve({
+      collectionId: bodyResult.data.collectionId,
+      recordId: bodyResult.data.recordId,
+      depth: previewDepth,
+      dependencyPlan,
+    });
 
-  const aiProviderFactory = new EdgeFunctionAIProviderFactory({
-    accountId: bodyResult.data.accountId,
-    functionUrl: edgeFunctionUrl,
-    functionKey: edgeFunctionKey,
-    defaultProvider: accountAISettings.defaultProvider,
-    defaultModel: accountAISettings.defaultModel,
-    defaultTemperature: accountAISettings.defaultTemperature,
-    defaultMaxTokens: accountAISettings.defaultMaxTokens,
-    requestTimeoutMs: accountAISettings.requestTimeoutMs,
-    providerOptions: accountAISettings.providerOptions,
-    providerApiKeys: resolvedAccountAISettings.value.decryptedSecrets,
-  });
-  const aiSystemInstruction = composeAccountAISystemPrompt({
-    settings: accountAISettings,
-    mode: "structured_preview",
-  });
+    if (!contextResult.ok) {
+      return contextResult;
+    }
 
-  const generatePreviewUseCase = new GenerateTemplatePreviewUseCase(
-    templateRepository,
-    contextResolver,
-    aiProviderFactory,
-    assetUrlResolver,
-  );
-
-  const shouldStream = bodyResult.data.options?.stream ?? true;
-  const previewDepth = TEMPLATE_PREVIEW_MAX_EAGER_DEPTH;
-  const enableAI = accountAISettings.featureTemplateAI;
-  const enableLogic = accountAISettings.featureTemplateLogic;
-  const maxAiBlocks = Math.max(1, accountAISettings.templatePreviewMaxAIBlocks);
-  const timeoutMs = Math.max(5_000, accountAISettings.templatePreviewTimeoutMs);
-
-  if (!shouldStream) {
-    const result = await generatePreviewUseCase.execute({
+    return compilationService.compile({
       requestId,
       templateId,
+      templateVersion: templateHeader.version,
       accountId: bodyResult.data.accountId,
       collectionId: bodyResult.data.collectionId,
       recordId: bodyResult.data.recordId,
       blocks: bodyResult.data.blocks,
+      context: contextResult.value,
+      aiProviderFactory,
+      aiSettingsHash,
       aiSystemInstruction,
-      depth: previewDepth,
-      signal: request.signal,
+      assetUrlResolver,
+      previewCache: previewCacheRepository,
+      aiBlockCache: aiBlockCacheRepository,
+      onEvent: options.onEvent,
+      signal: options.signal,
+      emitMetaEvent: options.emitMetaEvent,
+      emitPendingEvents: options.emitPendingEvents,
       options: {
-        enableAI,
-        enableLogic,
-        maxAiBlocks,
+        enableAI: accountAISettings.featureTemplateAI,
+        enableLogic: accountAISettings.featureTemplateLogic,
+        maxAiBlocks: Math.max(1, accountAISettings.templatePreviewMaxAIBlocks),
       },
+    });
+  };
+
+  if (!shouldStream) {
+    const result = await executePreview({
+      signal: request.signal,
+      emitMetaEvent: true,
+      emitPendingEvents: true,
     });
 
     if (!result.ok) {
@@ -252,7 +368,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         }),
       );
       return NextResponse.json(toErrorPayload(result.error, "TEMPLATE_COMPILE_ERROR"), {
-        status: 400,
+        status: statusForError(result.error.code),
       });
     }
 
@@ -275,6 +391,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     start(controller) {
       const encoder = new TextEncoder();
       const abortController = new AbortController();
+      const timeoutMs = 45_000;
       const timeout = setTimeout(() => {
         abortController.abort("timeout");
       }, timeoutMs);
@@ -294,29 +411,39 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
       void (async () => {
         try {
-          const result = await generatePreviewUseCase.execute({
+          relayEvent({
+            type: "meta",
             requestId,
             templateId,
-            accountId: bodyResult.data.accountId,
-            collectionId: bodyResult.data.collectionId,
-            recordId: bodyResult.data.recordId,
-            blocks: bodyResult.data.blocks,
-            aiSystemInstruction,
-            depth: previewDepth,
+            blocks: dependencyPlan.blockMetadata,
+            warnings: [],
+          });
+          dependencyPlan.blockMetadata.forEach((blockMeta) => {
+            relayEvent({
+              type: "pending",
+              requestId,
+              blockId: blockMeta.blockId,
+              blockIndex: blockMeta.blockIndex,
+              blockType: blockMeta.blockType,
+            });
+          });
+
+          const result = await executePreview({
             onEvent: relayEvent,
             signal: abortController.signal,
-            options: {
-              enableAI,
-              enableLogic,
-              maxAiBlocks,
-            },
+            emitMetaEvent: false,
+            emitPendingEvents: false,
           });
 
           if (!result.ok) {
             relayEvent({
               type: "error",
               requestId,
-              code: result.error.code ?? "TEMPLATE_COMPILE_ERROR",
+              code:
+                result.error.code ??
+                (result.error.message === "Missing Supabase Edge Function configuration"
+                  ? "AI_EDGE_FUNCTION_NOT_CONFIGURED"
+                  : "TEMPLATE_COMPILE_ERROR"),
               message: result.error.message,
             });
           }

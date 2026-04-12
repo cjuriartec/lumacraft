@@ -6,69 +6,160 @@ import { BaseRepository } from "@/shared/infrastructure/base-repository";
 import { IEagerLoadRepository, RawField } from "../../domain/ports/eager-load-repository.port";
 import { EagerLoadedRecord } from "../../domain/types/eager-loading.types";
 
+type CollectionMetadata = { name: string; display_name: string | null };
+type RecordPayload = { id: string; data: Record<string, unknown> };
+
+function buildRelationPath(prefix: string | undefined, fieldName: string): string {
+  return prefix ? `${prefix}.${fieldName}` : fieldName;
+}
+
+function shouldIncludeRelationPath(fieldPath: string, includeRelationPaths?: string[]): boolean {
+  if (!includeRelationPaths || includeRelationPaths.length === 0) {
+    return true;
+  }
+
+  return includeRelationPaths.some(
+    (path) => path === fieldPath || path.startsWith(`${fieldPath}.`),
+  );
+}
+
+function mapReverseRelationType(originalRelationType?: string): string {
+  if (originalRelationType === "ONE_TO_ONE") {
+    return "ONE_TO_ONE";
+  }
+
+  if (originalRelationType === "ONE_TO_MANY") {
+    return "MANY_TO_ONE";
+  }
+
+  if (originalRelationType === "MANY_TO_ONE") {
+    return "ONE_TO_MANY";
+  }
+
+  return "MANY_TO_MANY";
+}
+
 export class SupabaseEagerLoadRepository extends BaseRepository implements IEagerLoadRepository {
+  private readonly collectionMetadataCache = new Map<string, Promise<Result<CollectionMetadata>>>();
+  private readonly recordDataCache = new Map<string, Promise<Result<RecordPayload>>>();
+  private readonly relationFieldsCache = new Map<string, Promise<Result<RawField[]>>>();
+  private readonly fieldDefinitionCache = new Map<string, Promise<Result<RawField | null>>>();
+  private readonly relationsCache = new Map<string, Promise<Result<string[]>>>();
+  private readonly reverseRelationsCache = new Map<string, Promise<Result<string[]>>>();
+
   constructor(supabase: SupabaseClient) {
-    super(supabase, "records"); // Use records as the base table
+    super(supabase, "records");
+  }
+
+  private async getOrLoad<TValue>(
+    cache: Map<string, Promise<Result<TValue>>>,
+    key: string,
+    loader: () => Promise<Result<TValue>>,
+  ): Promise<Result<TValue>> {
+    let pending = cache.get(key);
+
+    if (!pending) {
+      pending = loader();
+      cache.set(key, pending);
+    }
+
+    const result = await pending;
+    if (!result.ok) {
+      cache.delete(key);
+    }
+
+    return result;
+  }
+
+  private async getFieldDefinition(fieldId: string): Promise<Result<RawField | null>> {
+    return this.getOrLoad(this.fieldDefinitionCache, fieldId, async () => {
+      const { data, error } = await this.supabase
+        .from("fields")
+        .select("id, name, field_type, config")
+        .eq("id", fieldId)
+        .maybeSingle();
+
+      if (error) {
+        return fail(new DomainError(error.message, "DB_ERROR"));
+      }
+
+      return ok((data as RawField | null) ?? null);
+    });
   }
 
   async getCollectionMetadata(
     collectionId: string,
   ): Promise<Result<{ name: string; display_name: string | null }>> {
-    const { data, error } = await this.supabase
-      .from("collections")
-      .select("name, display_name")
-      .eq("id", collectionId)
-      .single();
+    return this.getOrLoad(this.collectionMetadataCache, collectionId, async () => {
+      const { data, error } = await this.supabase
+        .from("collections")
+        .select("name, display_name")
+        .eq("id", collectionId)
+        .single();
 
-    if (error || !data)
-      return fail(new DomainError(`Collection ${collectionId} not found`, "NOT_FOUND"));
-    return ok({ name: data.name, display_name: data.display_name });
+      if (error || !data) {
+        return fail(new DomainError(`Collection ${collectionId} not found`, "NOT_FOUND"));
+      }
+
+      return ok({ name: data.name, display_name: data.display_name });
+    });
   }
 
   async getRecordData(
     recordId: string,
   ): Promise<Result<{ id: string; data: Record<string, unknown> }>> {
-    const { data, error } = await this.table.select("id, data").eq("id", recordId).single();
-    if (error || !data) return fail(new DomainError(`Record ${recordId} not found`, "NOT_FOUND"));
-    return ok({ id: data.id, data: data.data });
+    return this.getOrLoad(this.recordDataCache, recordId, async () => {
+      const { data, error } = await this.table.select("id, data").eq("id", recordId).single();
+      if (error || !data) {
+        return fail(new DomainError(`Record ${recordId} not found`, "NOT_FOUND"));
+      }
+
+      return ok({ id: data.id, data: data.data });
+    });
   }
 
   async getRelationFields(collectionId: string): Promise<Result<RawField[]>> {
-    const { data, error } = await this.supabase
-      .from("fields")
-      .select("id, name, field_type, config")
-      .eq("collection_id", collectionId)
-      .in("field_type", ["RELATION", "REVERSE_LOOKUP"]);
+    return this.getOrLoad(this.relationFieldsCache, collectionId, async () => {
+      const { data, error } = await this.supabase
+        .from("fields")
+        .select("id, name, field_type, config")
+        .eq("collection_id", collectionId)
+        .in("field_type", ["RELATION", "REVERSE_LOOKUP"]);
 
-    if (error) return fail(new DomainError(error.message, "DB_ERROR"));
-    return ok((data as RawField[]) || []);
+      if (error) return fail(new DomainError(error.message, "DB_ERROR"));
+      return ok((data as RawField[]) || []);
+    });
   }
 
   async getRelations(fieldId: string, sourceRecordId: string): Promise<Result<string[]>> {
-    const { data, error } = await this.supabase
-      .from("record_relations")
-      .select("target_record_id")
-      .eq("field_id", fieldId)
-      .eq("source_record_id", sourceRecordId);
+    const cacheKey = `${fieldId}:${sourceRecordId}`;
+    return this.getOrLoad(this.relationsCache, cacheKey, async () => {
+      const { data, error } = await this.supabase
+        .from("record_relations")
+        .select("target_record_id")
+        .eq("field_id", fieldId)
+        .eq("source_record_id", sourceRecordId);
 
-    if (error) return fail(new DomainError(error.message, "DB_ERROR"));
-    return ok((data || []).map((r) => r.target_record_id as string));
+      if (error) return fail(new DomainError(error.message, "DB_ERROR"));
+      return ok((data || []).map((relation) => relation.target_record_id as string));
+    });
   }
 
   async getReverseRelations(
-    targetCollectionId: string,
-    targetFieldName: string,
+    targetFieldId: string,
     sourceRecordId: string,
   ): Promise<Result<string[]>> {
-    const { data, error } = await this.supabase.rpc("resolve_reverse_lookup", {
-      target_collection_id: targetCollectionId,
-      target_field_name: targetFieldName,
-      source_record_id: sourceRecordId,
-    });
+    const cacheKey = `${targetFieldId}:${sourceRecordId}`;
+    return this.getOrLoad(this.reverseRelationsCache, cacheKey, async () => {
+      const { data, error } = await this.supabase
+        .from("record_relations")
+        .select("source_record_id")
+        .eq("field_id", targetFieldId)
+        .eq("target_record_id", sourceRecordId);
 
-    if (error) return fail(new DomainError(error.message, "DB_ERROR"));
-    const records = (data as { id: string }[] | null) || [];
-    return ok(records.map((r) => r.id));
+      if (error) return fail(new DomainError(error.message, "DB_ERROR"));
+      return ok((data || []).map((relation) => relation.source_record_id as string));
+    });
   }
 
   async resolveRecursive(
@@ -77,17 +168,14 @@ export class SupabaseEagerLoadRepository extends BaseRepository implements IEage
     depth: number,
     visited: Set<string>,
     includeFields?: string[],
+    includeRelationPaths?: string[],
+    currentPathPrefix = "",
   ): Promise<Result<EagerLoadedRecord>> {
-    // Note: The recursive logic will be orchestrated by the Use Case to keep it mockable,
-    // but the actual fetching logic is here.
-    // However, to satisfy the interface, we'll implement it here and let the Use Case call it.
-
     if (visited.has(recordId)) {
-      // Circular reference detected. Instead of returning empty relations (which breaks paths like
-      // trabajador.oficina.nombre), we resolve one more level of direct RELATION fields only —
-      // skipping REVERSE_LOOKUP to avoid re-triggering the cycle.
-      const metaResult = await this.getCollectionMetadata(collectionId);
-      const recordResult = await this.getRecordData(recordId);
+      const [metaResult, recordResult] = await Promise.all([
+        this.getCollectionMetadata(collectionId),
+        this.getRecordData(recordId),
+      ]);
 
       if (!metaResult.ok || !recordResult.ok) {
         return fail(
@@ -106,53 +194,94 @@ export class SupabaseEagerLoadRepository extends BaseRepository implements IEage
         relations: {},
       };
 
-      // Resolve only direct RELATION fields (not REVERSE_LOOKUP) one level deep.
-      // Use a visited set that already includes this record to prevent deeper cycles.
       const fieldsResult = await this.getRelationFields(collectionId);
-      if (fieldsResult.ok) {
-        const newVisitedForShallow = new Set(visited);
-        newVisitedForShallow.add(recordId);
+      if (!fieldsResult.ok) {
+        return ok(shallowResult);
+      }
 
-        for (const field of fieldsResult.value) {
-          if (field.field_type !== "RELATION") continue; // skip REVERSE_LOOKUP to avoid cycles
+      const newVisitedForShallow = new Set(visited);
+      newVisitedForShallow.add(recordId);
+      const relationFields = fieldsResult.value.filter((field) => {
+        if (field.field_type !== "RELATION") {
+          return false;
+        }
 
+        if (!currentPathPrefix && includeFields && !includeFields.includes(field.name)) {
+          return false;
+        }
+
+        return shouldIncludeRelationPath(
+          buildRelationPath(currentPathPrefix, field.name),
+          includeRelationPaths,
+        );
+      });
+
+      const resolvedRelations = await Promise.all(
+        relationFields.map(async (field) => {
           const config = (field.config as Record<string, unknown>) || {};
           const targetCollectionId = config.targetCollectionId as string;
-          if (!targetCollectionId) continue;
+          if (!targetCollectionId) {
+            return null;
+          }
 
-          const rawValue = shallowResult.data[field.name];
-          const targetIds = extractRelationIds(rawValue);
-          if (targetIds.length === 0) continue;
+          const targetIds = extractRelationIds(shallowResult.data[field.name]);
+          if (targetIds.length === 0) {
+            return null;
+          }
+
+          const resolvedRecords = (
+            await Promise.all(
+              targetIds.map(async (targetId) => {
+                const resolved = await this.resolveRecursive(
+                  targetId,
+                  targetCollectionId,
+                  0,
+                  newVisitedForShallow,
+                  undefined,
+                  includeRelationPaths,
+                  buildRelationPath(currentPathPrefix, field.name),
+                );
+
+                return resolved.ok ? resolved.value : null;
+              }),
+            )
+          ).filter((record): record is EagerLoadedRecord => record !== null);
+
+          if (resolvedRecords.length === 0) {
+            return null;
+          }
 
           const relationType = config.relationType as string;
-          const resolvedRecords: EagerLoadedRecord[] = [];
-          for (const targetId of targetIds) {
-            const resolved = await this.resolveRecursive(
-              targetId,
-              targetCollectionId,
-              0, // depth=0 → only fetch the record's flat data, no further relations
-              newVisitedForShallow,
-              undefined,
-            );
-            if (resolved.ok) resolvedRecords.push(resolved.value);
-          }
+          return {
+            fieldName: field.name,
+            isSingular: relationType === "ONE_TO_ONE" || relationType === "MANY_TO_ONE",
+            resolvedRecords,
+          };
+        }),
+      );
 
-          if (resolvedRecords.length > 0) {
-            const isSingular = relationType === "ONE_TO_ONE" || relationType === "MANY_TO_ONE";
-            shallowResult.relations[field.name] = isSingular ? resolvedRecords[0] : resolvedRecords;
-          }
+      for (const relation of resolvedRelations) {
+        if (!relation) {
+          continue;
         }
+
+        shallowResult.relations[relation.fieldName] = relation.isSingular
+          ? relation.resolvedRecords[0]
+          : relation.resolvedRecords;
       }
 
       return ok(shallowResult);
     }
+
     const newVisited = new Set(visited);
     newVisited.add(recordId);
 
-    const metaResult = await this.getCollectionMetadata(collectionId);
-    if (!metaResult.ok) return fail(metaResult.error);
+    const [metaResult, recordResult] = await Promise.all([
+      this.getCollectionMetadata(collectionId),
+      this.getRecordData(recordId),
+    ]);
 
-    const recordResult = await this.getRecordData(recordId);
+    if (!metaResult.ok) return fail(metaResult.error);
     if (!recordResult.ok) return fail(recordResult.error);
 
     const result: EagerLoadedRecord = {
@@ -166,85 +295,96 @@ export class SupabaseEagerLoadRepository extends BaseRepository implements IEage
     if (depth <= 0) return ok(result);
 
     const fieldsResult = await this.getRelationFields(collectionId);
-    if (!fieldsResult.ok) return ok(result); // No relations to load
-    const fields = fieldsResult.value;
+    if (!fieldsResult.ok) return ok(result);
 
-    for (const field of fields) {
-      if (includeFields && !includeFields.includes(field.name)) continue;
+    const relationFields = fieldsResult.value.filter((field) => {
+      if (!currentPathPrefix && includeFields && !includeFields.includes(field.name)) {
+        return false;
+      }
 
-      const config = (field.config as Record<string, unknown>) || {};
-      const targetCollectionId = config.targetCollectionId as string;
-      const relationType = config.relationType as string;
+      return shouldIncludeRelationPath(
+        buildRelationPath(currentPathPrefix, field.name),
+        includeRelationPaths,
+      );
+    });
 
-      if (!targetCollectionId) continue;
+    const resolvedRelations = await Promise.all(
+      relationFields.map(async (field) => {
+        const config = (field.config as Record<string, unknown>) || {};
+        const targetCollectionId = config.targetCollectionId as string;
+        if (!targetCollectionId) {
+          return null;
+        }
 
-      let relationsResult: Result<string[]>;
-      let currentRelationType = relationType;
+        const fieldPath = buildRelationPath(currentPathPrefix, field.name);
+        let currentRelationType = config.relationType as string;
+        let relatedRecordIds: string[] = [];
 
-      if (field.field_type === "REVERSE_LOOKUP") {
-        const targetFieldId = config.targetFieldId as string;
-        // We need the target field name to query the JSONB column via RPC
-        const targetFieldRes = await this.supabase
-          .from("fields")
-          .select("name, config")
-          .eq("id", targetFieldId)
-          .single();
+        if (field.field_type === "REVERSE_LOOKUP") {
+          const targetFieldId = config.targetFieldId as string;
+          if (!targetFieldId) {
+            return null;
+          }
 
-        if (targetFieldRes.error || !targetFieldRes.data) continue;
+          const targetFieldResult = await this.getFieldDefinition(targetFieldId);
+          if (!targetFieldResult.ok || !targetFieldResult.value) {
+            return null;
+          }
 
-        const targetFieldName = targetFieldRes.data.name;
-        const targetConfig = (targetFieldRes.data.config as Record<string, unknown>) || {};
-        const originalRelationType = targetConfig.relationType as string;
+          const targetConfig = (targetFieldResult.value.config as Record<string, unknown>) || {};
+          currentRelationType = mapReverseRelationType(targetConfig.relationType as string);
 
-        // Correct reverse mapping:
-        // ONE_TO_ONE <-> ONE_TO_ONE (Both Singular)
-        // MANY_TO_ONE <-> ONE_TO_MANY (Singular <-> Plural)
-        // ONE_TO_MANY <-> MANY_TO_ONE (Plural <-> Singular)
-        // MANY_TO_MANY <-> MANY_TO_MANY (Both Plural)
-        if (originalRelationType === "ONE_TO_ONE") {
-          currentRelationType = "ONE_TO_ONE";
-        } else if (originalRelationType === "ONE_TO_MANY") {
-          currentRelationType = "MANY_TO_ONE";
-        } else if (originalRelationType === "MANY_TO_ONE") {
-          currentRelationType = "ONE_TO_MANY";
+          const reverseRelationsResult = await this.getReverseRelations(targetFieldId, recordId);
+          if (!reverseRelationsResult.ok || reverseRelationsResult.value.length === 0) {
+            return null;
+          }
+
+          relatedRecordIds = reverseRelationsResult.value;
         } else {
-          currentRelationType = "MANY_TO_MANY";
+          relatedRecordIds = extractRelationIds(result.data[field.name]);
+          if (relatedRecordIds.length === 0) {
+            return null;
+          }
         }
 
-        relationsResult = await this.getReverseRelations(
-          targetCollectionId,
-          targetFieldName,
-          recordId,
-        );
-      } else {
-        const rawValue = result.data[field.name];
-        const targetIds = extractRelationIds(rawValue);
-        relationsResult = ok(targetIds);
-      }
+        const resolvedRecords = (
+          await Promise.all(
+            relatedRecordIds.map(async (targetId) => {
+              const resolved = await this.resolveRecursive(
+                targetId,
+                targetCollectionId,
+                depth - 1,
+                newVisited,
+                undefined,
+                includeRelationPaths,
+                fieldPath,
+              );
 
-      if (!relationsResult.ok || relationsResult.value.length === 0) continue;
+              return resolved.ok ? resolved.value : null;
+            }),
+          )
+        ).filter((record): record is EagerLoadedRecord => record !== null);
 
-      const resolvedRecords: EagerLoadedRecord[] = [];
-      for (const targetId of relationsResult.value) {
-        // If we revisit a node, `resolveRecursive` will now intelligently return a shallow copy
-        const resolved = await this.resolveRecursive(
-          targetId,
-          targetCollectionId,
-          depth - 1,
-          newVisited,
-          undefined,
-        );
-
-        if (resolved.ok) {
-          resolvedRecords.push(resolved.value);
+        if (resolvedRecords.length === 0) {
+          return null;
         }
+
+        return {
+          fieldName: field.name,
+          isSingular: currentRelationType === "ONE_TO_ONE" || currentRelationType === "MANY_TO_ONE",
+          resolvedRecords,
+        };
+      }),
+    );
+
+    for (const relation of resolvedRelations) {
+      if (!relation) {
+        continue;
       }
 
-      if (resolvedRecords.length > 0) {
-        const isSingular =
-          currentRelationType === "ONE_TO_ONE" || currentRelationType === "MANY_TO_ONE";
-        result.relations[field.name] = isSingular ? resolvedRecords[0] : resolvedRecords;
-      }
+      result.relations[relation.fieldName] = relation.isSingular
+        ? relation.resolvedRecords[0]
+        : relation.resolvedRecords;
     }
 
     return ok(result);

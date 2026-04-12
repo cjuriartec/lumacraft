@@ -32,11 +32,11 @@ Una vez creado el proyecto:
 1. Ve a **Settings** → **API** en el sidebar del dashboard
 2. Copia los siguientes valores:
 
-| Campo en Dashboard         | Variable en `.env.local`               | Descripción |
-| -------------------------- | -------------------------------------- | --- |
-| **Project URL**            | `NEXT_PUBLIC_SUPABASE_URL`             | URL del proyecto |
-| **Publishable key** (anon) | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Clave segura para el cliente |
-| **Secret key** (service_role) | `SUPABASE_SECRET_KEY`               | Clave de servicio — bypasea RLS |
+| Campo en Dashboard            | Variable en `.env.local`               | Descripción                     |
+| ----------------------------- | -------------------------------------- | ------------------------------- |
+| **Project URL**               | `NEXT_PUBLIC_SUPABASE_URL`             | URL del proyecto                |
+| **Publishable key** (anon)    | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Clave segura para el cliente    |
+| **Secret key** (service_role) | `SUPABASE_SECRET_KEY`                  | Clave de servicio — bypasea RLS |
 
 3. Pega los valores en tu archivo `.env.local`:
 
@@ -192,15 +192,15 @@ lumacraft/
 
 ## 🛑 Troubleshooting
 
-| Problema                       | Solución                                                                                                 |
-| ------------------------------ | -------------------------------------------------------------------------------------------------------- |
-| `Invalid API key`              | Verifica que el valor de `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` en `.env.local` sea correcto             |
-| `supabase link` falla          | Asegúrate de haber ejecutado `npx supabase login` primero                                                |
-| `db push` dice "no migrations" | Verifica que estés en la raíz del proyecto y que exista `supabase/migrations/`                           |
-| Google OAuth no redirige       | Comprueba que el Redirect URI en Google Cloud Console coincida exactamente con tu URL de Supabase        |
-| Error CORS en el browser       | Agrega `http://localhost:3000` en **Authentication → URL Configuration → Redirect URLs** en el dashboard |
-| PDF export → error 500 (Storage) | El bucket `exports` no existe o `SUPABASE_SECRET_KEY` no está configurada en `.env.local`. Crea el bucket y agrega la service role key. |
-| PDF export → `row-level security policy` | `SUPABASE_SECRET_KEY` tiene un valor incorrecto o es null. Verifica que uses la **service role key** (no la anon key). |
+| Problema                                 | Solución                                                                                                                                |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `Invalid API key`                        | Verifica que el valor de `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` en `.env.local` sea correcto                                            |
+| `supabase link` falla                    | Asegúrate de haber ejecutado `npx supabase login` primero                                                                               |
+| `db push` dice "no migrations"           | Verifica que estés en la raíz del proyecto y que exista `supabase/migrations/`                                                          |
+| Google OAuth no redirige                 | Comprueba que el Redirect URI en Google Cloud Console coincida exactamente con tu URL de Supabase                                       |
+| Error CORS en el browser                 | Agrega `http://localhost:3000` en **Authentication → URL Configuration → Redirect URLs** en el dashboard                                |
+| PDF export → error 500 (Storage)         | El bucket `exports` no existe o `SUPABASE_SECRET_KEY` no está configurada en `.env.local`. Crea el bucket y agrega la service role key. |
+| PDF export → `row-level security policy` | `SUPABASE_SECRET_KEY` tiene un valor incorrecto o es null. Verifica que uses la **service role key** (no la anon key).                  |
 
 ---
 
