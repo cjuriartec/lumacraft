@@ -35,6 +35,7 @@ import * as React from "react";
 
 import { usePermissions } from "@/modules/authorization/presentation/providers/permission-provider";
 import { useCollections } from "@/modules/collection/presentation/hooks/use-collections";
+import { useGuidancePage } from "@/modules/guidance/presentation/hooks/use-guidance-page";
 import { TEMPLATE_PREVIEW_MAX_EAGER_DEPTH } from "@/modules/template/application/constants/template-preview.constants";
 import { cn, getShortcutText } from "@/shared/lib/utils";
 import { DndKit } from "@/shared/presentation/components/editor/plugins/dnd-kit";
@@ -166,6 +167,7 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
   const { template, loading, saveStatus, handleBlocksChange, updateName } =
     useTemplateEditor(templateId);
   const { collections } = useCollections();
+  useGuidancePage({ id: "template-editor" });
 
   const { can, isOwner, isSuperAdmin } = usePermissions();
   const {
@@ -373,6 +375,7 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
                 <div className="flex flex-col">
                   <div className="flex items-center gap-3">
                     <input
+                      data-guidance-anchor="template-editor-name"
                       className="min-w-[200px] border-none bg-transparent p-0 text-lg font-bold text-foreground outline-none focus:ring-0"
                       value={localName}
                       onChange={(e) => setLocalName(e.target.value)}
@@ -428,6 +431,7 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
                 </div>
                 <div className="flex items-center gap-4 border-l border-border/20 pl-4">
                   <Button
+                    data-guidance-anchor="template-preview"
                     variant="ghost"
                     size="sm"
                     className="h-8 gap-2.5 px-4 text-[11px] font-bold uppercase tracking-[0.15em] text-foreground/60 transition-all hover:bg-primary/5 hover:text-primary"
@@ -523,44 +527,46 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
                       <NumberedListToolbarButton />
                     </ToolbarGroup>
 
-                    <ToolbarGroup>
-                      <ToolbarButton
-                        tooltip="Insertar Conditional Block"
-                        onMouseDown={(event: React.MouseEvent) => {
-                          event.preventDefault();
-                          editor.tf.insertNodes([createConditionalElement()]);
-                        }}
-                      >
-                        <GitBranch size={15} />
-                      </ToolbarButton>
-                      <ToolbarButton
-                        tooltip="Insertar List Block"
-                        onMouseDown={(event: React.MouseEvent) => {
-                          event.preventDefault();
-                          editor.tf.insertNodes([createListElement()]);
-                        }}
-                      >
-                        <ListTree size={15} />
-                      </ToolbarButton>
-                      <ToolbarButton
-                        tooltip="Insertar Switch Block"
-                        onMouseDown={(event: React.MouseEvent) => {
-                          event.preventDefault();
-                          editor.tf.insertNodes([createSwitchElement()]);
-                        }}
-                      >
-                        <SquareSplitHorizontal size={15} />
-                      </ToolbarButton>
-                      <ToolbarButton
-                        tooltip="Insertar AI Block"
-                        onMouseDown={(event: React.MouseEvent) => {
-                          event.preventDefault();
-                          editor.tf.insertNodes([createAIElement()]);
-                        }}
-                      >
-                        <BrainCircuit size={15} />
-                      </ToolbarButton>
-                    </ToolbarGroup>
+                    <div data-guidance-anchor="template-logic-blocks">
+                      <ToolbarGroup>
+                        <ToolbarButton
+                          tooltip="Insertar Conditional Block"
+                          onMouseDown={(event: React.MouseEvent) => {
+                            event.preventDefault();
+                            editor.tf.insertNodes([createConditionalElement()]);
+                          }}
+                        >
+                          <GitBranch size={15} />
+                        </ToolbarButton>
+                        <ToolbarButton
+                          tooltip="Insertar List Block"
+                          onMouseDown={(event: React.MouseEvent) => {
+                            event.preventDefault();
+                            editor.tf.insertNodes([createListElement()]);
+                          }}
+                        >
+                          <ListTree size={15} />
+                        </ToolbarButton>
+                        <ToolbarButton
+                          tooltip="Insertar Switch Block"
+                          onMouseDown={(event: React.MouseEvent) => {
+                            event.preventDefault();
+                            editor.tf.insertNodes([createSwitchElement()]);
+                          }}
+                        >
+                          <SquareSplitHorizontal size={15} />
+                        </ToolbarButton>
+                        <ToolbarButton
+                          tooltip="Insertar AI Block"
+                          onMouseDown={(event: React.MouseEvent) => {
+                            event.preventDefault();
+                            editor.tf.insertNodes([createAIElement()]);
+                          }}
+                        >
+                          <BrainCircuit size={15} />
+                        </ToolbarButton>
+                      </ToolbarGroup>
+                    </div>
 
                     <ToolbarGroup>
                       <LinkToolbarButton />
@@ -568,44 +574,46 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
                       <MediaToolbarButton nodeType="img" />
                     </ToolbarGroup>
 
-                    <ToolbarGroup>
-                      <VariableSelector
-                        collectionId={template.collectionId || undefined}
-                        recordId={selectedRecordId || null}
-                        depth={TEMPLATE_PREVIEW_MAX_EAGER_DEPTH}
-                        nodes={variableCatalog}
-                        loading={variableCatalogLoading}
-                        disabled={!template.collectionId}
-                        open={isVariableSelectorOpen}
-                        onOpenChange={setIsVariableSelectorOpen}
-                        onSelect={(node) => {
-                          const isImageVariable = node.fieldType === "IMAGE";
-                          const currentFormatting = getCurrentVariableFormatting(editor);
-                          const variableNode: VariableElementNode = {
-                            type: VARIABLE_TYPE,
-                            fieldPath: node.path,
-                            collectionId: node.collectionId,
-                            fieldType: node.fieldType,
-                            ...currentFormatting,
-                            ...(isImageVariable
-                              ? {
-                                  imageWidthPercent: DEFAULT_IMAGE_VARIABLE_WIDTH_PERCENT,
-                                  imageHeightPx: DEFAULT_IMAGE_VARIABLE_HEIGHT_PX,
-                                }
-                              : {}),
-                            children: [{ text: "" }],
-                          };
+                    <div data-guidance-anchor="template-variable-selector">
+                      <ToolbarGroup>
+                        <VariableSelector
+                          collectionId={template.collectionId || undefined}
+                          recordId={selectedRecordId || null}
+                          depth={TEMPLATE_PREVIEW_MAX_EAGER_DEPTH}
+                          nodes={variableCatalog}
+                          loading={variableCatalogLoading}
+                          disabled={!template.collectionId}
+                          open={isVariableSelectorOpen}
+                          onOpenChange={setIsVariableSelectorOpen}
+                          onSelect={(node) => {
+                            const isImageVariable = node.fieldType === "IMAGE";
+                            const currentFormatting = getCurrentVariableFormatting(editor);
+                            const variableNode: VariableElementNode = {
+                              type: VARIABLE_TYPE,
+                              fieldPath: node.path,
+                              collectionId: node.collectionId,
+                              fieldType: node.fieldType,
+                              ...currentFormatting,
+                              ...(isImageVariable
+                                ? {
+                                    imageWidthPercent: DEFAULT_IMAGE_VARIABLE_WIDTH_PERCENT,
+                                    imageHeightPx: DEFAULT_IMAGE_VARIABLE_HEIGHT_PX,
+                                  }
+                                : {}),
+                              children: [{ text: "" }],
+                            };
 
-                          editor.tf.insertNodes([variableNode]);
-                          editor.tf.focus();
-                        }}
-                      />
-                      {!template.collectionId && (
-                        <span className="text-xs text-muted-foreground">
-                          Vincula una colección para insertar variables.
-                        </span>
-                      )}
-                    </ToolbarGroup>
+                            editor.tf.insertNodes([variableNode]);
+                            editor.tf.focus();
+                          }}
+                        />
+                        {!template.collectionId && (
+                          <span className="text-xs text-muted-foreground">
+                            Vincula una colección para insertar variables.
+                          </span>
+                        )}
+                      </ToolbarGroup>
+                    </div>
                   </FixedToolbar>
                 </div>
               </div>

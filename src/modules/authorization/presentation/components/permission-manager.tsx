@@ -4,6 +4,7 @@ import { Loader2, ShieldAlert } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useCollections } from "@/modules/collection/presentation/hooks/use-collections";
+import { useGuidance } from "@/modules/guidance/presentation/hooks/use-guidance";
 import { useWorkspace } from "@/modules/workspace/presentation/providers/workspace-provider";
 import { Switch } from "@/shared/presentation/components/ui/switch";
 import {
@@ -32,6 +33,7 @@ export function PermissionManager() {
   const { currentWorkspace } = useWorkspace();
   const { collections, loading: collectionsLoading } = useCollections();
   const { isOwner, isSuperAdmin } = usePermissions();
+  const { trackMilestone } = useGuidance();
 
   const [roles, setRoles] = useState<Role[]>([]);
   const [permissions, setPermissions] = useState<CollectionPermission[]>([]);
@@ -147,6 +149,7 @@ export function PermissionManager() {
     });
 
     if (res.ok) {
+      void trackMilestone("permission_updated");
       setPermissions((prev) => {
         const next = [...prev];
         const index = next.findIndex((p) => p.roleId === roleId && p.collectionId === collectionId);
@@ -175,6 +178,7 @@ export function PermissionManager() {
         .map((role) => (
           <div
             key={role.id}
+            data-guidance-anchor="permissions-matrix"
             className="bg-surface border border-border/5 rounded-2xl overflow-hidden"
           >
             <div className="px-6 py-4 border-b border-border/10 bg-surface-hover/30">
@@ -210,6 +214,7 @@ export function PermissionManager() {
                         </TableCell>
                         <TableCell className="text-center">
                           <Switch
+                            data-guidance-anchor="permission-switch"
                             checked={canRead}
                             onCheckedChange={() =>
                               handleToggle(role.id, collection.id, "canRead", canRead)
@@ -218,6 +223,7 @@ export function PermissionManager() {
                         </TableCell>
                         <TableCell className="text-center">
                           <Switch
+                            data-guidance-anchor="permission-switch"
                             checked={canCreate}
                             onCheckedChange={() =>
                               handleToggle(role.id, collection.id, "canCreate", canCreate)
@@ -226,6 +232,7 @@ export function PermissionManager() {
                         </TableCell>
                         <TableCell className="text-center">
                           <Switch
+                            data-guidance-anchor="permission-switch"
                             checked={canUpdate}
                             onCheckedChange={() =>
                               handleToggle(role.id, collection.id, "canUpdate", canUpdate)
@@ -234,6 +241,7 @@ export function PermissionManager() {
                         </TableCell>
                         <TableCell className="text-center">
                           <Switch
+                            data-guidance-anchor="permission-switch"
                             checked={canDelete}
                             onCheckedChange={() =>
                               handleToggle(role.id, collection.id, "canDelete", canDelete)

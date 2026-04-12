@@ -1,6 +1,6 @@
 {
   "name": "lumacraft",
-  "version": "0.1.5",
+  "version": "0.1.7",
   "private": true,
   "packageManager": "npm@10.9.3",
   "engines": {

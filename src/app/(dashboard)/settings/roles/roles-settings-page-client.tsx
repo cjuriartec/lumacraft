@@ -5,6 +5,7 @@ import React from "react";
 import { useEffect } from "react";
 
 import { useAuth } from "@/modules/auth/presentation/providers/auth-provider";
+import { useGuidancePage } from "@/modules/guidance/presentation/hooks/use-guidance-page";
 import { MemberManager } from "@/modules/workspace/presentation/components/member-manager";
 import { RoleManager } from "@/modules/workspace/presentation/components/role-manager";
 import { useMembers } from "@/modules/workspace/presentation/hooks/use-members";
@@ -20,6 +21,7 @@ export default function RolesSettingsPageClient() {
   const { roles, loading: loadingRoles } = useRoles(currentWorkspace?.id);
 
   useBreadcrumbs([{ label: "Configuración", href: "/settings" }, { label: "Roles y Miembros" }]);
+  useGuidancePage({ id: "roles-members" });
 
   useEffect(() => {
     if (loadingMembers || loadingRoles || !currentWorkspace || !user) return;

@@ -3,6 +3,7 @@
 import { Loader2 } from "lucide-react";
 import React, { useState } from "react";
 
+import { useGuidance } from "@/modules/guidance/presentation/hooks/use-guidance";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/presentation/components/ui/button";
 import {
@@ -41,6 +42,7 @@ export function InviteMemberModal({ open, onOpenChange }: InviteMemberModalProps
   const { currentWorkspace } = useWorkspace();
   const { addMemberByEmail } = useMembers(currentWorkspace?.id);
   const { roles } = useRoles(currentWorkspace?.id);
+  const { trackMilestone } = useGuidance();
 
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -58,6 +60,7 @@ export function InviteMemberModal({ open, onOpenChange }: InviteMemberModalProps
     setSubmitting(false);
     if (!result) return;
     if (result.ok) {
+      void trackMilestone("member_invited");
       // Clear form on success
       setFormData({ email: "", roleId: "" });
       onOpenChange(false);

@@ -86,6 +86,8 @@ export class SupabaseAuthService implements IAuthProvider {
           fullName:
             session.user.user_metadata.full_name || session.user.user_metadata.name || undefined,
           avatarUrl: session.user.user_metadata.avatar_url,
+          createdAt: new Date(session.user.created_at),
+          updatedAt: new Date(session.user.updated_at || session.user.created_at),
         });
 
         if (userRes.ok) {

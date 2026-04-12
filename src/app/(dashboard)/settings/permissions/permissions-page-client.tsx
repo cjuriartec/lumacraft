@@ -3,10 +3,12 @@
 import React from "react";
 
 import { PermissionManager } from "@/modules/authorization/presentation/components/permission-manager";
+import { useGuidancePage } from "@/modules/guidance/presentation/hooks/use-guidance-page";
 import { useBreadcrumbs } from "@/shared/presentation/providers/breadcrumb-provider";
 
 export default function PermissionsPageClient() {
   useBreadcrumbs([{ label: "Configuración", href: "/settings" }, { label: "Gestión de Permisos" }]);
+  useGuidancePage({ id: "permissions" });
 
   return (
     <div className="flex-1 w-full max-w-5xl px-4 py-8 md:px-8 mx-auto space-y-8 animate-in fade-in zoom-in-95 duration-400">
