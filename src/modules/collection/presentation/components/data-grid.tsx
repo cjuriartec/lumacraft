@@ -711,6 +711,7 @@ export function DataGrid({
             <Popover>
               <PopoverTrigger asChild>
                 <Button
+                  data-guidance-anchor="records-filters"
                   variant="outline"
                   size="sm"
                   className={cn(
@@ -850,6 +851,7 @@ export function DataGrid({
             </Popover>
 
             <Button
+              data-guidance-anchor="records-export"
               variant="outline"
               size="sm"
               onClick={handleExport}
@@ -863,6 +865,7 @@ export function DataGrid({
 
             {onAddRecord && canCreate && (
               <Button
+                data-guidance-anchor="new-record"
                 size="sm"
                 className="h-10 bg-primary text-background hover:bg-primary/90 shadow-sm transition-all hover:-translate-y-0.5 active:translate-y-0 px-4"
                 onClick={onAddRecord}
@@ -892,7 +895,10 @@ export function DataGrid({
                   </div>
                 </TableHead>
               ))}
-              <TableHead className="w-[100px] text-right py-4 px-4 text-[11px] font-semibold uppercase tracking-wider text-muted">
+              <TableHead
+                data-guidance-anchor="record-document"
+                className="w-[100px] text-right py-4 px-4 text-[11px] font-semibold uppercase tracking-wider text-muted"
+              >
                 Acciones
               </TableHead>
             </TableRow>

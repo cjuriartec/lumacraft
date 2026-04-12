@@ -73,7 +73,7 @@ export default function TemplateListPage({
     <div className={wrapperClassName}>
       {/* Search & Actions */}
       <div className="flex flex-col md:flex-row items-center gap-4 mb-10">
-        <div className="relative flex-1 w-full">
+        <div data-guidance-anchor="template-search" className="relative flex-1 w-full">
           <Search
             className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50"
             size={18}
@@ -92,6 +92,7 @@ export default function TemplateListPage({
           </div>
           {canCreate && (
             <Button
+              data-guidance-anchor="new-template"
               onClick={() => {
                 setEditingTemplate(null);
                 setCreateDialogOpen(true);
@@ -106,7 +107,10 @@ export default function TemplateListPage({
       </div>
 
       {/* Template List */}
-      <div className="bg-surface rounded-2xl border border-border/10 overflow-hidden shadow-sm">
+      <div
+        data-guidance-anchor="template-list-table"
+        className="bg-surface rounded-2xl border border-border/10 overflow-hidden shadow-sm"
+      >
         {loading ? (
           <div className="p-12 flex flex-col items-center justify-center gap-4">
             <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-primary" />

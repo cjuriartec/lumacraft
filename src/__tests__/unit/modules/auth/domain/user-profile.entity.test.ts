@@ -41,4 +41,40 @@ describe("UserProfile Entity", () => {
     expect(profile.preferences.theme).toBe("dark");
     expect(profile.preferences.sidebarCollapsed).toBe(true); // preserved
   });
+
+  it("merges guidance preferences deeply instead of replacing them", () => {
+    const profileRes = UserProfile.create({
+      id: "user-1",
+      preferences: {
+        guidance: {
+          completedMilestones: ["collection_created"],
+          completedGuideIds: ["dashboard-overview"],
+          dismissedGuideIds: [],
+          viewedArticleIds: ["primeros-pasos"],
+          existingUserNudgeDismissed: false,
+        },
+      },
+    });
+    if (!profileRes.ok) throw profileRes.error;
+    const profile = profileRes.value;
+
+    profile.updatePreferences({
+      guidance: {
+        completedMilestones: ["field_created"],
+        completedGuideIds: [],
+        dismissedGuideIds: ["collections-overview"],
+        viewedArticleIds: [],
+        existingUserNudgeDismissed: true,
+      },
+    });
+
+    expect(profile.preferences.guidance?.completedMilestones).toEqual([
+      "collection_created",
+      "field_created",
+    ]);
+    expect(profile.preferences.guidance?.completedGuideIds).toEqual(["dashboard-overview"]);
+    expect(profile.preferences.guidance?.dismissedGuideIds).toEqual(["collections-overview"]);
+    expect(profile.preferences.guidance?.viewedArticleIds).toEqual(["primeros-pasos"]);
+    expect(profile.preferences.guidance?.existingUserNudgeDismissed).toBe(true);
+  });
 });

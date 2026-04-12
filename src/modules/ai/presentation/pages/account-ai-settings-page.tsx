@@ -18,6 +18,8 @@ import {
 } from "@/modules/ai/application/types/account-ai-settings.dto";
 import { AI_PROVIDER_IDS, AIProviderId } from "@/modules/ai/domain/types/ai-provider.types";
 import { usePermissions } from "@/modules/authorization/presentation/providers/permission-provider";
+import { useGuidance } from "@/modules/guidance/presentation/hooks/use-guidance";
+import { useGuidancePage } from "@/modules/guidance/presentation/hooks/use-guidance-page";
 import { useWorkspace } from "@/modules/workspace/presentation/providers/workspace-provider";
 import { Button } from "@/shared/presentation/components/ui/button";
 import { Input } from "@/shared/presentation/components/ui/input";
@@ -80,6 +82,8 @@ function normalizeDraftModel(draft: UpdateAccountAISettingsDto): UpdateAccountAI
 export default function AccountAISettingsPage() {
   const { currentWorkspace } = useWorkspace();
   const { isOwner, isSuperAdmin } = usePermissions();
+  const { trackMilestone } = useGuidance();
+  useGuidancePage({ id: "ai-settings" });
   const { settings, loading, saving, error, save, testConnection } = useAccountAISettings(
     currentWorkspace?.id,
   );
@@ -132,7 +136,7 @@ export default function AccountAISettingsPage() {
         // Error is handled by useAccountAISettings
       }
     },
-    [save],
+    [save, trackMilestone],
   );
 
   const debouncedSave = useMemo(() => debounce(handleSave, 500), [handleSave]);
@@ -167,6 +171,7 @@ export default function AccountAISettingsPage() {
 
     try {
       await testConnection(providerId, secretInputs[providerId]);
+      void trackMilestone("ai_configured");
       setTestResults((prev) => ({ ...prev, [providerId]: { success: true } }));
     } catch (e) {
       setTestResults((prev) => ({
@@ -178,6 +183,33 @@ export default function AccountAISettingsPage() {
       }));
     } finally {
       setTestingConnection((prev) => ({ ...prev, [providerId]: false }));
+    }
+  };
+
+  const handleClearSecret = async (providerId: AIProviderId) => {
+    if (!draft) {
+      return;
+    }
+
+    debouncedSave.cancel();
+
+    const nextSecrets = { ...secretInputs };
+    delete nextSecrets[providerId];
+
+    try {
+      await save({
+        ...normalizeDraftModel(draft),
+        providerSecretsInput: nextSecrets,
+        providerSecretsClear: { [providerId]: true },
+      });
+      setSecretInputs(nextSecrets);
+      setLastSavedDraft(JSON.stringify(draft));
+      setLastSavedSecrets(JSON.stringify(nextSecrets));
+      setTestResults((prev) => ({ ...prev, [providerId]: null }));
+      setSuccessMessage(`Secret eliminado de ${PROVIDER_LABELS[providerId]}`);
+      window.setTimeout(() => setSuccessMessage(null), 2500);
+    } catch {
+      // Error is handled by useAccountAISettings
     }
   };
 
@@ -273,7 +305,7 @@ export default function AccountAISettingsPage() {
 
       <section className="grid gap-6 rounded-2xl border border-border/50 bg-surface p-6">
         <div className="grid gap-2 md:grid-cols-2">
-          <div className="grid gap-2">
+          <div data-guidance-anchor="ai-provider-default" className="grid gap-2">
             <Label>Proveedor por defecto</Label>
             <Select
               value={draft.defaultProvider}
@@ -478,6 +510,7 @@ export default function AccountAISettingsPage() {
             </p>
           </div>
           <Switch
+            data-guidance-anchor="ai-fallback-switch"
             checked={draft.enableFallback}
             onCheckedChange={(checked) =>
               setDraft((current) => (current ? { ...current, enableFallback: checked } : current))
@@ -594,20 +627,34 @@ export default function AccountAISettingsPage() {
                       <p>Actualizada {new Date(secretStatus.updatedAt).toLocaleString()}</p>
                     )}
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 rounded-lg border-primary/20 text-xs hover:bg-primary/5 hover:text-primary"
-                    onClick={() => handleTestConnection(providerId)}
-                    disabled={testingConnection[providerId]}
-                  >
-                    {testingConnection[providerId] ? (
-                      <RotateCw className="mr-1 animate-spin" size={12} />
-                    ) : (
-                      <BrainCircuit className="mr-1" size={12} />
+                  <div className="flex items-center gap-2">
+                    {secretStatus.isConfigured && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 rounded-lg text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        onClick={() => handleClearSecret(providerId)}
+                        disabled={saving}
+                      >
+                        Limpiar secret
+                      </Button>
                     )}
-                    Validar conexión
-                  </Button>
+                    <Button
+                      data-guidance-anchor="ai-secret-validate"
+                      variant="outline"
+                      size="sm"
+                      className="h-8 rounded-lg border-primary/20 text-xs hover:bg-primary/5 hover:text-primary"
+                      onClick={() => handleTestConnection(providerId)}
+                      disabled={testingConnection[providerId]}
+                    >
+                      {testingConnection[providerId] ? (
+                        <RotateCw className="mr-1 animate-spin" size={12} />
+                      ) : (
+                        <BrainCircuit className="mr-1" size={12} />
+                      )}
+                      Validar conexión
+                    </Button>
+                  </div>
                 </div>
               </div>
 

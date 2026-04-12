@@ -18,6 +18,7 @@ import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useEffect } from "react";
 
+import { useGuidancePage } from "@/modules/guidance/presentation/hooks/use-guidance-page";
 import { Button } from "@/shared/presentation/components/ui/button";
 
 import { CollectionNode } from "../components/diagram/collection-node";
@@ -32,6 +33,7 @@ export default function ERDiagramPage() {
   const { theme } = useTheme();
   const router = useRouter();
   const isDark = theme === "dark";
+  useGuidancePage({ id: "relations" });
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
@@ -197,7 +199,10 @@ export default function ERDiagramPage() {
       </div>
 
       {/* Diagram Area */}
-      <div className="flex-1 relative bg-background px-4 py-2 mb-2">
+      <div
+        data-guidance-anchor="relations-diagram"
+        className="flex-1 relative bg-background px-4 py-2 mb-2"
+      >
         <ReactFlow
           nodes={nodes}
           edges={edges}

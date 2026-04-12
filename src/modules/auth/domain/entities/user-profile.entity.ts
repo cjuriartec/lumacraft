@@ -1,10 +1,23 @@
+import type { GuidancePreferences } from "@/modules/guidance/domain/guidance.types";
+import { mergeGuidancePreferences } from "@/modules/guidance/domain/guidance-preferences";
 import { BaseEntity } from "@/shared/domain/base-entity";
 import { ok, Result } from "@/shared/domain/result";
 
 export interface UserPreferences {
   sidebarCollapsed: boolean;
   theme: "light" | "dark" | "system";
-  [key: string]: string | number | boolean | null | undefined | Record<string, unknown>;
+  guidance?: GuidancePreferences;
+}
+
+export function mergeUserPreferences(
+  current: UserPreferences,
+  incoming: Partial<UserPreferences>,
+): UserPreferences {
+  return {
+    ...current,
+    ...incoming,
+    guidance: mergeGuidancePreferences(current.guidance, incoming.guidance),
+  };
 }
 
 export interface UserProfileProps {
@@ -27,10 +40,7 @@ export class UserProfile extends BaseEntity {
   }
 
   public updatePreferences(newPreferences: Partial<UserPreferences>): void {
-    this.props.preferences = {
-      ...this.props.preferences,
-      ...newPreferences,
-    };
+    this.props.preferences = mergeUserPreferences(this.props.preferences, newPreferences);
   }
 
   public static create(props: {
@@ -47,10 +57,7 @@ export class UserProfile extends BaseEntity {
     return ok(
       new UserProfile({
         id: props.id,
-        preferences: {
-          ...defaultPreferences,
-          ...props.preferences,
-        },
+        preferences: mergeUserPreferences(defaultPreferences, props.preferences ?? {}),
         createdAt: props.createdAt,
         updatedAt: props.updatedAt,
       }),

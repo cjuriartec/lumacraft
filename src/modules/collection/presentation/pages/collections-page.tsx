@@ -4,6 +4,7 @@ import { Clock, Database, ExternalLink, Plus, Settings2, Trash2 } from "lucide-r
 import Link from "next/link";
 
 import { useAuth } from "@/modules/auth/presentation/providers/auth-provider";
+import { useGuidancePage } from "@/modules/guidance/presentation/hooks/use-guidance-page";
 import { useMembers } from "@/modules/workspace/presentation/hooks/use-members";
 import { useRoles } from "@/modules/workspace/presentation/hooks/use-roles";
 import { useWorkspace } from "@/modules/workspace/presentation/providers/workspace-provider";
@@ -27,6 +28,7 @@ export default function CollectionsPage() {
     roles.find((r) => r.id === currentUserMember?.roleId)?.isSuperadmin === true;
 
   useBreadcrumbs([{ label: "Colecciones" }]);
+  useGuidancePage({ id: "collections" });
 
   if (loading) {
     return (
@@ -77,7 +79,10 @@ export default function CollectionsPage() {
           {currentUserIsAdmin && <CreateCollectionDialog onSuccess={refresh} />}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div
+          data-guidance-anchor="collections-grid"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+        >
           {collections.map((collection) => (
             <div
               key={collection.id}

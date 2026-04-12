@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  BookOpen,
   Check,
   ChevronDown,
   Laptop,
@@ -10,6 +11,7 @@ import {
   Sun,
   User as UserIcon,
 } from "lucide-react";
+import Link from "next/link";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/presentation/components/ui/avatar";
 import {
@@ -98,6 +100,18 @@ export default function UserMenu() {
               <Settings size={14} className="text-foreground/60" />
             </div>
             Ajustes
+          </DropdownMenuItem>
+
+          <DropdownMenuItem asChild>
+            <Link
+              href="/help"
+              className="flex items-center rounded-lg gap-3 cursor-pointer text-[13px] font-semibold py-2.5 px-3 transition-all duration-150 text-foreground/70 hover:bg-surface-hover hover:text-foreground focus:bg-surface-hover focus:text-foreground"
+            >
+              <div className="bg-foreground/5 p-1.5 rounded-md">
+                <BookOpen size={14} className="text-foreground/60" />
+              </div>
+              Centro de Ayuda
+            </Link>
           </DropdownMenuItem>
 
           <DropdownMenuSub>

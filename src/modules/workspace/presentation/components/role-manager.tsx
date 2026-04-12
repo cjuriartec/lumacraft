@@ -3,6 +3,7 @@
 import { Edit2, Loader2, Plus, Shield, Trash2 } from "lucide-react";
 import React, { useState } from "react";
 
+import { useGuidance } from "@/modules/guidance/presentation/hooks/use-guidance";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/presentation/components/ui/button";
 import {
@@ -36,6 +37,7 @@ const inputFieldClass = cn(
 export function RoleManager() {
   const { currentWorkspace } = useWorkspace();
   const { roles, loading, createRole, updateRole, deleteRole } = useRoles(currentWorkspace?.id);
+  const { trackMilestone } = useGuidance();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<{
@@ -62,18 +64,25 @@ export function RoleManager() {
     e.preventDefault();
     setSubmitting(true);
 
+    let result;
+
     if (editingRole) {
-      await updateRole({
+      result = await updateRole({
         id: editingRole.id,
         name: formData.name,
         description: formData.description,
       });
     } else {
-      await createRole({ name: formData.name, description: formData.description });
+      result = await createRole({ name: formData.name, description: formData.description });
+      if (result?.ok) {
+        void trackMilestone("role_created");
+      }
     }
 
     setSubmitting(false);
-    setDialogOpen(false);
+    if (result?.ok) {
+      setDialogOpen(false);
+    }
   };
 
   const handleDelete = async (id: string, name: string) => {
@@ -100,6 +109,7 @@ export function RoleManager() {
           </p>
         </div>
         <Button
+          data-guidance-anchor="create-role"
           onClick={handleOpenCreate}
           size="sm"
           className="bg-primary text-background hover:bg-primary/90 shadow-sm transition-all hover:-translate-y-0.5 active:translate-y-0"

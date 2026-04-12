@@ -82,6 +82,7 @@ export function MemberManager() {
           </p>
         </div>
         <Button
+          data-guidance-anchor="invite-member"
           onClick={handleOpenAdd}
           size="sm"
           disabled={!currentUserIsAdmin}
