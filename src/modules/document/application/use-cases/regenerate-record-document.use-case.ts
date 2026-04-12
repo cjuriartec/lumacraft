@@ -24,11 +24,11 @@ export class RegenerateRecordDocumentUseCase {
     templateVersion: number;
     userId?: string;
     compilePreview: RegenerateDocumentPreviewPort;
+    existingDocument?: RecordDocument | null;
   }): Promise<Result<RegenerateRecordDocumentResult, DomainError>> {
-    const current = await this.repository.findByTemplateAndRecord(
-      params.templateId,
-      params.recordId,
-    );
+    const current = params.existingDocument
+      ? ok(params.existingDocument)
+      : await this.repository.findByTemplateAndRecord(params.templateId, params.recordId);
     if (!current.ok) {
       return fail(current.error);
     }

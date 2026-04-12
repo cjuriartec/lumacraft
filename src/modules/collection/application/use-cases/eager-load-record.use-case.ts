@@ -19,6 +19,7 @@ export class EagerLoadRecordUseCase {
       depth,
       visited,
       request.includeFields,
+      request.includeRelationPaths,
     );
   }
 }

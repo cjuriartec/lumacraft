@@ -71,6 +71,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     requestId,
     signal: request.signal,
     supabase,
+    template: contextResult.value.template,
     templateId,
   });
 
@@ -90,6 +91,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     templateVersion: contextResult.value.template.version,
     userId: user.id,
     compilePreview: compilerResult.value,
+    existingDocument: contextResult.value.currentDocument,
   });
 
   if (!compiledResult.ok) {

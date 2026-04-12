@@ -19,6 +19,8 @@ export interface IEagerLoadRepository {
     depth: number,
     visited: Set<string>,
     includeFields?: string[],
+    includeRelationPaths?: string[],
+    currentPathPrefix?: string,
   ): Promise<Result<EagerLoadedRecord>>;
 
   /**
@@ -46,9 +48,5 @@ export interface IEagerLoadRepository {
   /**
    * Fetches all record IDs that point to this record via a specific field.
    */
-  getReverseRelations(
-    targetCollectionId: string,
-    targetFieldName: string,
-    sourceRecordId: string,
-  ): Promise<Result<string[]>>;
+  getReverseRelations(targetFieldId: string, sourceRecordId: string): Promise<Result<string[]>>;
 }

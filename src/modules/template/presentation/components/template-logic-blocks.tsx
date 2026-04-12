@@ -252,7 +252,7 @@ function BlockShell({
     <div
       contentEditable={false}
       className={cn(
-        "my-4 rounded-xl border p-4 transition-all duration-200",
+        "group my-4 rounded-xl border p-4 transition-all duration-200",
         // Force light styles since background is always white
         variant === "ai"
           ? "bg-[#f5f3ff]/50 border-indigo-200/60 shadow-[0_2px_12px_-3px_rgba(99,102,241,0.1)]"
@@ -495,7 +495,7 @@ export function TemplateAIInlinePromptEditor({
   };
 
   return (
-    <div className="relative">
+    <div className="relative group">
       <Textarea
         ref={textareaRef}
         value={localValue}

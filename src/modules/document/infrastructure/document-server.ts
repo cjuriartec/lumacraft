@@ -14,20 +14,25 @@ import { SupabaseRecordRepository } from "@/modules/collection/infrastructure/re
 import { RecordDocument } from "@/modules/document/domain/entities/record-document.entity";
 import { RecordDocumentPreviewPayload } from "@/modules/document/presentation/types/record-document";
 import { TEMPLATE_PREVIEW_MAX_EAGER_DEPTH } from "@/modules/template/application/constants/template-preview.constants";
+import { TemplateCompilationService } from "@/modules/template/application/services/template-compilation.service";
 import { GenerateTemplatePreviewUseCase } from "@/modules/template/application/use-cases/generate-template-preview.use-case";
 import { Template } from "@/modules/template/domain/entities/template.entity";
 import { TemplateBlocks } from "@/modules/template/domain/types/template-blocks";
 import { EagerLoadTemplateContextResolverAdapter } from "@/modules/template/infrastructure/adapters/eager-load-template-context-resolver.adapter";
 import { SupabaseTemplateAssetUrlResolverAdapter } from "@/modules/template/infrastructure/adapters/supabase-template-asset-url-resolver.adapter";
 import { SupabaseTemplateRepository } from "@/modules/template/infrastructure/repositories/supabase-template.repository";
+import { SupabaseTemplateAIBlockCacheRepository } from "@/modules/template/infrastructure/repositories/supabase-template-ai-block-cache.repository";
+import { SupabaseTemplatePreviewCacheRepository } from "@/modules/template/infrastructure/repositories/supabase-template-preview-cache.repository";
 import { DomainError, fail, ok, Result } from "@/shared/domain/result";
 import { createAdminClientOrNull } from "@/shared/infrastructure/supabase/admin";
+import { hashStableValue } from "@/shared/lib/stable-hash";
 
 import { SupabaseRecordDocumentRepository } from "./repositories/supabase-record-document.repository";
 
 interface DocumentRouteContext {
   accountId: string;
   collection: Collection;
+  currentDocument: RecordDocument | null;
   documentRepository: SupabaseRecordDocumentRepository;
   permissions: {
     canRead: boolean;
@@ -50,6 +55,16 @@ function resolveEdgeFunctionKey(): string | null {
   return (
     process.env.SUPABASE_SECRET_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? null
   );
+}
+
+function buildTemplateAISettingsHash(params: {
+  settings: Record<string, unknown>;
+  systemInstruction: string;
+}) {
+  return hashStableValue({
+    settings: params.settings,
+    systemInstruction: params.systemInstruction,
+  });
 }
 
 function toLabelValue(value: unknown): string {
@@ -161,7 +176,18 @@ export async function resolveDocumentRouteContext(params: {
   }
 
   const collectionFactory = CollectionUseCaseFactory.create(params.supabase);
-  const collectionResult = await collectionFactory.getCollection().execute(params.collectionId);
+  const templateRepository = new SupabaseTemplateRepository(params.supabase);
+  const recordRepository = new SupabaseRecordRepository(params.supabase);
+  const documentRepository = new SupabaseRecordDocumentRepository(params.supabase);
+  const [collectionResult, templateResult, recordResult, currentDocumentResult] = await Promise.all(
+    [
+      collectionFactory.getCollection().execute(params.collectionId),
+      templateRepository.findById(params.templateId),
+      recordRepository.findById(params.recordId),
+      documentRepository.findByTemplateAndRecord(params.templateId, params.recordId),
+    ],
+  );
+
   if (!collectionResult.ok) {
     return fail(collectionResult.error);
   }
@@ -170,14 +196,24 @@ export async function resolveDocumentRouteContext(params: {
     return fail(new DomainError("Collection not found", "NOT_FOUND"));
   }
 
-  const templateRepository = new SupabaseTemplateRepository(params.supabase);
-  const templateResult = await templateRepository.findById(params.templateId);
   if (!templateResult.ok) {
     return fail(templateResult.error);
   }
 
   if (!templateResult.value) {
     return fail(new DomainError("Template not found", "NOT_FOUND"));
+  }
+
+  if (!recordResult.ok) {
+    return fail(recordResult.error);
+  }
+
+  if (!recordResult.value) {
+    return fail(new DomainError("Record not found", "NOT_FOUND"));
+  }
+
+  if (!currentDocumentResult.ok) {
+    return fail(currentDocumentResult.error);
   }
 
   if (templateResult.value.collectionId !== params.collectionId) {
@@ -187,16 +223,6 @@ export async function resolveDocumentRouteContext(params: {
         "TEMPLATE_CONTEXT_MISMATCH",
       ),
     );
-  }
-
-  const recordRepository = new SupabaseRecordRepository(params.supabase);
-  const recordResult = await recordRepository.findById(params.recordId);
-  if (!recordResult.ok) {
-    return fail(recordResult.error);
-  }
-
-  if (!recordResult.value) {
-    return fail(new DomainError("Record not found", "NOT_FOUND"));
   }
 
   if (recordResult.value.collectionId !== params.collectionId) {
@@ -224,7 +250,8 @@ export async function resolveDocumentRouteContext(params: {
   return ok({
     accountId: templateResult.value.accountId,
     collection: collectionResult.value,
-    documentRepository: new SupabaseRecordDocumentRepository(params.supabase),
+    currentDocument: currentDocumentResult.value,
+    documentRepository,
     permissions: {
       canRead: true,
       canUpdate: canUpdateResult.value,
@@ -243,6 +270,7 @@ export async function createDocumentPreviewCompiler(params: {
   requestId: string;
   signal?: AbortSignal;
   supabase: SupabaseClient;
+  template: Template;
   templateId: string;
 }): Promise<
   Result<
@@ -253,6 +281,7 @@ export async function createDocumentPreviewCompiler(params: {
   >
 > {
   const collectionFactory = CollectionUseCaseFactory.create(params.supabase);
+  const repositoryClient = createAdminClientOrNull() ?? params.supabase;
   const templateRepository = new SupabaseTemplateRepository(params.supabase);
   const contextResolver = new EagerLoadTemplateContextResolverAdapter(
     collectionFactory.eagerLoadRecord(),
@@ -260,9 +289,9 @@ export async function createDocumentPreviewCompiler(params: {
     collectionFactory.getCollection(),
   );
   const assetUrlResolver = new SupabaseTemplateAssetUrlResolverAdapter(params.supabase);
-  const accountAISettingsRepository = new SupabaseAccountAISettingsRepository(
-    createAdminClientOrNull() ?? params.supabase,
-  );
+  const previewCacheRepository = new SupabaseTemplatePreviewCacheRepository(repositoryClient);
+  const aiBlockCacheRepository = new SupabaseTemplateAIBlockCacheRepository(repositoryClient);
+  const accountAISettingsRepository = new SupabaseAccountAISettingsRepository(repositoryClient);
   const accountAISettingsResolver = new AccountScopedAISettingsResolver(
     new GetAccountAISettingsUseCase(accountAISettingsRepository),
     new SaveAccountAISettingsUseCase(accountAISettingsRepository),
@@ -307,11 +336,27 @@ export async function createDocumentPreviewCompiler(params: {
     settings: accountAISettings,
     mode: "structured_preview",
   });
+  const aiSettingsHash = buildTemplateAISettingsHash({
+    settings: {
+      defaultProvider: accountAISettings.defaultProvider,
+      defaultModel: accountAISettings.defaultModel,
+      defaultTemperature: accountAISettings.defaultTemperature,
+      defaultMaxTokens: accountAISettings.defaultMaxTokens,
+      requestTimeoutMs: accountAISettings.requestTimeoutMs,
+      providerOptions: accountAISettings.providerOptions,
+      featureTemplateAI: accountAISettings.featureTemplateAI,
+      featureTemplateLogic: accountAISettings.featureTemplateLogic,
+      templatePreviewMaxAIBlocks: accountAISettings.templatePreviewMaxAIBlocks,
+    },
+    systemInstruction: aiSystemInstruction,
+  });
+  const compilationService = new TemplateCompilationService();
   const generatePreviewUseCase = new GenerateTemplatePreviewUseCase(
     templateRepository,
     contextResolver,
     aiProviderFactory,
     assetUrlResolver,
+    compilationService,
   );
 
   return ok({
@@ -323,7 +368,11 @@ export async function createDocumentPreviewCompiler(params: {
         collectionId: params.collectionId,
         recordId: params.recordId,
         blocks: params.blocks,
+        template: params.template,
         aiSystemInstruction,
+        aiSettingsHash,
+        previewCache: previewCacheRepository,
+        aiBlockCache: aiBlockCacheRepository,
         depth: TEMPLATE_PREVIEW_MAX_EAGER_DEPTH,
         signal: params.signal,
         options: {

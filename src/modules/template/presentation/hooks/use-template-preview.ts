@@ -58,6 +58,7 @@ export function useTemplatePreview({
   const stagedOrderRef = useRef(getTemplatePreviewBlockMetadata([]));
   const stagedOutputsRef = useRef<Map<string, TemplateBlocks>>(new Map());
   const awaitingFirstResolvedRef = useRef(false);
+  const isDoneRef = useRef(false);
 
   const availableRecords = useMemo(
     () => records.map((record) => ({ id: record.id, data: record.data })),
@@ -129,7 +130,11 @@ export function useTemplatePreview({
   }, [blockStates]);
 
   useEffect(() => {
-    if (!awaitingFirstResolvedRef.current && stagedOrderRef.current.length > 0) {
+    if (
+      !awaitingFirstResolvedRef.current &&
+      !isDoneRef.current &&
+      stagedOrderRef.current.length > 0
+    ) {
       refreshStructuredBlocks();
     }
   }, [blockStates, refreshStructuredBlocks]);
@@ -163,6 +168,7 @@ export function useTemplatePreview({
       stagedOrderRef.current = initialOrder;
       stagedOutputsRef.current = new Map();
       awaitingFirstResolvedRef.current = true;
+      isDoneRef.current = false;
 
       setLoading(true);
       setError(null);
@@ -313,6 +319,7 @@ export function useTemplatePreview({
                   setBlocks(payload.blocks);
                 }
                 setWarnings(payload.warnings);
+                isDoneRef.current = true;
                 setBlockStates((currentStates) =>
                   currentStates.map((state) =>
                     state.status === "error" ? state : { ...state, status: "resolved" },

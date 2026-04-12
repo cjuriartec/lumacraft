@@ -9,6 +9,7 @@ import { Button } from "@/shared/presentation/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/shared/presentation/components/ui/dialog";
@@ -69,6 +70,9 @@ export function RecordDocumentSelectorModal({
             <DialogTitle className="text-[1.5rem] tracking-[-0.01em] font-semibold">
               Abrir Documento
             </DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground font-light">
+              Selecciona la plantilla con la que deseas visualizar este registro.
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-3">
