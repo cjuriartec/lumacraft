@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.5](https://github.com/cjuriartec/lumacraft/compare/v0.1.4...v0.1.5) (2026-04-12)
+
+
+### ♻️ Code Refactoring
+
+* exclude REVERSE_LOOKUP fields from ER diagram nodes and edges while updating layout styles ([e91185c](https://github.com/cjuriartec/lumacraft/commit/e91185c6c521122fb79c63c690d89dbc33133d92))
+
+
+### 🐛 Bug Fixes
+
+* add INSERT policy and update WITH CHECK constraints for user_profiles RLS ([f16c821](https://github.com/cjuriartec/lumacraft/commit/f16c821a5f8790f75e4ee2101e92a5012cdfb6c4))
+* synchronize package-lock.json with missing dependencies ([4bab719](https://github.com/cjuriartec/lumacraft/commit/4bab7193385b3ae7c159e9398e097533d663e3e4))
+* **template:** improve reverse lookup resolution and display in variable fields ([2947bd6](https://github.com/cjuriartec/lumacraft/commit/2947bd68a6beae0952727a35f950f1da78af4145))
+
+
+### ✨ Features
+
+* add AI variant to logic blocks and update UI styling for improved consistency ([d202e7a](https://github.com/cjuriartec/lumacraft/commit/d202e7adae253ef872c5e123571295c5f41073ea))
+* add external link to template in document editor and update alert dialog styling ([9d304cb](https://github.com/cjuriartec/lumacraft/commit/9d304cb4a29e300668040105b4b14169390530eb))
+* implement base layout, typography utilities, and global CSS theme configuration ([70d6455](https://github.com/cjuriartec/lumacraft/commit/70d645548d20f2e8aca0a19a85aea8d2d4a26cc1))
+* implement interactive ER diagram visualization for workspace schema using React Flow ([a9cd6f5](https://github.com/cjuriartec/lumacraft/commit/a9cd6f5a5dc6f5af09a8584cefab8af7d56dacf4))
+* implement persistent user profile preferences for sidebar state and theme settings ([eedc11a](https://github.com/cjuriartec/lumacraft/commit/eedc11a8b1660107f13be94818070dc797209b0b))
+* implement user preference synchronization with Supabase and add comprehensive test coverage ([1a1a0c2](https://github.com/cjuriartec/lumacraft/commit/1a1a0c2f0af33881e09c64411f6655d07562a4ef))
+* implement workspace statistics dashboard with new use case and repository count methods ([e04c61d](https://github.com/cjuriartec/lumacraft/commit/e04c61d6779bb03776751ec117a735ff6be6c607))
+
 ### [0.1.4](https://github.com/cjuriartec/lumacraft/compare/v0.1.3...v0.1.4) (2026-04-11)
 
 

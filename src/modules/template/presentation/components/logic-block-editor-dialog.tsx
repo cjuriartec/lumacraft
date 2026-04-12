@@ -429,6 +429,7 @@ export function LogicBlockEditorDialog<T extends BlockNode>({
             onChange={(event) => update({ thenTemplate: event.target.value })}
             placeholder="Contenido a mostrar..."
             className="min-h-[100px] bg-muted/10 border-border/40 rounded-xl resize-none focus:bg-background transition-colors"
+            enableAI={true}
           />
         </div>
 
@@ -467,6 +468,7 @@ export function LogicBlockEditorDialog<T extends BlockNode>({
             onChange={(event) => update({ elseTemplate: event.target.value })}
             placeholder="Contenido alternativo..."
             className="min-h-[60px] bg-muted/10 border-border/40 rounded-xl resize-none focus:bg-background transition-colors"
+            enableAI={true}
           />
         </div>
       </div>
@@ -576,6 +578,7 @@ export function LogicBlockEditorDialog<T extends BlockNode>({
             onChange={(event) => update({ itemTemplate: event.target.value })}
             placeholder="ej. - {{item.nombre}}"
             className="min-h-[120px] bg-muted/10 border-border/40 rounded-xl resize-none font-mono text-xs focus:bg-background transition-colors"
+            enableAI={true}
           />
         </div>
 
@@ -767,6 +770,7 @@ export function LogicBlockEditorDialog<T extends BlockNode>({
                     onChange={(event) => updateCase(index, { template: event.target.value })}
                     placeholder="Contenido para este caso..."
                     className="min-h-[60px] bg-muted/10 border-border/20 rounded-lg resize-none focus:bg-background transition-colors"
+                    enableAI={true}
                   />
                 </div>
               </div>
@@ -809,6 +813,7 @@ export function LogicBlockEditorDialog<T extends BlockNode>({
             onChange={(event) => update({ defaultTemplate: event.target.value })}
             placeholder="Si ningún caso coincide..."
             className="min-h-[80px] bg-muted/10 border-border/40 rounded-xl resize-none focus:bg-background transition-colors"
+            enableAI={true}
           />
         </div>
       </div>
@@ -857,6 +862,7 @@ export function LogicBlockEditorDialog<T extends BlockNode>({
             onChange={(event) => update({ promptTemplate: event.target.value })}
             placeholder="Describe lo que quieres que la IA genere..."
             className="min-h-[100px] bg-muted/10 border-border/40 rounded-xl resize-none font-light focus:bg-background transition-colors"
+            enableAI={true}
           />
           <p className="text-xs text-muted-foreground ml-1">
             El registro completo ({`{{root}}`}) y el contexto de la colección se envían

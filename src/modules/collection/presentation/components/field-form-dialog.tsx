@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertCircle, Plus, Search, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
 import { Result } from "@/shared/domain/result";
@@ -179,6 +179,8 @@ export function FieldFormDialog({
         },
   });
 
+  const descriptionValue = useWatch({ control: form.control, name: "description" });
+
   // Reset when open
   useEffect(() => {
     if (open) {
@@ -295,6 +297,8 @@ export function FieldFormDialog({
                     placeholder="Describe el propósito de este campo, qué datos almacena y cómo debe utilizarse..."
                     className={cn(inputFieldClass, "min-h-[80px] resize-y")}
                     {...form.register("description")}
+                    value={descriptionValue}
+                    enableAI={true}
                   />
                 </div>
 

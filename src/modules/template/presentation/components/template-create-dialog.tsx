@@ -159,6 +159,7 @@ export function TemplateCreateDialog({
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={3}
+                enableAI={true}
               />
             </div>
             {!isEditing && !forcedCollectionId && (

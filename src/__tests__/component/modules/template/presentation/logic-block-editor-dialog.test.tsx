@@ -21,23 +21,15 @@ vi.mock("@/modules/template/presentation/components/dynamic-value-input", () => 
 }));
 
 vi.mock("@/modules/template/presentation/components/variable-selector", () => ({
-  VariableSelector: ({
-    trigger,
-    disabled,
-  }: {
-    trigger?: ReactNode;
-    disabled?: boolean;
-  }) => <div data-disabled={disabled ? "true" : "false"}>{trigger ?? null}</div>,
+  VariableSelector: ({ trigger, disabled }: { trigger?: ReactNode; disabled?: boolean }) => (
+    <div data-disabled={disabled ? "true" : "false"}>{trigger ?? null}</div>
+  ),
 }));
 
 vi.mock("@/shared/presentation/components/ui/button", () => ({
-  Button: ({
-    children,
-    ...props
-  }: {
-    children: ReactNode;
-    [key: string]: unknown;
-  }) => <button {...props}>{children}</button>,
+  Button: ({ children, ...props }: { children: ReactNode; [key: string]: unknown }) => (
+    <button {...props}>{children}</button>
+  ),
 }));
 
 vi.mock("@/shared/presentation/components/ui/dialog", () => ({
@@ -66,7 +58,7 @@ vi.mock("@/shared/presentation/components/ui/select", () => ({
   Select: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   SelectContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   SelectItem: ({ children, value }: { children: ReactNode; value: string }) => (
-    <div role="option" data-value={value}>
+    <div role="option" data-value={value} aria-selected={false}>
       {children}
     </div>
   ),

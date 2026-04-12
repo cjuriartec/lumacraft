@@ -343,7 +343,7 @@ function SidebarNav({
         </>
       )}
 
-      <div className={`pt-4 mt-auto border-t border-border/5 ${isCollapsed ? "hidden" : "block"}`}>
+      <div className="pt-4 mt-auto border-t border-border/5">
         <NavLink
           href="/settings"
           icon={<Settings size={18} strokeWidth={1.5} />}

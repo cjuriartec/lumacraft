@@ -89,7 +89,7 @@ export default function ERDiagramPage() {
       // Use CSS variable for the label to stay theme-consistent without effect re-runs
       const labelStyle = {
         fontSize: 10,
-        fontWeight: 600,
+        fontWeight: 500,
         fill: "var(--muted-foreground)",
       };
 
@@ -101,6 +101,14 @@ export default function ERDiagramPage() {
           sourceHandle: field.id,
           label: getRelationLabel(config.relationType || ""),
           labelStyle,
+          labelBgStyle: {
+            fill: "var(--surface)",
+            fillOpacity: 0.9,
+            stroke: "var(--border)",
+            strokeWidth: 0.5,
+          },
+          labelBgPadding: [8, 4],
+          labelBgBorderRadius: 8,
           animated: true,
           style: { stroke: "var(--primary)", strokeWidth: 1, opacity: 0.4 },
           markerEnd: {
@@ -129,8 +137,8 @@ export default function ERDiagramPage() {
       <div className="flex-1 h-full flex flex-col items-center justify-center p-8 bg-background animate-in fade-in duration-1000">
         <div className="max-w-2xl w-full text-center">
           {/* Tag descriptor */}
-          <div className="text-[11px] font-bold uppercase tracking-[0.15em] text-primary mb-6">
-            Esquema de Datos
+          <div className="text-[11px] font-bold tracking-[0.15em] text-primary mb-6">
+            Esquema de datos
           </div>
 
           {/* Icon */}
@@ -160,7 +168,7 @@ export default function ERDiagramPage() {
               <Plus size={16} className="mr-2" />
               Crear Colección
             </Button>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-foreground/20">
+            <p className="text-[10px] font-bold tracking-widest text-foreground/20">
               Versión v0.1.4
             </p>
           </div>
@@ -178,8 +186,8 @@ export default function ERDiagramPage() {
             <Share2 size={18} />
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-foreground uppercase">
-              Relaciones del Modelo
+            <h1 className="text-xl font-bold tracking-tight text-foreground">
+              Relaciones del modelo
             </h1>
             <p className="text-[12px] text-foreground/50 font-medium">
               Vista interactiva del esquema de colecciones y sus conexiones.

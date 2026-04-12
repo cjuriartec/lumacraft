@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertCircle, Database, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
 import {
@@ -54,6 +54,7 @@ export function CreateCollectionDialog({
     handleSubmit,
     reset,
     setValue,
+    control,
     formState: { errors, isValid },
   } = useForm<CollectionFormValues>({
     resolver: zodResolver(collectionSchema),
@@ -64,6 +65,8 @@ export function CreateCollectionDialog({
       description: collectionToEdit?.description || "",
     },
   });
+
+  const descriptionValue = useWatch({ control, name: "description" });
 
   // Synchronize initial data if editing
   useEffect(() => {
@@ -210,7 +213,9 @@ export function CreateCollectionDialog({
               id="description"
               placeholder="Describe el propósito de esta colección..."
               {...register("description")}
+              value={descriptionValue}
               className="rounded-lg text-sm min-h-[80px] resize-none placeholder:font-light transition-colors bg-foreground/5 text-foreground border-border"
+              enableAI={true}
             />
           </div>
 
