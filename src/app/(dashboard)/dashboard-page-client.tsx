@@ -4,6 +4,8 @@ import { ArrowRight, Database, FileText, Sparkles, TrendingUp } from "lucide-rea
 import Link from "next/link";
 
 import { useAuth } from "@/modules/auth/presentation/providers/auth-provider";
+import { DashboardOnboardingChecklist } from "@/modules/guidance/presentation/components/dashboard-onboarding-checklist";
+import { useGuidancePage } from "@/modules/guidance/presentation/hooks/use-guidance-page";
 import { useBreadcrumbs } from "@/shared/presentation/providers/breadcrumb-provider";
 
 import { useDashboardStats } from "./use-dashboard-stats";
@@ -12,6 +14,7 @@ export default function DashboardPageClient() {
   const { user } = useAuth();
   const { stats, loading: statsLoading } = useDashboardStats();
   useBreadcrumbs([{ label: "Inicio" }]);
+  useGuidancePage({ id: "dashboard" });
   const firstName = user?.fullName?.split(" ")[0] || "de nuevo";
 
   return (
@@ -64,6 +67,8 @@ export default function DashboardPageClient() {
         </div>
       </div>
 
+      <DashboardOnboardingChecklist />
+
       <div className="rounded-2xl p-8 relative overflow-hidden mt-8 bg-surface dark:bg-surface-hover dark:ring-1 dark:ring-white/5">
         <div className="absolute top-0 left-8 right-8 h-px from-transparent via-primary/40 to-transparent" />
 
@@ -75,11 +80,11 @@ export default function DashboardPageClient() {
             </span>
           </div>
           <h2 className="text-2xl font-bold mb-2 text-foreground tracking-[-0.015em]">
-            AI Engine con Gemini
+            Motor de IA por workspace
           </h2>
           <p className="font-light max-w-lg text-foreground/70 leading-[1.65]">
-            Generación contextual de documentos, análisis de datos y automatización de flujos de
-            trabajo impulsados por Gemini Pro.
+            Configura el proveedor y las credenciales del workspace para activar previews,
+            documentos asistidos y automatizaciones con contexto real.
           </p>
         </div>
 

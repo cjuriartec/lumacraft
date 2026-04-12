@@ -29,6 +29,8 @@ import { Plate, usePlateEditor } from "platejs/react";
 import * as React from "react";
 
 import { useCollections } from "@/modules/collection/presentation/hooks/use-collections";
+import { useGuidance } from "@/modules/guidance/presentation/hooks/use-guidance";
+import { useGuidancePage } from "@/modules/guidance/presentation/hooks/use-guidance-page";
 import { FontFamilyToolbarButton } from "@/modules/template/presentation/components/font-family-toolbar-button";
 import {
   plateValueToTemplateBlocks,
@@ -88,6 +90,8 @@ export default function RecordDocumentEditorPage({
   templateId,
 }: RecordDocumentEditorPageProps) {
   const { collections } = useCollections();
+  const { trackMilestone } = useGuidance();
+  useGuidancePage({ id: "document-editor" });
   const {
     payload,
     loading,
@@ -109,6 +113,7 @@ export default function RecordDocumentEditorPage({
   const [isRegenerateDialogOpen, setIsRegenerateDialogOpen] = React.useState(false);
   const skipEditorSyncChangeRef = React.useRef(false);
   const lastAppliedEditorRevisionRef = React.useRef<number | null>(null);
+  const hasTrackedOpenRef = React.useRef(false);
   const collection = collections.find((item) => item.id === collectionId) ?? null;
   const collectionName = collection?.displayName || collection?.name || "Colección";
   const recordLabel = payload?.record.label ?? recordId.slice(0, 8);
@@ -140,12 +145,20 @@ export default function RecordDocumentEditorPage({
     });
   }, [editor, editorRevision, payload]);
 
+  React.useEffect(() => {
+    if (!payload || hasTrackedOpenRef.current) return;
+
+    hasTrackedOpenRef.current = true;
+    void trackMilestone("document_opened");
+  }, [payload, trackMilestone]);
+
   const handleConfirmRegenerate = React.useCallback(async () => {
     const success = await regenerate();
     if (success) {
+      void trackMilestone("document_opened");
       setIsRegenerateDialogOpen(false);
     }
-  }, [regenerate]);
+  }, [regenerate, trackMilestone]);
 
   if (loading) {
     return (
@@ -269,6 +282,7 @@ export default function RecordDocumentEditorPage({
                 </Button>
 
                 <Button
+                  data-guidance-anchor="document-download-pdf"
                   variant="ghost"
                   size="sm"
                   className="h-9 gap-2 cursor-pointer"
@@ -280,6 +294,7 @@ export default function RecordDocumentEditorPage({
 
                 {canUpdate && (
                   <Button
+                    data-guidance-anchor="document-regenerate"
                     size="sm"
                     variant="secondary"
                     className="h-9 gap-2 cursor-pointer"

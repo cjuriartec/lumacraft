@@ -5,6 +5,8 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { usePermissions } from "@/modules/authorization/presentation/providers/permission-provider";
+import { useGuidance } from "@/modules/guidance/presentation/hooks/use-guidance";
+import { useGuidancePage } from "@/modules/guidance/presentation/hooks/use-guidance-page";
 import TemplateListPage from "@/modules/template/presentation/pages/template-list-page";
 import {
   Select,
@@ -45,6 +47,7 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { trackMilestone } = useGuidance();
   const { can, isOwner, isSuperAdmin } = usePermissions();
   const canRead = can(collectionId, "read");
   const canCreate = can(collectionId, "create");
@@ -95,6 +98,15 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
   const [activeTab, setActiveTab] = useState<CollectionTab>(
     resolveTab(searchParams.get("tab"), canManageSchema),
   );
+
+  useGuidancePage({
+    id:
+      activeTab === "fields"
+        ? "collection-fields"
+        : activeTab === "templates"
+          ? "collection-templates"
+          : "collection-data",
+  });
 
   useEffect(() => {
     async function hydrate() {
@@ -152,7 +164,11 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
     if (editingRecord) {
       return await updateRecord(editingRecord.id, data);
     } else {
-      return await createRecord(data);
+      const result = await createRecord(data);
+      if (result?.ok) {
+        void trackMilestone("record_created");
+      }
+      return result;
     }
   };
 
@@ -201,13 +217,21 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full" variant="line">
         <TabsList className="mb-8">
-          <TabsTrigger value="data" className="flex items-center">
+          <TabsTrigger
+            value="data"
+            className="flex items-center"
+            data-guidance-anchor="collection-tab-data"
+          >
             <LayoutGrid size={16} className="mr-2" />
             Datos{" "}
             {total > 0 && <span className="ml-2 text-[10px] opacity-40 font-mono">({total})</span>}
           </TabsTrigger>
           {canManageSchema && (
-            <TabsTrigger value="fields" className="flex items-center">
+            <TabsTrigger
+              value="fields"
+              className="flex items-center"
+              data-guidance-anchor="collection-tab-fields"
+            >
               <ListFilter size={16} className="mr-2" />
               Esquema{" "}
               {fields.length > 0 && (
@@ -215,7 +239,11 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
               )}
             </TabsTrigger>
           )}
-          <TabsTrigger value="templates" className="flex items-center">
+          <TabsTrigger
+            value="templates"
+            className="flex items-center"
+            data-guidance-anchor="collection-tab-templates"
+          >
             <FileText size={16} className="mr-2" />
             Plantillas
           </TabsTrigger>
@@ -272,7 +300,7 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
                     relaciones desde otras colecciones.
                   </p>
                 </div>
-                <div className="w-full md:w-64">
+                <div data-guidance-anchor="primary-field-select" className="w-full md:w-64">
                   <Select
                     value={currentCollection?.primaryFieldName || "id"}
                     onValueChange={async (val: string) => {

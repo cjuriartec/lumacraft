@@ -2,6 +2,7 @@
 
 import { GripVertical, Plus, Settings2, Trash2 } from "lucide-react";
 
+import { useGuidance } from "@/modules/guidance/presentation/hooks/use-guidance";
 import { Result } from "@/shared/domain/result";
 import { Badge } from "@/shared/presentation/components/ui/badge";
 import { Button } from "@/shared/presentation/components/ui/button";
@@ -39,7 +40,16 @@ export function FieldManager({
   deleteField,
 }: FieldManagerProps) {
   const { collections } = useCollections();
+  const { trackMilestone } = useGuidance();
   const relationCollections = collections.filter((collection) => collection.id !== collectionId);
+
+  const handleCreateField = async (params: Omit<CreateFieldRequest, "collectionId">) => {
+    const result = await createField(params);
+    if (result.ok) {
+      void trackMilestone("field_created");
+    }
+    return result;
+  };
 
   if (loading) {
     return (
@@ -60,8 +70,9 @@ export function FieldManager({
             Define los campos y tipos de datos que estructuran esta colección.
           </p>
         </div>
-        <FieldFormDialog onSubmit={createField} availableCollections={relationCollections}>
+        <FieldFormDialog onSubmit={handleCreateField} availableCollections={relationCollections}>
           <Button
+            data-guidance-anchor="add-field"
             size="sm"
             className="bg-primary text-background hover:bg-primary-hover shadow-sm transition-all hover:-translate-y-0.5 active:translate-y-0"
           >

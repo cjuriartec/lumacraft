@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import * as React from "react";
 
 import { useCollections } from "@/modules/collection/presentation/hooks/use-collections";
+import { useGuidance } from "@/modules/guidance/presentation/hooks/use-guidance";
 import type { Result } from "@/shared/domain/result";
 import { Button } from "@/shared/presentation/components/ui/button";
 import {
@@ -60,6 +61,7 @@ export function TemplateCreateDialog({
 }: TemplateCreateDialogProps) {
   const router = useRouter();
   const { collections, loading: collectionsLoading } = useCollections();
+  const { trackMilestone } = useGuidance();
   const [name, setName] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [collectionId, setCollectionId] = React.useState<string>("");
@@ -106,6 +108,7 @@ export function TemplateCreateDialog({
       });
       setLoading(false);
       if (res?.ok) {
+        void trackMilestone("template_created");
         onOpenChange(false);
         if (selectedCollectionId) {
           router.push(`/collections/${selectedCollectionId}/templates/${res.value.id}`);

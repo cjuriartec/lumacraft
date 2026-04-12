@@ -5,12 +5,19 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState } from 
 
 import { GetUserPreferencesUseCase } from "@/modules/auth/application/use-cases/get-user-preferences.use-case";
 import { UpdateUserPreferencesUseCase } from "@/modules/auth/application/use-cases/update-user-preferences.use-case";
+import {
+  mergeUserPreferences,
+  UserPreferences,
+} from "@/modules/auth/domain/entities/user-profile.entity";
 import { SupabaseUserProfileRepository } from "@/modules/auth/infrastructure/repositories/supabase-user-profile.repository";
 import { useAuth } from "@/modules/auth/presentation/providers/auth-provider";
+import { normalizeGuidancePreferences } from "@/modules/guidance/domain/guidance-preferences";
 
 type ThemeMode = "light" | "dark" | "system";
 
 type UserPreferencesContext = {
+  preferences: UserPreferences;
+  updatePreferences: (preferences: Partial<UserPreferences>) => Promise<void>;
   isCollapsed: boolean;
   setIsCollapsed: (collapsed: boolean) => void;
   toggleSidebar: () => void;
@@ -20,10 +27,20 @@ type UserPreferencesContext = {
 
 const Context = createContext<UserPreferencesContext | undefined>(undefined);
 
+const DEFAULT_PREFERENCES: UserPreferences = {
+  sidebarCollapsed: true,
+  theme: "system",
+  guidance: normalizeGuidancePreferences(),
+};
+
+function arePreferencesEqual(left: UserPreferences, right: UserPreferences) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
 export function UserPreferencesProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const { setTheme: setNextTheme, theme: nextTheme } = useTheme();
-  const [isCollapsed, setIsCollapsed] = useState(true);
+  const [preferences, setPreferences] = useState<UserPreferences>(DEFAULT_PREFERENCES);
   const hasSynced = useRef(false);
 
   const repo = useMemo(() => new SupabaseUserProfileRepository(), []);
@@ -37,12 +54,13 @@ export function UserPreferencesProvider({ children }: { children: React.ReactNod
     const load = async () => {
       const res = await getPrefsUseCase.execute(user.id);
       if (res.ok) {
-        setIsCollapsed(res.value.sidebarCollapsed);
+        const nextPreferences = mergeUserPreferences(DEFAULT_PREFERENCES, res.value);
+        setPreferences(nextPreferences);
 
         // Only update theme if it differs from current next-themes state
         // and we haven't synced yet in this session
-        if (res.value.theme && res.value.theme !== nextTheme) {
-          setNextTheme(res.value.theme as string);
+        if (nextPreferences.theme && nextPreferences.theme !== nextTheme) {
+          setNextTheme(nextPreferences.theme as string);
         }
         hasSynced.current = true;
       }
@@ -50,32 +68,43 @@ export function UserPreferencesProvider({ children }: { children: React.ReactNod
     load();
   }, [user, getPrefsUseCase, setNextTheme, nextTheme]);
 
-  const updateServerPreference = async (prefs: {
-    sidebarCollapsed?: boolean;
-    theme?: ThemeMode;
-  }) => {
+  const updatePreferences = async (prefs: Partial<UserPreferences>) => {
     if (!user) return;
+
+    let hasChanged = false;
+
+    setPreferences((current) => {
+      const nextPreferences = mergeUserPreferences(current, prefs);
+      hasChanged = !arePreferencesEqual(current, nextPreferences);
+      return hasChanged ? nextPreferences : current;
+    });
+
+    if (!hasChanged) {
+      return;
+    }
+
     await updatePrefsUseCase.execute(user.id, prefs);
   };
 
   const setAndSaveCollapsed = (collapsed: boolean) => {
-    setIsCollapsed(collapsed);
-    updateServerPreference({ sidebarCollapsed: collapsed });
+    void updatePreferences({ sidebarCollapsed: collapsed });
   };
 
   const setAndSaveTheme = (newTheme: ThemeMode) => {
     setNextTheme(newTheme);
-    updateServerPreference({ theme: newTheme });
+    void updatePreferences({ theme: newTheme });
   };
 
   const toggleSidebar = () => {
-    setAndSaveCollapsed(!isCollapsed);
+    setAndSaveCollapsed(!preferences.sidebarCollapsed);
   };
 
   return (
     <Context.Provider
       value={{
-        isCollapsed,
+        preferences,
+        updatePreferences,
+        isCollapsed: preferences.sidebarCollapsed,
         setIsCollapsed: setAndSaveCollapsed,
         toggleSidebar,
         theme: nextTheme,

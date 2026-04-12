@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
+import { useGuidance } from "@/modules/guidance/presentation/hooks/use-guidance";
 import {
   Dialog,
   DialogContent,
@@ -48,6 +49,7 @@ export function CreateCollectionDialog({
 }: CreateCollectionDialogProps) {
   const [open, setOpen] = useState(false);
   const { createCollection, updateCollection, loading } = useCollections();
+  const { trackMilestone } = useGuidance();
 
   const {
     register,
@@ -93,6 +95,7 @@ export function CreateCollectionDialog({
     } else {
       const res = await createCollection(data);
       if (res?.ok) {
+        void trackMilestone("collection_created");
         setOpen(false);
         reset();
         onSuccess?.();
@@ -108,7 +111,10 @@ export function CreateCollectionDialog({
   };
 
   const triggerEl = children ?? (
-    <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-[13px] text-primary-foreground bg-primary hover:bg-primary-hover transition-all duration-150 hover:-translate-y-0.5">
+    <button
+      data-guidance-anchor="create-collection"
+      className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-[13px] text-primary-foreground bg-primary hover:bg-primary-hover transition-all duration-150 hover:-translate-y-0.5"
+    >
       <Plus size={15} />
       Nueva Colección
     </button>

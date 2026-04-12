@@ -46,6 +46,13 @@ const updateBodySchema = z.object({
       ANTHROPIC: z.string().optional(),
     })
     .optional(),
+  providerSecretsClear: z
+    .object({
+      GEMINI: z.boolean().optional(),
+      OPENAI: z.boolean().optional(),
+      ANTHROPIC: z.boolean().optional(),
+    })
+    .optional(),
 });
 
 interface RouteParams {
@@ -206,6 +213,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   for (const providerId of AI_PROVIDER_IDS) {
     const nextSecret = bodyResult.data.providerSecretsInput?.[providerId]?.trim();
     if (!nextSecret) {
+      if (bodyResult.data.providerSecretsClear?.[providerId]) {
+        delete providerSecrets[providerId];
+      }
       continue;
     }
 

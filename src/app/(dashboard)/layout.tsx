@@ -24,6 +24,7 @@ import {
   PermissionProvider,
   usePermissions,
 } from "@/modules/authorization/presentation/providers/permission-provider";
+import { GuidanceProvider } from "@/modules/guidance/presentation/providers/guidance-provider";
 import { WorkspaceSwitcher } from "@/modules/workspace/presentation/components/workspace-switcher";
 import WorkspaceProvider from "@/modules/workspace/presentation/providers/workspace-provider";
 import { getMissingPublicSupabaseEnv } from "@/shared/infrastructure/supabase/env";
@@ -60,11 +61,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <AuthGuard>
               <BreadcrumbProvider>
                 <PermissionProvider>
-                  <TooltipProvider delayDuration={0}>
-                    <DashboardContent sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen}>
-                      {children}
-                    </DashboardContent>
-                  </TooltipProvider>
+                  <GuidanceProvider>
+                    <TooltipProvider delayDuration={0}>
+                      <DashboardContent sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen}>
+                        {children}
+                      </DashboardContent>
+                    </TooltipProvider>
+                  </GuidanceProvider>
                 </PermissionProvider>
               </BreadcrumbProvider>
             </AuthGuard>
@@ -139,6 +142,7 @@ function Breadcrumb() {
     templates: "Plantillas",
     relations: "Relaciones",
     settings: "Configuración",
+    help: "Ayuda",
   };
 
   let items: BreadcrumbItem[];
@@ -207,6 +211,7 @@ function DashboardSidebar({
     >
       {/* Brand + Workspace Switcher */}
       <div
+        data-guidance-anchor="workspace-switcher"
         className={`py-4 flex items-center justify-center ${effectiveIsCollapsed ? "px-0" : "px-3"}`}
       >
         <WorkspaceSwitcher showName={!effectiveIsCollapsed} />
@@ -293,7 +298,10 @@ function SidebarNav({
   const { isOwner, isSuperAdmin } = usePermissions();
 
   return (
-    <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1 scrollbar-hide">
+    <nav
+      data-guidance-anchor="sidebar-nav"
+      className="flex-1 overflow-y-auto px-3 py-4 space-y-1 scrollbar-hide"
+    >
       <div className={`mb-4 ${isCollapsed ? "hidden" : ""}`}>
         <p className="text-[10px] font-bold uppercase tracking-[0.15em] px-3 text-foreground/30">
           Principal

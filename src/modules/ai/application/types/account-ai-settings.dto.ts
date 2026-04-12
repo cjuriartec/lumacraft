@@ -39,4 +39,5 @@ export interface UpdateAccountAISettingsDto {
   fallbackModel: string;
   providerOptions: AccountAIProviderOptions;
   providerSecretsInput?: Partial<Record<AIProviderId, string>>;
+  providerSecretsClear?: Partial<Record<AIProviderId, boolean>>;
 }

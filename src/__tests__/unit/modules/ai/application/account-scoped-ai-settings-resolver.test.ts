@@ -7,6 +7,7 @@ import { SaveAccountAISettingsUseCase } from "@/modules/ai/application/use-cases
 import { ACCOUNT_AI_DEFAULT_SYSTEM_PROMPT } from "@/modules/ai/domain/constants/account-ai-settings.constants";
 import { AccountAISettings } from "@/modules/ai/domain/entities/account-ai-settings.entity";
 import { AccountAISettingsRepositoryPort } from "@/modules/ai/domain/ports/account-ai-settings-repository.port";
+import { encryptSecret } from "@/modules/ai/infrastructure/security/account-ai-settings-crypto";
 import { ok } from "@/shared/domain/result";
 
 class InMemoryAccountAISettingsRepository implements AccountAISettingsRepositoryPort {
@@ -33,10 +34,21 @@ class InMemoryAccountAISettingsRepository implements AccountAISettingsRepository
 }
 
 describe("AccountScopedAISettingsResolver", () => {
-  it("bootstraps legacy env config and decrypts provider secrets", async () => {
+  it("decrypts only the provider secrets explicitly stored on the workspace", async () => {
+    const encryptedSecret = encryptSecret("workspace-key-1234", {
+      AI_SETTINGS_MASTER_KEY: "master-key",
+      NODE_ENV: "test",
+    } as unknown as NodeJS.ProcessEnv);
+    if (!encryptedSecret.ok) {
+      throw encryptedSecret.error;
+    }
+
     const initialSettings = AccountAISettings.create({
       accountId: "account-1",
       systemPrompt: "Prioriza claridad contractual.",
+      providerSecrets: {
+        GEMINI: encryptedSecret.value,
+      },
     });
     if (!initialSettings.ok) {
       throw initialSettings.error;
@@ -50,24 +62,15 @@ describe("AccountScopedAISettingsResolver", () => {
 
     const result = await resolver.resolve("account-1", {
       AI_SETTINGS_MASTER_KEY: "master-key",
-      GEMINI_API_KEY: "legacy-key-1234",
-      AI_DEFAULT_MODEL: "gemini-2.5-flash",
-      AI_REQUEST_TIMEOUT_MS: "27000",
-      FEATURE_TEMPLATE_AI: "false",
-      FEATURE_TEMPLATE_LOGIC: "true",
-      TEMPLATE_PREVIEW_TIMEOUT_MS: "50000",
-      TEMPLATE_PREVIEW_MAX_AI_BLOCKS: "4",
+      GEMINI_API_KEY: "legacy-env-key-9999",
       NODE_ENV: "test",
     } as unknown as NodeJS.ProcessEnv);
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
-    expect(result.value.settings.defaultModel).toBe("gemini-2.5-flash");
-    expect(result.value.settings.requestTimeoutMs).toBe(27000);
-    expect(result.value.settings.featureTemplateAI).toBe(false);
-    expect(result.value.settings.templatePreviewTimeoutMs).toBe(50000);
-    expect(result.value.decryptedSecrets.GEMINI).toBe("legacy-key-1234");
+    expect(result.value.settings.providerSecrets.GEMINI?.last4).toBe("1234");
+    expect(result.value.decryptedSecrets.GEMINI).toBe("workspace-key-1234");
 
     const provider = result.value.providerFactory.create();
     expect(provider.ok).toBe(true);
