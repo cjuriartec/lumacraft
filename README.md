@@ -1,142 +1,132 @@
-# 💎 Lumacraft
+# <p align="center">💎 Lumacraft</p>
+### <p align="center">The High-Performance, AI-Native Dynamic Data Engine</p>
 
-[![Next.js](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js)](https://nextjs.org/)
-[![Supabase](https://img.shields.io/badge/Supabase-BaaS-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.0-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
-[![Architecture](https://img.shields.io/badge/Architecture-Hexagonal-blue?style=flat-square)](<https://en.wikipedia.org/wiki/Hexagonal_architecture_(software)>)
-
-**Lumacraft** es una plataforma modular de gestión de datos dinámicos potenciada por IA, diseñada para escalar mediante una arquitectura multitenant robusta y un motor de generación de documentos inteligente.
-
----
-
-## 🚀 Propósito del Proyecto
-
-El objetivo de Lumacraft es proporcionar una infraestructura flexible que permita a las organizaciones:
-
-1.  **Crear estructuras de datos dinámicas** sin necesidad de despliegues constantes (Data Engine).
-2.  **Gestionar permisos granulares** (RBAC) con aislamiento estricto entre cuentas (Multi-tenancy).
-3.  **Generar documentos inteligentes** basados en contextos enriquecidos por el motor de datos.
-4.  **Integrar IA (Gemini)** para redacción contextual y automatización de flujos de trabajo.
+<p align="center">
+  <img src="https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js" alt="Next.js" />
+  <img src="https://img.shields.io/badge/Supabase-BaaS-3ECF8E?style=flat-square&logo=supabase" alt="Supabase" />
+  <img src="https://img.shields.io/badge/Tailwind-4.0-38B2AC?style=flat-square&logo=tailwind-css" alt="Tailwind" />
+  <img src="https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/Architecture-Hexagonal-blue?style=flat-square" alt="Architecture" />
+</p>
 
 ---
 
-## 🏛️ Arquitectura: Screaming + Hexagonal (Domain-Driven)
+**Lumacraft** is a premium, open-source platform-builder designed to orchestrate complex dynamic data structures with the precision of a master artisan. Inspired by the flexibility of Airtable and the robustness of Supabase, it empowers organizations to build custom data engines, intelligent document generators, and AI-native workflows in a multi-tenant, zero-trust environment.
 
-Este proyecto implementa **Screaming Architecture** (las carpetas gritan el dominio del negocio) y **Hexagonal Architecture** (Puertos y Adaptadores) con un enfoque en **Domain-Driven Design (DDD)**.
+## 🌟 The Core Pillars
 
-### Principios de Diseño
-
-1.  **Valid by Construction**: Las entidades de dominio (`Collection`, `Field`, `Role`) solo pueden instanciarse a través de fábricas estáticas (`Entity.create()`) que validan invariantes usando **Value Objects**.
-2.  **Value Objects (VOs)**: Los tipos primitivos están envueltos en objetos con lógica de validación propia (e.g., `Identifier` para slugs, `DisplayName` para etiquetas).
-3.  **Result Pattern**: No se utilizan excepciones para errores de negocio esperados. Todas las operaciones devuelven un objeto `Result<T, E>`.
-4.  **Agnosticismo de Infraestructura**: La lógica de negocio (`domain` y `application`) no conoce nada sobre Supabase, Next.js o librerías externas.
-
-### Estructura de Folders (`src/`)
-
-- `modules/`: Dominios de negocio (Contextos Delimitados).
-  - `domain/`: Entidades, Value Objects y Puertos (Interfaces de Repositorio).
-  - `application/`: Casos de uso (Orquestación de lógica).
-  - `infrastructure/`: Adaptadores (Supabase, APIs externas).
-  - `presentation/`: UI enfocada al módulo (React components, hooks).
-- `shared/`: Infraestructura compartida y base del sistema de tipos.
-- `app/`: Capa de entrega (Next.js App Router).
-
----
-
-## 🛠️ Stack Tecnológico
-
-| Capa               | Tecnología                                             |
-| :----------------- | :----------------------------------------------------- |
-| **Frontend**       | Next.js 16 (App Router), React 19, Tailwind CSS 4      |
-| **Backend (BaaS)** | Supabase (PostgreSQL, Auth, Storage, RLS Granular)     |
-| **IA Engine**      | Google Gemini (Contextual Generation)                  |
-| **PDF Export**     | @react-pdf/renderer (High-Fidelity Document Rendering) |
-| **Editor**         | Plate.js (Highly Extensible WYSIWYG)                   |
-| **Validación**     | Domain VOs (Internal), Zod (API/Form Boundaries)       |
-| **Testing**        | Vitest (Unit/Integration), Playwright (E2E)            |
-| **Componentes**    | Radix UI, Lucide Icons, Noir Minimalist Custom CSS     |
+<table width="100%">
+  <tr>
+    <td width="33%" align="center">
+      <h3>⚡ Data Engine</h3>
+      <p>Dynamic collections and fields with strict PostgreSQL-level validation. Relationships at scale (1:1, 1:N, N:M) with referential integrity.</p>
+    </td>
+    <td width="33%" align="center">
+      <h3>🧠 AI Brain</h3>
+      <p>Native integration with Google Gemini. Context-aware content generation that understands your data schema and business rules.</p>
+    </td>
+    <td width="33%" align="center">
+      <h3>📄 Doc Forge</h3>
+      <p>High-fidelity document generation. From a visual WYSIWYG editor to pixel-perfect PDFs using a server-side rendering pipeline.</p>
+    </td>
+  </tr>
+</table>
 
 ---
 
-## ✨ Características Principales
+## 🏛️ Engineering Excellence
 
-- **Data Engine Hardened**: Motor de datos con validación estricta de esquemas a nivel de dominio y base de datos (PostgreSQL).
-- **Smart Template Editor**: Editor visual avanzado basado en Plate.js con soporte para bloques lógicos, tablas dinámicas y redimensionamiento inteligente.
-- **High-Fidelity PDF Export**: Exportación de templates a PDF con fidelidad visual total — headings, listas, tablas, imágenes, colores, fuentes y alineación — usando `@react-pdf/renderer` directamente en el proceso de Next.js.
-- **AI-Powered Context**: Integración profunda con Gemini para generación de contenido basada en el contexto de los datos de la colección.
-- **Relaciones Avanzadas Engine**: Soporte robusto para relaciones 1:1, 1:N y N:M con integridad referencial y resolución eficiente de datos.
-- **Zero-Trust Authz**: Sistema de permisos granulares basado en roles persistidos en DB y forzados mediante RLS.
-- **Noir Aesthetics**: Interfaz premium minimalista con soporte nativo para Light/Dark mode y animaciones fluidas.
+Lumacraft isn't just code; it's a statement on software architecture. Built with **Screaming + Hexagonal Architecture**, we ensure that business logic remains pure, testable, and completely decoupled from infrastructure details.
+
+```mermaid
+graph TD
+    subgraph "Delivery (Presentation)"
+        NextJS["Next.js App Router"]
+        React["React UI (Noir)"]
+    end
+
+    subgraph "Orchestration (Application)"
+        UseCases["Use Cases (Interactors)"]
+    end
+
+    subgraph "Heart (Domain)"
+        Entities["Entities"]
+        VOs["Value Objects"]
+        Ports["Repository Ports"]
+    end
+
+    subgraph "Infrastructure (Adapters)"
+        Supabase["Supabase / PostgreSQL"]
+        Gemini["Gemini AI API"]
+    end
+
+    NextJS --> UseCases
+    UseCases --> Entities
+    Supabase -.-> Ports
+    UseCases -.-> Ports
+    Gemini -.-> Ports
+```
+
+- **Domain-Driven Design (DDD)**: Logic isolated in the heart of the system.
+- **Valid by Construction**: We use Value Objects to prevent illegal states.
+- **Result Pattern**: Uniform, functional error handling (no hidden exceptions).
 
 ---
 
-## 🏁 Empezando
+## 🎨 UI Luxe: Noir Minimalist
 
-### Requisitos Previos
+Experience a dashboard that feels like a high-end physical object. 
+- **Integrated Aesthetics**: A flat, Noir Minimalist UI that prioritizes signal over noise.
+- **Micro-interactions**: Fluid transitions and hover effects that feel alive.
+- **Adaptive Precision**: Native Light and Dark patterns using a unified CSS token system.
 
-- Node.js 20+
-- Instancia de Supabase (Local o Cloud)
+---
 
-### Instalación
+## 🚀 Quick Start
 
-1.  Clonar el repositorio:
+Ensure you have **Node.js 22.x** and a **Supabase** instance ready.
+
+1.  **Clone & Install**
     ```bash
-    git clone https://github.com/usuario/lumacraft.git
-    cd lumacraft
-    ```
-2.  Instalar dependencias:
-    ```bash
+    git clone https://github.com/cjuriartec/lumacraft.git && cd lumacraft
     npm install
     ```
-3.  **Configurar el entorno local**:
-    Lumacraft incluye un script automatizado para levantar Supabase y configurar las variables de entorno necesarias:
 
+2.  **Forge the Environment**
+    Our automated script handles the heavy lifting of setting up your local Supabase instance:
     ```bash
     npm run supabase:local
     ```
 
-    _Este script levantará los contenedores de Docker, aplicará las migraciones y generará las variables para tu `.env.local`._
-
-    Las variables requeridas son:
-
-    | Variable                               | Descripción                            | Requerida para            |
-    | -------------------------------------- | -------------------------------------- | ------------------------- |
-    | `NEXT_PUBLIC_SUPABASE_URL`             | URL pública del proyecto Supabase      | Todo                      |
-    | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Clave anónima (segura para el cliente) | Auth, DB queries          |
-    | `SUPABASE_SECRET_KEY`                  | Service role key — bypasea RLS         | **PDF Export**, admin ops |
-    | `AI_SETTINGS_MASTER_KEY`               | Clave de cifrado para secrets de IA    | AI Engine                 |
-
-    > **Importante**: `SUPABASE_SECRET_KEY` es obligatoria para que la exportación de PDF funcione. Sin ella, el servidor no puede subir archivos al bucket `exports` de Storage (bloqueado por RLS).
-
-4.  **Ejecutar el servidor de desarrollo**:
+3.  **Launch**
     ```bash
     npm run dev
     ```
 
 ---
 
-## 🧪 Comandos Útiles
+## 🗺️ Roadmap & Evolution
 
-- `npm run dev`: Inicia el servidor de desarrollo.
-- `npm run supabase:local`: Configura y levanta el entorno de Supabase localmente.
-- `npm run test`: Ejecuta todos los tests críticos (Unit, Component, Integration).
-- `npm run test:e2e`: Ejecuta los tests de extremo a extremo con Playwright.
-- `npm run test:coverage`: Genera informe de cobertura completa.
-- `npm run lint:fix`: Ejecuta y corrige problemas de estilo y calidad de código.
-
----
-
-## 🗺️ Roadmap de Implementación
-
-- [x] **Fase 1**: Fundación - Data Engine (Setup, Auth Google, CRUD dinámico).
-- [x] **Fase 2**: Relaciones y Permisos (Sistema de relaciones complex, RLS granular).
-- [x] **Fase 3**: Template Engine Visual (Editor Plate.js, bloques dinámicos).
-- [x] **Fase 4**: Context Engine + AI Engine + PDF Export (Integración Gemini contextual, exportación de alta fidelidad con `@react-pdf/renderer`).
-- [ ] **Fase 5**: Automatizaciones y Workflows (Triggers on-create/update).
+- [x] **Genesis**: Core Data Engine & RBAC.
+- [x] **Nexus**: Complex Relationship Engine & RLS isolation.
+- [x] **Prism**: Visual Template Editor (Plate.js integration).
+- [x] **Flux**: Contextual AI Generation & PDF High-Fidelity Pipeline.
+- [ ] **Automata**: Self-triggering Workflows & Event Engine.
 
 ---
 
-## 📄 Licencia
+## 🤝 Community & Contribution
 
-Este proyecto está bajo la Licencia MIT - mira el archivo [LICENSE](LICENSE) para detalles.
+We seek contributors who value craft over speed. Please read our **[Contributing Guidelines](CONTRIBUTING.md)** to understand our architectural standards before opening a PR.
+
+---
+
+## 📄 License
+
+Lumacraft is open-source software licensed under the **[MIT License](LICENSE)**.
+
+---
+
+<p align="center">
+  Built with passion for the artisans of the web.
+</p>
