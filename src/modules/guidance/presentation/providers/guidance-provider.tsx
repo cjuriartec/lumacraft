@@ -447,8 +447,14 @@ export function GuidanceProvider({ children }: { children: React.ReactNode }) {
   }, [currentWorkspace, supabase]);
 
   useEffect(() => {
-    void refreshWorkspaceSnapshot();
-  }, [refreshWorkspaceSnapshot]);
+    // Ensure we have an initial snapshot or refresh if workspace changes
+    if (currentWorkspace && workspaceSnapshot.workspaceId !== currentWorkspace.id) {
+      const t = setTimeout(() => {
+        void refreshWorkspaceSnapshot();
+      }, 0);
+      return () => clearTimeout(t);
+    }
+  }, [currentWorkspace, refreshWorkspaceSnapshot, workspaceSnapshot.workspaceId]);
 
   const retroactiveMilestones = useMemo<GuidanceMilestoneId[]>(() => {
     const milestones: GuidanceMilestoneId[] = [];

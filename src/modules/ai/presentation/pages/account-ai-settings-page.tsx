@@ -136,7 +136,7 @@ export default function AccountAISettingsPage() {
         // Error is handled by useAccountAISettings
       }
     },
-    [save, trackMilestone],
+    [save],
   );
 
   const debouncedSave = useMemo(() => debounce(handleSave, 500), [handleSave]);
