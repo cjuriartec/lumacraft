@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.7](https://github.com/cjuriartec/lumacraft/compare/v0.1.6...v0.1.7) (2026-04-12)
+
+
+### ✨ Features
+
+* implement comprehensive user onboarding and guidance system with interactive checklists ([772988c](https://github.com/cjuriartec/lumacraft/commit/772988c8218d57a06d07205ce98f5d001ae20f2f))
+
+
+### ♻️ Code Refactoring
+
+* remove unused dependency from account settings and debounce workspace snapshot updates ([ec3556e](https://github.com/cjuriartec/lumacraft/commit/ec3556e4d1b881ec7d9516f76996983d07cb1a13))
+* update help launcher with expand-on-hover animation and adjust coachmark z-index ([ae788c3](https://github.com/cjuriartec/lumacraft/commit/ae788c3980ea6600a7d0910d4a95c3eddcfb7b06))
+
+
+### 📦 Miscellaneous
+
+* update package-lock.json dependencies ([d802234](https://github.com/cjuriartec/lumacraft/commit/d8022342af0293401272464391d5ecfe70d6b728))
+
+
+### 📝 Documentation
+
+* overhaul README with project branding and add CONTRIBUTING guidelines ([f334380](https://github.com/cjuriartec/lumacraft/commit/f334380cb2a9efd858a144918d3eb63d6af0b8e4))
+
 ### [0.1.6](https://github.com/cjuriartec/lumacraft/compare/v0.1.5...v0.1.6) (2026-04-12)
 
 
