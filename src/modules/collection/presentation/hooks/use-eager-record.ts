@@ -21,6 +21,7 @@ export function useEagerRecord(
 
   const fetchRecord = useCallback(
     async (signal?: AbortSignal) => {
+      // Don't fetch if disabled or missing IDs
       if (!enabled || !collectionId || !recordId) {
         setRecord(null);
         setError(null);
@@ -32,14 +33,12 @@ export function useEagerRecord(
       setError(null);
 
       try {
-        const response = await fetch(
-          `/api/collections/${encodeURIComponent(collectionId)}/records/${encodeURIComponent(recordId)}/eager-load?depth=${depth}`,
-          {
-            signal,
-            credentials: "same-origin",
-            cache: "no-store",
-          },
-        );
+        const url = `/api/collections/${encodeURIComponent(collectionId)}/records/${encodeURIComponent(recordId)}/eager-load?depth=${depth}`;
+        const response = await fetch(url, {
+          signal,
+          credentials: "same-origin",
+          cache: "no-store",
+        });
 
         if (!response.ok) {
           const payload = (await response.json().catch(() => null)) as { error?: string } | null;
@@ -49,13 +48,17 @@ export function useEagerRecord(
         const payload = (await response.json()) as EagerLoadedRecord;
         setRecord(payload);
       } catch (err) {
-        if ((err as Error).name === "AbortError") {
+        // Silently handle AbortError as it's an expected part of the cleanup
+        if (err instanceof Error && err.name === "AbortError") {
           return;
         }
         setRecord(null);
         setError(err instanceof Error ? err.message : "No se pudo cargar el registro.");
       } finally {
-        setLoading(false);
+        // Only stop loading if the signal is not aborted
+        if (!signal?.aborted) {
+          setLoading(false);
+        }
       }
     },
     [collectionId, depth, enabled, recordId],
@@ -64,7 +67,9 @@ export function useEagerRecord(
   useEffect(() => {
     const controller = new AbortController();
     void fetchRecord(controller.signal);
-    return () => controller.abort();
+    return () => {
+      controller.abort();
+    };
   }, [fetchRecord]);
 
   return {
