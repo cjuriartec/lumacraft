@@ -21,12 +21,15 @@ vi.mock("@/modules/collection/presentation/hooks/use-relation-records", () => ({
   }),
 }));
 
+const storageState = vi.hoisted(() => ({
+  uploadFile: vi.fn(),
+  downloadFile: vi.fn(async () => ({ ok: true, value: new Blob(["x"]) })),
+  getPublicUrl: vi.fn().mockReturnValue({ ok: true, value: "https://example.com" }),
+  deleteFiles: vi.fn(),
+}));
+
 vi.mock("@/modules/collection/presentation/hooks/use-storage", () => ({
-  useStorage: () => ({
-    uploadFile: vi.fn(),
-    downloadFile: vi.fn(async () => ({ ok: true, value: new Blob(["x"]) })),
-    deleteFiles: vi.fn(),
-  }),
+  useStorage: () => storageState,
 }));
 
 vi.mock("next/link", () => ({

@@ -66,6 +66,14 @@ vi.mock("@/modules/collection/presentation/components/record-quick-view-dialog",
   RecordQuickViewDialog: () => null,
 }));
 
+vi.mock("@/modules/collection/presentation/hooks/use-storage", () => ({
+  useStorage: () => ({
+    getPublicUrl: vi.fn().mockReturnValue({ ok: true, value: "https://example.com" }),
+    uploadFile: vi.fn(),
+    deleteFiles: vi.fn(),
+  }),
+}));
+
 describe("RecordDetailPage", () => {
   it("renders the record label, short id and breadcrumb with the resolved label", () => {
     render(

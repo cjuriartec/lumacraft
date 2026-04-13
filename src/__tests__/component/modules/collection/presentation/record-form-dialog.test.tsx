@@ -16,6 +16,7 @@ const relationRecordsState = vi.hoisted(() => ({
 const storageState = vi.hoisted(() => ({
   uploadFile: vi.fn(),
   deleteFiles: vi.fn(),
+  getPublicUrl: vi.fn().mockReturnValue({ ok: true, value: "https://example.com" }),
 }));
 
 const workspaceState = vi.hoisted(() => ({

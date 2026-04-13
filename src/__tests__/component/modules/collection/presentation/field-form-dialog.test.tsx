@@ -120,7 +120,7 @@ vi.mock("@/shared/presentation/components/ui/select", () => {
 describe("FieldFormDialog", () => {
   it("removes the bidirectional toggle and normalizes relation submits as bidirectional", async () => {
     resetFactories();
-    const onSubmit = vi.fn(async () => ({ ok: true, value: makeField() }));
+    const onSubmit = vi.fn(async () => ({ ok: true, value: makeField() }) as const);
 
     render(
       <FieldFormDialog
@@ -187,7 +187,7 @@ describe("FieldFormDialog", () => {
     render(
       <FieldFormDialog
         field={relationField}
-        onSubmit={vi.fn(async () => ({ ok: true, value: relationField }))}
+        onSubmit={vi.fn(async () => ({ ok: true, value: relationField }) as const)}
         availableCollections={[{ id: "11111111-1111-4111-8111-111111111111", name: "orders" }]}
       />,
     );
