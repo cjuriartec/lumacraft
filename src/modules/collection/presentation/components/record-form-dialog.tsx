@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AlertCircle, Loader2, Plus, Trash2, Upload, X } from "lucide-react";
+import { AlertCircle, Check, Loader2, Plus, Search, Trash2, Upload, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -226,7 +226,7 @@ export function RecordFormDialog({
 
     relationTimers.current[field.name] = setTimeout(() => {
       void searchRelations(field, query);
-    }, 300);
+    }, 250);
   };
 
   const normalizeFileMetadata = async (values: Record<string, unknown>) => {
@@ -319,85 +319,140 @@ export function RecordFormDialog({
     const selectedValue = form.watch(field.name);
     const options = relationOptions[field.name] || [];
     const isMany = relationFieldAllowsMany(field);
+    const query = relationQuery[field.name] || "";
+    const isLoading = relationLoading[field.name] ?? false;
+    const selectedIds = Array.isArray(selectedValue)
+      ? selectedValue.filter((value): value is string => typeof value === "string")
+      : [];
+    const selectedSingleValue = typeof selectedValue === "string" ? selectedValue : undefined;
 
     return (
-      <div className="space-y-2">
-        <Label className="text-muted">{field.displayName || field.name}</Label>
-        <Input
-          placeholder="Buscar relación..."
-          className="bg-background border-border text-foreground"
-          value={relationQuery[field.name] || ""}
-          onFocus={() => queueRelationFetch(field, relationQuery[field.name] || "")}
-          onChange={(e) => queueRelationFetch(field, e.target.value)}
-        />
-        {relationLoading[field.name] ? (
-          <div className="flex items-center gap-2 text-xs text-muted">
-            <Loader2 size={14} className="animate-spin" />
-            Buscando registros...
-          </div>
-        ) : null}
+      <div className="space-y-3">
+        <Label className="text-[11px] font-bold uppercase tracking-widest text-foreground/70 ml-1 truncate block">
+          {field.displayName || field.name}
+        </Label>
 
-        {isMany ? (
-          <div className="space-y-2">
-            <div className="flex flex-wrap gap-1.5">
-              {Array.isArray(selectedValue) &&
-                selectedValue.map((id) => (
+        <div className="relative group">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40 group-focus-within:text-primary/50 transition-colors" />
+          <Input
+            placeholder="Escribe para buscar registros..."
+            className="pl-9 bg-background border-border/50 text-foreground text-sm focus-visible:ring-primary/20 rounded-xl"
+            value={query}
+            onFocus={() => {
+              if (query === "" && options.length === 0) {
+                queueRelationFetch(field, "");
+              }
+            }}
+            onChange={(e) => queueRelationFetch(field, e.target.value)}
+          />
+          {isLoading && query !== "" && (
+            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+              <Loader2 size={14} className="animate-spin text-primary" />
+            </div>
+          )}
+        </div>
+
+        {/* Selected Items Badges (Many-to-Many / One-to-Many) */}
+        {isMany && selectedIds.length > 0 && (
+          <div className="flex flex-wrap gap-2 p-2.5 rounded-xl bg-foreground/2 border border-border/30">
+            {selectedIds.map((id) => {
+              const label = options.find((option) => option.id === id)?.label || id;
+              return (
+                <Badge
+                  key={id}
+                  variant="secondary"
+                  className="group h-7 pl-2.5 pr-1 gap-1.5 bg-background border-border/50 text-foreground/80 hover:text-primary transition-all rounded-lg"
+                >
+                  <span className="max-w-[150px] truncate">{label}</span>
                   <button
-                    key={id}
                     type="button"
-                    className="inline-flex items-center gap-1 rounded-md bg-primary/10 text-primary px-2 py-1 text-[11px]"
                     onClick={() => {
-                      const next = selectedValue.filter((item) => item !== id);
+                      const next = selectedIds.filter((item) => item !== id);
                       form.setValue(field.name, next);
                     }}
+                    className="p-0.5 rounded-full hover:bg-foreground/10 text-muted-foreground/50 hover:text-foreground transition-colors"
                   >
-                    {options.find((option) => option.id === id)?.label || id}
-                    <X size={11} />
+                    <X size={12} />
                   </button>
-                ))}
-            </div>
-            <div className="max-h-40 overflow-y-auto rounded-lg border border-border/50">
+                </Badge>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Results List */}
+        {options.length > 0 && (
+          <div className="overflow-hidden rounded-xl border border-border/40 bg-surface shadow-sm">
+            <div className="max-h-[200px] overflow-y-auto divide-y divide-border/10">
               {options.map((option) => {
-                const checked = Array.isArray(selectedValue) && selectedValue.includes(option.id);
+                const isSelected = isMany
+                  ? selectedIds.includes(option.id)
+                  : selectedSingleValue === option.id;
+
                 return (
                   <button
                     key={option.id}
                     type="button"
-                    className={`w-full px-3 py-2 text-left text-sm transition-colors ${
-                      checked
-                        ? "bg-primary/10 text-primary"
-                        : "hover:bg-surface-hover/40 text-foreground"
-                    }`}
                     onClick={() => {
-                      const base = Array.isArray(selectedValue) ? selectedValue : [];
-                      const next = checked
-                        ? base.filter((item) => item !== option.id)
-                        : [...base, option.id];
-                      form.setValue(field.name, next);
+                      if (isMany) {
+                        const base = selectedIds;
+                        const next = isSelected
+                          ? base.filter((item) => item !== option.id)
+                          : [...base, option.id];
+                        form.setValue(field.name, next);
+                      } else {
+                        form.setValue(field.name, isSelected ? undefined : option.id);
+                      }
                     }}
+                    className={cn(
+                      "w-full flex items-center justify-between px-4 py-3 text-left text-sm transition-all duration-200",
+                      isSelected
+                        ? "bg-primary/5 text-primary"
+                        : "hover:bg-foreground/2 text-foreground/70 hover:text-foreground",
+                    )}
                   >
-                    {option.label}
+                    <span className="truncate flex-1 font-medium">{option.label}</span>
+                    {isSelected && (
+                      <div className="ml-2 h-4 w-4 rounded-full bg-primary flex items-center justify-center">
+                        <Check size={10} className="text-background stroke-[3px]" />
+                      </div>
+                    )}
                   </button>
                 );
               })}
             </div>
           </div>
-        ) : (
-          <Select
-            value={(selectedValue as string) || ""}
-            onValueChange={(value) => form.setValue(field.name, value)}
-          >
-            <SelectTrigger className="bg-background border-border text-foreground">
-              <SelectValue placeholder="Selecciona un registro" />
-            </SelectTrigger>
-            <SelectContent className="bg-surface border-border text-foreground">
-              {options.map((option) => (
-                <SelectItem key={option.id} value={option.id}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        )}
+
+        {/* Loading State for empty initial search */}
+        {isLoading && query === "" && options.length === 0 && (
+          <div className="flex items-center gap-2 justify-center py-6 text-xs text-muted-foreground/60 animate-pulse">
+            <Loader2 size={12} className="animate-spin" />
+            Recuperando registros...
+          </div>
+        )}
+
+        {/* No Results State */}
+        {!isLoading && query !== "" && options.length === 0 && (
+          <div className="text-center py-6 text-xs text-muted/40 italic bg-foreground/1 border border-dashed border-border/30 rounded-xl">
+            No se encontraron resultados vinculables.
+          </div>
+        )}
+
+        {/* One-to-One / Many-to-One support - if not isMany, show indicator if selected */}
+        {!isMany && selectedSingleValue && options.length === 0 && !isLoading && (
+          <div className="p-3 rounded-xl bg-primary/5 border border-primary/20 flex items-center justify-between">
+            <span className="text-sm font-medium text-primary/80 truncate">
+              ID Vinculado: {selectedSingleValue}
+            </span>
+            <button
+              type="button"
+              onClick={() => form.setValue(field.name, undefined)}
+              className="text-[10px] uppercase font-bold text-primary hover:underline"
+            >
+              Limpiar
+            </button>
+          </div>
         )}
       </div>
     );
@@ -415,7 +470,7 @@ export function RecordFormDialog({
               checked={!!form.watch(name)}
               onCheckedChange={(val) => form.setValue(name, val)}
             />
-            <Label htmlFor={name} className="text-muted">
+            <Label htmlFor={name} className="text-muted truncate block">
               {displayName || name}
             </Label>
           </div>
@@ -447,7 +502,7 @@ export function RecordFormDialog({
       case "NUMBER":
         return (
           <div className="space-y-2">
-            <Label htmlFor={name} className="text-muted">
+            <Label htmlFor={name} className="text-muted truncate block">
               {displayName || name}
             </Label>
             <Input
@@ -464,10 +519,12 @@ export function RecordFormDialog({
       case "TEXT": {
         const textCfg = (config?.value ?? {}) as { placeholder?: string; multiline?: boolean };
         const placeholder = textCfg.placeholder || "";
+        const currentValue = form.watch(name);
+
         if (textCfg.multiline) {
           return (
             <div className="space-y-2">
-              <Label htmlFor={name} className="text-muted">
+              <Label htmlFor={name} className="text-muted truncate block">
                 {displayName || name}
               </Label>
               <Textarea
@@ -476,13 +533,15 @@ export function RecordFormDialog({
                 className="bg-background border-border text-foreground placeholder:text-muted/40 resize-y min-h-[100px]"
                 placeholder={placeholder}
                 {...form.register(name)}
+                value={(currentValue as string) ?? ""}
+                enableAI={true}
               />
             </div>
           );
         }
         return (
           <div className="space-y-2">
-            <Label htmlFor={name} className="text-muted">
+            <Label htmlFor={name} className="text-muted truncate block">
               {displayName || name}
             </Label>
             <Input
@@ -490,6 +549,8 @@ export function RecordFormDialog({
               className="bg-background border-border text-foreground placeholder:text-muted/40"
               placeholder={placeholder}
               {...form.register(name)}
+              value={(currentValue as string) ?? ""}
+              enableAI={true}
             />
           </div>
         );
@@ -498,7 +559,7 @@ export function RecordFormDialog({
       case "DATE":
         return (
           <div className="space-y-2">
-            <Label htmlFor={name} className="text-muted">
+            <Label htmlFor={name} className="text-muted truncate block">
               {displayName || name}
             </Label>
             <Input
@@ -640,17 +701,26 @@ export function RecordFormDialog({
             : [];
 
         return (
-          <div className="space-y-2 opacity-80">
-            <Label className="text-muted flex items-center justify-between">
-              {displayName || name}
+          <div className="space-y-4 p-5 rounded-2xl bg-foreground/2 border border-border/30">
+            <div className="flex items-start justify-between">
+              <div className="space-y-1">
+                <Label className="text-[11px] font-bold uppercase tracking-[0.12em] text-foreground/70 truncate block">
+                  {displayName || name}
+                </Label>
+                <p className="text-[10px] text-muted-foreground/40 leading-tight pr-8">
+                  Vínculos inversos calculados. Los cambios en otras colecciones se reflejarán aquí
+                  automáticamente.
+                </p>
+              </div>
               <Badge
                 variant="outline"
-                className="text-[9px] uppercase tracking-tighter opacity-50 border-none px-0"
+                className="text-[9px] uppercase tracking-widest opacity-40 border-border/40 px-2 h-4.5 font-bold"
               >
-                Virtual
+                Inverso
               </Badge>
-            </Label>
-            <div className="flex flex-wrap gap-1.5 min-h-[40px] p-3 rounded-lg bg-foreground/3 border border-border/30 border-dashed">
+            </div>
+
+            <div className="flex flex-wrap gap-2 min-h-[32px]">
               {reverseItems.length > 0 ? (
                 reverseItems.map((item: Record<string, unknown> | string, idx) => {
                   const isObj = typeof item === "object" && item !== null;
@@ -663,22 +733,20 @@ export function RecordFormDialog({
                     <Badge
                       key={idx}
                       variant="secondary"
-                      className="bg-primary/5 text-primary/70 border-primary/10"
+                      className="bg-primary/5 text-primary/70 border-primary/10 hover:bg-primary/10 transition-colors pointer-events-none max-w-full"
                     >
-                      {label}
+                      <span className="truncate">{label}</span>
                     </Badge>
                   );
                 })
               ) : (
-                <span className="text-[10px] text-muted-foreground/50 italic font-light">
-                  Sin vínculos inversos
-                </span>
+                <div className="flex items-center gap-2 py-3 px-4 rounded-xl bg-foreground/2 border border-border/10 w-full justify-center">
+                  <span className="text-[10px] text-muted-foreground/30 font-medium italic">
+                    Sin registros vinculados actualmente
+                  </span>
+                </div>
               )}
             </div>
-            <p className="text-[9px] text-muted-foreground/40 leading-tight">
-              Este campo se calcula automáticamente basándose en las relaciones de otras
-              colecciones.
-            </p>
           </div>
         );
       }
@@ -686,7 +754,7 @@ export function RecordFormDialog({
       default:
         return (
           <div className="space-y-2">
-            <Label htmlFor={name} className="text-muted">
+            <Label htmlFor={name} className="text-muted truncate block">
               {displayName || name}
             </Label>
             <Input
@@ -694,6 +762,8 @@ export function RecordFormDialog({
               className="bg-background border-border text-foreground placeholder:text-muted/40"
               placeholder={(config?.value as { placeholder?: string })?.placeholder || ""}
               {...form.register(name)}
+              value={(form.watch(name) as string) ?? ""}
+              enableAI={true}
             />
           </div>
         );
@@ -702,7 +772,7 @@ export function RecordFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] bg-surface border-border overflow-y-auto max-h-[90vh]">
+      <DialogContent className="sm:max-w-[500px] bg-surface border-border overflow-y-auto overflow-x-hidden max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="text-foreground">
             {record ? "Editar Registro" : "Nuevo Registro"}
@@ -727,7 +797,7 @@ export function RecordFormDialog({
             </div>
           ) : (
             fields.map((field) => (
-              <div key={field.id}>
+              <div key={field.id} className="min-w-0">
                 {renderFieldInput(field)}
                 {form.formState.errors[field.name] && (
                   <p className="text-xs text-red-500 mt-1">
