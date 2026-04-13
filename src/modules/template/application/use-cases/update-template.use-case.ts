@@ -2,6 +2,7 @@ import { DomainError, fail, Result } from "@/shared/domain/result";
 
 import { Template } from "../../domain/entities/template.entity";
 import { ITemplateRepository } from "../../domain/ports/template-repository.port";
+import type { PdfPageConfig } from "../../domain/types/pdf-page-config";
 import type { TemplateBlocks } from "../../domain/types/template-blocks";
 
 export class UpdateTemplateUseCase {
@@ -14,6 +15,7 @@ export class UpdateTemplateUseCase {
     description?: string;
     collectionId?: string | null;
     blocks?: TemplateBlocks;
+    pageConfig?: PdfPageConfig | null;
   }): Promise<Result<Template>> {
     const templateRes = await this.repository.findById(params.id);
     if (!templateRes.ok) return fail(templateRes.error);
@@ -35,6 +37,8 @@ export class UpdateTemplateUseCase {
       description: params.description ?? templateRes.value.description,
       collectionId: params.collectionId ?? templateRes.value.collectionId,
       blocks: params.blocks ?? templateRes.value.blocks,
+      pageConfig:
+        params.pageConfig !== undefined ? params.pageConfig : templateRes.value.pageConfig,
       version: currentVersion + 1,
       createdBy: templateRes.value.createdBy,
       createdAt: templateRes.value.createdAt,

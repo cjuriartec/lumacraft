@@ -4,6 +4,7 @@ import { resolveCollectionRecordLabel } from "@/modules/collection/domain/servic
 import { RenderRecordDocumentPdfUseCase } from "@/modules/document/application/use-cases/render-record-document-pdf.use-case";
 import { resolveDocumentRouteContext } from "@/modules/document/infrastructure/document-server";
 import type { TemplateBlocks } from "@/modules/template/domain/types/template-blocks";
+import { SupabaseTemplateAssetUrlResolverAdapter } from "@/modules/template/infrastructure/adapters/supabase-template-asset-url-resolver.adapter";
 import { renderTemplateToPdfBuffer } from "@/modules/template/presentation/lib/template-pdf-renderer";
 import { createClient } from "@/shared/infrastructure/supabase/server";
 
@@ -19,6 +20,40 @@ function statusForError(code?: string) {
   if (code === "FORBIDDEN") return 403;
   if (code === "NOT_FOUND" || code === "DOCUMENT_NOT_FOUND") return 404;
   return 400;
+}
+
+async function resolveImageUrls(
+  blocks: TemplateBlocks,
+  resolver: SupabaseTemplateAssetUrlResolverAdapter,
+): Promise<TemplateBlocks> {
+  if (!Array.isArray(blocks)) return blocks;
+  const result: unknown[] = [];
+
+  for (const block of blocks) {
+    if (typeof block !== "object" || block === null || Array.isArray(block)) {
+      result.push(block);
+      continue;
+    }
+
+    const newBlock: Record<string, unknown> = { ...(block as Record<string, unknown>) };
+
+    if (newBlock.type === "img" || newBlock.type === "image") {
+      if (typeof newBlock.bucket === "string" && typeof newBlock.path === "string") {
+        const urlResult = await resolver.resolveImageUrl({
+          bucket: newBlock.bucket,
+          path: newBlock.path,
+        });
+        if (urlResult.ok) {
+          newBlock.url = urlResult.value;
+        }
+      }
+    }
+    if (Array.isArray(newBlock.children)) {
+      newBlock.children = await resolveImageUrls(newBlock.children, resolver);
+    }
+    result.push(newBlock);
+  }
+  return result as TemplateBlocks;
 }
 
 export async function GET(_request: Request, { params }: RouteParams) {
@@ -51,7 +86,26 @@ export async function GET(_request: Request, { params }: RouteParams) {
   }
 
   const useCase = new RenderRecordDocumentPdfUseCase(contextResult.value.documentRepository, {
-    render: (blocks: TemplateBlocks, title) => renderTemplateToPdfBuffer(blocks, title),
+    render: async (blocks: TemplateBlocks, title, pageConfig) => {
+      const resolver = new SupabaseTemplateAssetUrlResolverAdapter(supabase);
+      const resolvedBlocks = await resolveImageUrls(blocks, resolver);
+      const resolvedPageConfig = pageConfig ? { ...pageConfig } : pageConfig;
+
+      if (resolvedPageConfig?.header?.blocks) {
+        resolvedPageConfig.header.blocks = await resolveImageUrls(
+          resolvedPageConfig.header.blocks,
+          resolver,
+        );
+      }
+      if (resolvedPageConfig?.footer?.blocks) {
+        resolvedPageConfig.footer.blocks = await resolveImageUrls(
+          resolvedPageConfig.footer.blocks,
+          resolver,
+        );
+      }
+
+      return renderTemplateToPdfBuffer(resolvedBlocks, title, resolvedPageConfig);
+    },
   });
   const title = `${contextResult.value.template.name} - ${resolveCollectionRecordLabel(
     contextResult.value.record,
@@ -61,6 +115,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
     templateId,
     recordId,
     title,
+    pageConfig: contextResult.value.template.pageConfig,
   });
 
   if (!pdfResult.ok) {

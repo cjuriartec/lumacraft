@@ -2,6 +2,7 @@ import { BaseEntity } from "@/shared/domain/base-entity";
 import { DomainError, fail, ok, Result } from "@/shared/domain/result";
 import { DisplayName } from "@/shared/domain/value-objects/display-name.vo";
 
+import { isPdfPageConfig, PdfPageConfig } from "../types/pdf-page-config";
 import { isTemplateBlocks, TemplateBlocks } from "../types/template-blocks";
 
 interface TemplateProps {
@@ -11,6 +12,7 @@ interface TemplateProps {
   description?: string;
   collectionId?: string | null;
   blocks: TemplateBlocks;
+  pageConfig?: PdfPageConfig | null;
   version: number;
   createdBy?: string;
   createdAt?: Date;
@@ -45,6 +47,10 @@ export class Template extends BaseEntity {
     return this.props.blocks;
   }
 
+  get pageConfig(): PdfPageConfig | null {
+    return this.props.pageConfig ?? null;
+  }
+
   get version(): number {
     return this.props.version;
   }
@@ -60,6 +66,7 @@ export class Template extends BaseEntity {
     description?: string;
     collectionId?: string | null;
     blocks: TemplateBlocks;
+    pageConfig?: PdfPageConfig | null;
     version?: number;
     createdBy?: string;
     createdAt?: Date;
@@ -72,12 +79,26 @@ export class Template extends BaseEntity {
       return fail(new DomainError("Template blocks must be a valid JSON array", "INVALID_BLOCKS"));
     }
 
+    if (
+      props.pageConfig !== undefined &&
+      props.pageConfig !== null &&
+      !isPdfPageConfig(props.pageConfig)
+    ) {
+      return fail(
+        new DomainError(
+          "Template page config must be a valid PdfPageConfig object",
+          "INVALID_PAGE_CONFIG",
+        ),
+      );
+    }
+
     return ok(
       new Template({
         ...props,
         name: nameResult.value,
         version: props.version ?? 1,
         blocks: props.blocks,
+        pageConfig: props.pageConfig ?? null,
       }),
     );
   }
@@ -90,6 +111,7 @@ export class Template extends BaseEntity {
       description: this.description,
       collectionId: this.collectionId,
       blocks: this.blocks,
+      pageConfig: this.pageConfig,
       version: this.version,
       createdBy: this.createdBy,
       createdAt: this.createdAt,

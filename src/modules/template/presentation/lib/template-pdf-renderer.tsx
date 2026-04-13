@@ -25,6 +25,8 @@ import {
 } from "@/shared/lib/document-typography";
 
 import { applyTextTransform } from "../../application/services/template-path-resolver";
+import type { PdfHeaderFooterSection, PdfPageConfig } from "../../domain/types/pdf-page-config";
+import { DEFAULT_FOOTER_HEIGHT, DEFAULT_HEADER_HEIGHT } from "../../domain/types/pdf-page-config";
 import type { TemplateBlocks } from "../../domain/types/template-blocks";
 
 const ROBOTO_REGULAR_FONT_PATH = path.join(process.cwd(), "public/fonts/Roboto-Regular.ttf");
@@ -341,6 +343,12 @@ function renderInlineChildren(
       }
 
       if (child.type === "variable") {
+        // System variables ($page_number, $total_pages) must use Text's render prop
+        // because totalPages is only available there, not on View's render prop.
+        const fieldPath = typeof child.fieldPath === "string" ? child.fieldPath : "";
+        if (fieldPath === SYSTEM_VAR_PAGE_NUMBER || fieldPath === SYSTEM_VAR_TOTAL_PAGES) {
+          return renderSystemVariableNode(child, `${index}`, context);
+        }
         return renderVariableNode(child, `${index}`, context);
       }
 
@@ -350,6 +358,78 @@ function renderInlineChildren(
     return <Text key={index} />;
   });
 }
+
+// ---------------------------------------------------------------------------
+// System-variable resolution for header/footer
+// ---------------------------------------------------------------------------
+
+/** System variable field paths populated at render time. */
+const SYSTEM_VAR_PAGE_NUMBER = "$page_number";
+const SYSTEM_VAR_TOTAL_PAGES = "$total_pages";
+const SYSTEM_VAR_CURRENT_DATE = "$current_date";
+const SYSTEM_VAR_TEMPLATE_NAME = "$template_name";
+
+/**
+ * Renders $page_number and $total_pages as dynamic <Text render={...}/> nodes.
+ * This is the ONLY way to access totalPages in @react-pdf/renderer — it is
+ * available on Text's render prop but NOT on View's render prop.
+ */
+function renderSystemVariableNode(
+  node: PlateElementNode,
+  key: string,
+  context: InlineRenderContext,
+): React.ReactElement {
+  const fieldPath = typeof node.fieldPath === "string" ? node.fieldPath : "";
+  const style = resolveInlineTextStyle(
+    {
+      bold: node.bold === true,
+      color: typeof node.color === "string" ? node.color : undefined,
+      fontFamily: typeof node.fontFamily === "string" ? node.fontFamily : context.fontFamily,
+      fontSize:
+        typeof node.fontSize === "string" || typeof node.fontSize === "number"
+          ? node.fontSize
+          : context.fontSize,
+      italic: node.italic === true,
+      strikethrough: node.strikethrough === true,
+      text: "",
+      underline: node.underline === true,
+    },
+    context,
+  );
+
+  if (fieldPath === SYSTEM_VAR_PAGE_NUMBER) {
+    return <Text key={key} style={style} render={({ pageNumber }) => String(pageNumber)} />;
+  }
+
+  // $total_pages
+  return <Text key={key} style={style} render={({ totalPages }) => String(totalPages)} />;
+}
+
+interface SystemVarContext {
+  /** Static: resolved once at render time, same value on every page. */
+  currentDate?: string;
+  templateName?: string;
+}
+
+/**
+ * Resolves STATIC system variables only.
+ * Dynamic variables ($page_number, $total_pages) are NOT handled here —
+ * they flow through to renderSystemVariableNode which uses Text's render prop.
+ */
+function resolveSystemVariable(fieldPath: string, ctx: SystemVarContext): string | null {
+  switch (fieldPath) {
+    case SYSTEM_VAR_CURRENT_DATE:
+      return ctx.currentDate ?? new Date().toLocaleDateString("es-PE");
+    case SYSTEM_VAR_TEMPLATE_NAME:
+      return ctx.templateName ?? "";
+    default:
+      return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Styles
+// ---------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
   page: {
@@ -407,6 +487,16 @@ const styles = StyleSheet.create({
   },
   tableRow: {
     flexDirection: "row",
+  },
+  headerSection: {
+    borderBottomColor: "#e5e7eb",
+    borderBottomWidth: 0.5,
+    paddingBottom: 6,
+  },
+  footerSection: {
+    borderTopColor: "#e5e7eb",
+    borderTopWidth: 0.5,
+    paddingTop: 6,
   },
 });
 
@@ -656,17 +746,123 @@ function renderBlock(
   );
 }
 
+// ---------------------------------------------------------------------------
+// Header / Footer block rendering helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Recursively replace system-variable nodes so they show resolved values
+ * (pageNumber, totalPages, currentDate, templateName).
+ */
+function patchSystemVariables(node: PlateElementNode, ctx: SystemVarContext): PlateElementNode {
+  if (node.type === "variable") {
+    const fieldPath = typeof node.fieldPath === "string" ? node.fieldPath : "";
+    const resolved = resolveSystemVariable(fieldPath, ctx);
+    if (resolved !== null) {
+      return { ...node, children: [{ text: resolved }] };
+    }
+  }
+
+  if (Array.isArray(node.children)) {
+    return {
+      ...node,
+      children: node.children.map((child) =>
+        isElementNode(child) ? patchSystemVariables(child, ctx) : child,
+      ),
+    };
+  }
+
+  return node;
+}
+
+function renderHeaderFooterBlocks(
+  blocks: TemplateBlocks,
+  sysCtx: SystemVarContext,
+): React.ReactElement[] {
+  if (!Array.isArray(blocks)) return [];
+  const elementNodes = (blocks as unknown[]).filter(isElementNode);
+  return elementNodes
+    .map((node, index) => {
+      const patched = patchSystemVariables(node, sysCtx);
+      return renderBlock(patched, `hf-${index}`, elementNodes) ?? <View key={`hf-${index}`} />;
+    })
+    .filter((el): el is React.ReactElement => el !== null);
+}
+
 function TemplateDocument({
   blocks,
   title,
+  pageConfig,
 }: {
   blocks: PlateElementNode[];
   title?: string;
+  pageConfig?: PdfPageConfig | null;
 }): React.ReactElement {
+  const header: PdfHeaderFooterSection | undefined = pageConfig?.header?.enabled
+    ? pageConfig.header
+    : undefined;
+  const footer: PdfHeaderFooterSection | undefined = pageConfig?.footer?.enabled
+    ? pageConfig.footer
+    : undefined;
+
+  const headerHeight = header ? (header.height ?? DEFAULT_HEADER_HEIGHT) : 0;
+  const footerHeight = footer ? (footer.height ?? DEFAULT_FOOTER_HEIGHT) : 0;
+
+  // Extra padding to accommodate fixed header/footer so they don't overlap the body
+  const paddingTop = 60 + headerHeight;
+  const paddingBottom = 60 + footerHeight;
+
+  const currentDate = new Date().toLocaleDateString("es-PE");
+  const templateName = title ?? "";
+
   return (
     <Document title={title} author="Lumacraft" creator="Lumacraft">
-      <Page size="A4" style={styles.page}>
+      <Page size="A4" style={[styles.page, { paddingTop, paddingBottom }]}>
+        {/* ── Fixed Header ── */}
+        {header && (
+          <View
+            fixed
+            style={[
+              styles.headerSection,
+              {
+                position: "absolute",
+                top: 0,
+                left: 72,
+                right: 72,
+                height: headerHeight,
+                paddingTop: 10,
+              },
+            ]}
+          >
+            {/* Static vars ($current_date, $template_name) resolved by patchSystemVariables.
+                Dynamic vars ($page_number, $total_pages) handled in renderInlineChildren
+                via renderSystemVariableNode which uses Text's render prop. */}
+            {renderHeaderFooterBlocks(header.blocks, { currentDate, templateName })}
+          </View>
+        )}
+
+        {/* ── Body ── */}
         {blocks.map((block, index) => renderBlock(block, `${index}`, blocks))}
+
+        {/* ── Fixed Footer ── */}
+        {footer && (
+          <View
+            fixed
+            style={[
+              styles.footerSection,
+              {
+                position: "absolute",
+                bottom: 0,
+                left: 72,
+                right: 72,
+                height: footerHeight,
+                paddingBottom: 10,
+              },
+            ]}
+          >
+            {renderHeaderFooterBlocks(footer.blocks, { currentDate, templateName })}
+          </View>
+        )}
       </Page>
     </Document>
   );
@@ -675,11 +871,14 @@ function TemplateDocument({
 export async function renderTemplateToPdfBuffer(
   blocks: TemplateBlocks,
   title?: string,
+  pageConfig?: PdfPageConfig | null,
 ): Promise<Buffer> {
   if (!Array.isArray(blocks) || blocks.length === 0) {
-    return renderToBuffer(<TemplateDocument blocks={[]} title={title} />);
+    return renderToBuffer(<TemplateDocument blocks={[]} title={title} pageConfig={pageConfig} />);
   }
 
   const elementNodes = (blocks as unknown[]).filter(isElementNode);
-  return renderToBuffer(<TemplateDocument blocks={elementNodes} title={title} />);
+  return renderToBuffer(
+    <TemplateDocument blocks={elementNodes} title={title} pageConfig={pageConfig} />,
+  );
 }

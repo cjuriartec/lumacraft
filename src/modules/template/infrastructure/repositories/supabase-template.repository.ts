@@ -5,6 +5,7 @@ import { BaseRepository } from "@/shared/infrastructure/base-repository";
 
 import { Template } from "../../domain/entities/template.entity";
 import { ITemplateRepository, TemplateHeader } from "../../domain/ports/template-repository.port";
+import { isPdfPageConfig, PdfPageConfig } from "../../domain/types/pdf-page-config";
 import { isTemplateBlocks, TemplateBlocks } from "../../domain/types/template-blocks";
 
 interface TemplateRow {
@@ -14,6 +15,7 @@ interface TemplateRow {
   description: string | null;
   collection_id: string | null;
   blocks: unknown;
+  page_config: unknown;
   version: number | null;
   created_by: string | null;
   created_at: string | null;
@@ -27,6 +29,7 @@ interface TemplateInsertRow {
   description: string | null;
   collection_id: string | null;
   blocks: TemplateBlocks;
+  page_config: PdfPageConfig | null;
   version: number;
   created_by: string | null;
 }
@@ -36,6 +39,7 @@ interface TemplateUpdateRow {
   description: string | null;
   collection_id: string | null;
   blocks: TemplateBlocks;
+  page_config: PdfPageConfig | null;
   version: number;
   updated_at: string;
 }
@@ -157,6 +161,7 @@ export class SupabaseTemplateRepository extends BaseRepository implements ITempl
       description: data.description ?? undefined,
       collectionId: data.collection_id ?? null,
       blocks: data.blocks,
+      pageConfig: isPdfPageConfig(data.page_config) ? (data.page_config as PdfPageConfig) : null,
       version: data.version ?? 1,
       createdBy: data.created_by ?? undefined,
       createdAt: data.created_at ? new Date(data.created_at) : undefined,
@@ -183,6 +188,7 @@ export class SupabaseTemplateRepository extends BaseRepository implements ITempl
       description: template.description ?? null,
       collection_id: template.collectionId ?? null,
       blocks: template.blocks,
+      page_config: template.pageConfig ?? null,
       version: template.version,
       created_by: template.createdBy ?? null,
     };
@@ -194,6 +200,7 @@ export class SupabaseTemplateRepository extends BaseRepository implements ITempl
       description: template.description ?? null,
       collection_id: template.collectionId ?? null,
       blocks: template.blocks,
+      page_config: template.pageConfig ?? null,
       version: template.version,
       updated_at: new Date().toISOString(),
     };

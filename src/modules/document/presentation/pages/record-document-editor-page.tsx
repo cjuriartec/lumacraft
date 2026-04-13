@@ -33,6 +33,7 @@ import { useCollections } from "@/modules/collection/presentation/hooks/use-coll
 import { useGuidance } from "@/modules/guidance/presentation/hooks/use-guidance";
 import { useGuidancePage } from "@/modules/guidance/presentation/hooks/use-guidance-page";
 import { FontFamilyToolbarButton } from "@/modules/template/presentation/components/font-family-toolbar-button";
+import { PdfPageSectionEditor } from "@/modules/template/presentation/components/pdf-page-section-editor";
 import {
   plateValueToTemplateBlocks,
   templateBlocksToPlateValue,
@@ -435,16 +436,48 @@ export default function RecordDocumentEditorPage({
                 </div>
               )}
 
-              <div className="mx-auto w-[794px] max-w-full">
+              <div className="mx-auto flex w-[794px] max-w-full flex-col shadow-[0_2px_20px_rgba(0,0,0,0.12)]">
+                {/* ── HEADER mini-editor ── */}
+                {payload.template.pageConfig?.header?.enabled && (
+                  <div className="overflow-hidden rounded-t-sm bg-white shadow-[0_-2px_8px_rgba(0,0,0,0.05)] ring-1 ring-black/[0.05]">
+                    <PdfPageSectionEditor
+                      section="header"
+                      value={payload.template.pageConfig.header}
+                      readOnly
+                      onChange={() => {}}
+                      idSuffix="-record"
+                    />
+                  </div>
+                )}
+
                 <ResizableProvider>
-                  <EditorContainer className="overflow-visible shadow-none border-none bg-transparent">
+                  <EditorContainer className="p-0 border-none shadow-none bg-transparent">
                     <Editor
                       readOnly={!canUpdate}
                       placeholder={canUpdate ? "Edita el documento..." : ""}
                       variant="a4"
+                      className={
+                        payload.template.pageConfig?.header?.enabled ||
+                        payload.template.pageConfig?.footer?.enabled
+                          ? "rounded-none shadow-none border-none"
+                          : ""
+                      }
                     />
                   </EditorContainer>
                 </ResizableProvider>
+
+                {/* ── FOOTER mini-editor ── */}
+                {payload.template.pageConfig?.footer?.enabled && (
+                  <div className="overflow-hidden rounded-b-sm bg-white shadow-[0_4px_8px_rgba(0,0,0,0.05)] ring-1 ring-black/[0.05]">
+                    <PdfPageSectionEditor
+                      section="footer"
+                      value={payload.template.pageConfig.footer}
+                      readOnly
+                      onChange={() => {}}
+                      idSuffix="-record"
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </div>

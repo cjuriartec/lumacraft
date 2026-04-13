@@ -41,6 +41,7 @@ import {
 import { useCollections } from "@/modules/collection/presentation/hooks/use-collections";
 import { useGuidancePage } from "@/modules/guidance/presentation/hooks/use-guidance-page";
 import { TEMPLATE_PREVIEW_MAX_EAGER_DEPTH } from "@/modules/template/application/constants/template-preview.constants";
+import type { PdfPageConfig } from "@/modules/template/domain/types/pdf-page-config";
 import { cn, getShortcutText } from "@/shared/lib/utils";
 import { DndKit } from "@/shared/presentation/components/editor/plugins/dnd-kit";
 import { ExtendedNodesKit } from "@/shared/presentation/components/editor/plugins/extended-nodes-kit";
@@ -87,6 +88,7 @@ import { TurnIntoToolbarButton } from "@/shared/presentation/components/ui/turn-
 import { useBreadcrumbs } from "@/shared/presentation/providers/breadcrumb-provider";
 
 import { FontFamilyToolbarButton } from "../components/font-family-toolbar-button";
+import { PdfPageSectionEditor } from "../components/pdf-page-section-editor";
 import { SlashInputElement } from "../components/slash-command/slash-input-element";
 import { SlashInputPlugin, SlashPlugin } from "../components/slash-command/slash-plugin";
 import {
@@ -133,7 +135,7 @@ interface TemplateEditorPageProps {
 }
 
 export default function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
-  const { template, loading, saveStatus, handleBlocksChange, updateName } =
+  const { template, loading, saveStatus, handleBlocksChange, handlePageConfigChange, updateName } =
     useTemplateEditor(templateId);
   const { collections } = useCollections();
   useGuidancePage({ id: "template-editor" });
@@ -158,6 +160,9 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
   const [localName, setLocalName] = React.useState(template?.name || "");
   const [isVariableSelectorOpen, setIsVariableSelectorOpen] = React.useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = React.useState(false);
+  const [localPageConfig, setLocalPageConfig] = React.useState<PdfPageConfig | null>(
+    template?.pageConfig ?? null,
+  );
 
   const {
     nodes: variableCatalog,
@@ -179,6 +184,15 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
       setLocalName(template.name);
     }
   }, [template?.name, localName]);
+
+  // Sync pageConfig when the template first loads
+  React.useEffect(() => {
+    if (template?.pageConfig !== undefined) {
+      setLocalPageConfig(template.pageConfig);
+    }
+    // Only run once on initial load
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [template?.id]);
 
   // Debounced name update
   React.useEffect(() => {
@@ -600,15 +614,50 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
             >
               {/* A4 sheet: 794px wide = 210mm @ 96dpi */}
               <div className="mx-auto w-[794px] max-w-full">
+                {/* ── HEADER mini-editor ── */}
+                <div className="overflow-hidden rounded-t-sm bg-white shadow-[0_-2px_8px_rgba(0,0,0,0.05)] ring-1 ring-black/[0.05]">
+                  <PdfPageSectionEditor
+                    section="header"
+                    value={localPageConfig?.header}
+                    readOnly={!canEdit}
+                    onChange={(headerSection) => {
+                      const next: PdfPageConfig = {
+                        ...localPageConfig,
+                        header: headerSection,
+                      };
+                      setLocalPageConfig(next);
+                      handlePageConfigChange(next);
+                    }}
+                  />
+                </div>
+
+                {/* ── BODY editor ── */}
                 <ResizableProvider>
-                  <EditorContainer className="overflow-visible shadow-none border-none bg-transparent">
+                  <EditorContainer className="overflow-visible rounded-none border-none bg-transparent shadow-none">
                     <Editor
                       placeholder={canEdit ? "Escribe '/' para ver comandos rápidos..." : ""}
                       variant="a4"
-                      className=""
+                      className="rounded-none shadow-none border-none"
                     />
                   </EditorContainer>
                 </ResizableProvider>
+
+                {/* ── FOOTER mini-editor ── */}
+                <div className="overflow-hidden rounded-b-sm bg-white shadow-[0_4px_8px_rgba(0,0,0,0.05)] ring-1 ring-black/[0.05]">
+                  <PdfPageSectionEditor
+                    section="footer"
+                    value={localPageConfig?.footer}
+                    readOnly={!canEdit}
+                    onChange={(footerSection) => {
+                      const next: PdfPageConfig = {
+                        ...localPageConfig,
+                        footer: footerSection,
+                      };
+                      setLocalPageConfig(next);
+                      handlePageConfigChange(next);
+                    }}
+                  />
+                </div>
               </div>
             </div>
 
@@ -680,6 +729,7 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
                 <div className="flex-1 overflow-hidden">
                   <TemplatePreviewPanel
                     blocks={previewBlocks}
+                    pageConfig={localPageConfig}
                     error={previewError}
                     loading={previewLoading}
                     warnings={previewWarnings}
