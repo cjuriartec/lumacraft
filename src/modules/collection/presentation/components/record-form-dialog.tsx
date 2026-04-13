@@ -414,7 +414,9 @@ export function RecordFormDialog({
                         : "hover:bg-foreground/2 text-foreground/70 hover:text-foreground",
                     )}
                   >
-                    <span className="truncate flex-1 font-medium">{option.label}</span>
+                    <span className="whitespace-normal wrap-break-word flex-1 font-medium py-0.5">
+                      {option.label}
+                    </span>
                     {isSelected && (
                       <div className="ml-2 h-4 w-4 rounded-full bg-primary flex items-center justify-center">
                         <Check size={10} className="text-background stroke-[3px]" />
@@ -445,7 +447,7 @@ export function RecordFormDialog({
         {/* One-to-One / Many-to-One support - if not isMany, show indicator if selected */}
         {!isMany && selectedSingleValue && options.length === 0 && !isLoading && (
           <div className="p-3 rounded-xl bg-primary/5 border border-primary/20 flex items-center justify-between">
-            <span className="text-sm font-medium text-primary/80 truncate">
+            <span className="text-sm font-medium text-primary/80 whitespace-normal wrap-break-word py-1">
               ID Vinculado: {selectedSingleValue}
             </span>
             <button
