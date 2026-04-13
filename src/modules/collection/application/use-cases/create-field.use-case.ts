@@ -26,10 +26,18 @@ export class CreateFieldUseCase {
     const fieldTypeRes = FieldType.create(request.fieldType);
     if (!fieldTypeRes.ok) return fail(fieldTypeRes.error);
 
+    const normalizedConfig =
+      fieldTypeRes.value.value === "RELATION"
+        ? {
+            ...(request.config || {}),
+            bidirectional: true,
+          }
+        : request.config || {};
+
     // 2. Validate config
     let fieldConfigRes: Result<FieldConfig>;
     try {
-      fieldConfigRes = FieldConfig.create(fieldTypeRes.value.value, request.config || {});
+      fieldConfigRes = FieldConfig.create(fieldTypeRes.value.value, normalizedConfig);
     } catch (error) {
       return fail(
         new DomainError(
@@ -67,16 +75,15 @@ export class CreateFieldUseCase {
 
     // 5. Bidirectional Relation: Create Reverse Lookup Field
     interface RelationConfig {
-      bidirectional?: boolean;
       targetCollectionId?: string;
       inverseFieldName?: string;
     }
 
     const config = createdField.config?.value as RelationConfig | undefined;
 
-    if (createdField.fieldType.value === "RELATION" && config?.bidirectional) {
-      const targetCollectionId = config.targetCollectionId;
-      const inverseFieldName = config.inverseFieldName || `${request.name}_inverse`;
+    if (createdField.fieldType.value === "RELATION") {
+      const targetCollectionId = config?.targetCollectionId;
+      const inverseFieldName = config?.inverseFieldName || `${request.name}_inverse`;
 
       if (!targetCollectionId) return createdRes; // Safety check
 

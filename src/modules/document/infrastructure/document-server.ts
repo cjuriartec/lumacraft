@@ -10,6 +10,7 @@ import { AuthzUseCaseFactory } from "@/modules/authorization/application/authz-u
 import { CollectionUseCaseFactory } from "@/modules/collection/application/collection-use-case.factory";
 import { Collection } from "@/modules/collection/domain/entities/collection.entity";
 import { DataRecord } from "@/modules/collection/domain/entities/record.entity";
+import { resolveCollectionRecordLabel } from "@/modules/collection/domain/services/record-label.service";
 import { SupabaseRecordRepository } from "@/modules/collection/infrastructure/repositories/supabase-record.repository";
 import { RecordDocument } from "@/modules/document/domain/entities/record-document.entity";
 import { RecordDocumentPreviewPayload } from "@/modules/document/presentation/types/record-document";
@@ -67,40 +68,8 @@ function buildTemplateAISettingsHash(params: {
   });
 }
 
-function toLabelValue(value: unknown): string {
-  if (typeof value === "string") return value.trim();
-  if (typeof value === "number" || typeof value === "boolean") return String(value);
-
-  if (Array.isArray(value)) {
-    return value
-      .map((item) => toLabelValue(item))
-      .filter(Boolean)
-      .join(", ");
-  }
-
-  if (typeof value === "object" && value !== null) {
-    const candidate = value as Record<string, unknown>;
-    if (typeof candidate.name === "string" && candidate.name.trim().length > 0) {
-      return candidate.name.trim();
-    }
-    if (typeof candidate.label === "string" && candidate.label.trim().length > 0) {
-      return candidate.label.trim();
-    }
-  }
-
-  return "";
-}
-
 export function resolveRecordLabel(record: DataRecord, collection: Collection): string {
-  const primaryFieldName = collection.primaryFieldName;
-  if (primaryFieldName) {
-    const label = toLabelValue(record.data[primaryFieldName]);
-    if (label.length > 0) {
-      return label;
-    }
-  }
-
-  return record.id.slice(0, 8);
+  return resolveCollectionRecordLabel(record, collection);
 }
 
 export function serializeRecordDocument(document: RecordDocument) {

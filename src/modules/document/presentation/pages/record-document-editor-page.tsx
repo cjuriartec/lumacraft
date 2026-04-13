@@ -28,6 +28,7 @@ import Link from "next/link";
 import { Plate, usePlateEditor } from "platejs/react";
 import * as React from "react";
 
+import { formatShortRecordId } from "@/modules/collection/domain/services/record-label.service";
 import { useCollections } from "@/modules/collection/presentation/hooks/use-collections";
 import { useGuidance } from "@/modules/guidance/presentation/hooks/use-guidance";
 import { useGuidancePage } from "@/modules/guidance/presentation/hooks/use-guidance-page";
@@ -116,7 +117,7 @@ export default function RecordDocumentEditorPage({
   const hasTrackedOpenRef = React.useRef(false);
   const collection = collections.find((item) => item.id === collectionId) ?? null;
   const collectionName = collection?.displayName || collection?.name || "Colección";
-  const recordLabel = payload?.record.label ?? recordId.slice(0, 8);
+  const recordLabel = payload?.record.label ?? formatShortRecordId(recordId);
   const templateName = payload?.template.name ?? "Documento";
   const canUpdate = payload?.permissions.canUpdate ?? false;
   const hasTemplateVersionMismatch =

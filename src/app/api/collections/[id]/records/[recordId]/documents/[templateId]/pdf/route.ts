@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { resolveCollectionRecordLabel } from "@/modules/collection/domain/services/record-label.service";
 import { RenderRecordDocumentPdfUseCase } from "@/modules/document/application/use-cases/render-record-document-pdf.use-case";
 import { resolveDocumentRouteContext } from "@/modules/document/infrastructure/document-server";
 import type { TemplateBlocks } from "@/modules/template/domain/types/template-blocks";
@@ -52,7 +53,10 @@ export async function GET(_request: Request, { params }: RouteParams) {
   const useCase = new RenderRecordDocumentPdfUseCase(contextResult.value.documentRepository, {
     render: (blocks: TemplateBlocks, title) => renderTemplateToPdfBuffer(blocks, title),
   });
-  const title = `${contextResult.value.template.name} - ${contextResult.value.record.id.slice(0, 8)}`;
+  const title = `${contextResult.value.template.name} - ${resolveCollectionRecordLabel(
+    contextResult.value.record,
+    contextResult.value.collection,
+  )}`;
   const pdfResult = await useCase.execute({
     templateId,
     recordId,

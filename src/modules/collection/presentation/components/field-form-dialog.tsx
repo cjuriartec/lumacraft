@@ -122,7 +122,6 @@ interface FieldConfigUI {
   targetCollectionId?: string;
   relationType?: string;
   allowMultiple?: boolean;
-  bidirectional?: boolean;
   inverseFieldName?: string;
   displayField?: string;
   maxSizeBytes?: number;
@@ -203,7 +202,28 @@ export function FieldFormDialog({
     setLoading(true);
     setError(null);
     try {
-      const res = await onSubmit(values);
+      const normalizedValues: FieldFormValues =
+        values.fieldType === "RELATION"
+          ? {
+              ...values,
+              config: {
+                ...(values.config || {}),
+                bidirectional: true,
+                displayField:
+                  ((values.config as FieldConfigUI | undefined)?.displayField as
+                    | string
+                    | undefined) || "id",
+                inverseFieldName:
+                  (
+                    (values.config as FieldConfigUI | undefined)?.inverseFieldName as
+                      | string
+                      | undefined
+                  )?.trim() || undefined,
+              },
+            }
+          : values;
+
+      const res = await onSubmit(normalizedValues);
       if (res.ok) {
         setOpen(false);
       } else {
@@ -519,29 +539,23 @@ export function FieldFormDialog({
                     </Select>
                   </div>
 
-                  <SwitchRow
-                    id="bidirectional"
-                    label="Bidireccional"
-                    checked={!!config.bidirectional}
-                    onCheckedChange={(checked) => updateConfig({ bidirectional: checked })}
-                  />
-
-                  {config.bidirectional && (
-                    <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
-                      <Label className="text-[11px] font-semibold uppercase text-foreground/70 flex justify-between">
-                        <span>Nombre campo inverso</span>
-                      </Label>
-                      <Input
-                        value={String(config.inverseFieldName || "")}
-                        onChange={(e) => updateConfig({ inverseFieldName: e.target.value })}
-                        placeholder="ej: ordenes_relacionadas"
-                        className={inputFieldClass}
-                      />
-                      <p className="text-[10px] text-foreground/50 px-1">
-                        Se creará un campo virtual en la colección destino para navegar de vuelta.
-                      </p>
-                    </div>
-                  )}
+                  <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                    <Label className="text-[11px] font-semibold uppercase text-foreground/70 flex justify-between">
+                      <span>Nombre campo inverso</span>
+                    </Label>
+                    <Input
+                      value={String(config.inverseFieldName || "")}
+                      onChange={(e) => updateConfig({ inverseFieldName: e.target.value })}
+                      placeholder="ej: ordenes_relacionadas"
+                      className={cn(inputFieldClass, field && "opacity-60 cursor-not-allowed")}
+                      disabled={!!field}
+                    />
+                    <p className="text-[10px] text-foreground/50 px-1">
+                      {field
+                        ? "Este vínculo inverso ya fue creado. Se muestra como referencia y no se puede renombrar desde aquí."
+                        : "Se creará un campo virtual en la colección destino para navegar de vuelta."}
+                    </p>
+                  </div>
                 </FormSection>
               )}
 

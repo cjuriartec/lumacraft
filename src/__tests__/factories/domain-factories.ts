@@ -160,6 +160,7 @@ export function makeCollection(
     displayName: string;
     description: string;
     icon: string;
+    primaryFieldName: string | null;
     createdAt: Date;
     updatedAt: Date;
   }> = {},
@@ -173,6 +174,7 @@ export function makeCollection(
     displayName: overrides.displayName ?? `Collection ${order}`,
     description: overrides.description ?? `Description ${order}`,
     icon: overrides.icon ?? "database",
+    primaryFieldName: overrides.primaryFieldName ?? null,
     createdAt: overrides.createdAt ?? dateFor(order),
     updatedAt: overrides.updatedAt ?? dateFor(order),
   });

@@ -105,6 +105,38 @@ describe("field use cases", () => {
     uuidSpy.mockRestore();
   });
 
+  it("normalizes new relation fields as bidirectional and creates the reverse lookup", async () => {
+    const repository = new InMemoryFieldRepository();
+    const useCase = new CreateFieldUseCase(repository);
+    const uuidSpy = vi
+      .spyOn(crypto, "randomUUID")
+      .mockReturnValueOnce("33333333-3333-4333-8333-333333333333")
+      .mockReturnValueOnce("44444444-4444-4444-8444-444444444444");
+
+    const result = await useCase.execute({
+      collectionId: "11111111-1111-4111-8111-111111111111",
+      name: "client",
+      displayName: "Client",
+      fieldType: "RELATION",
+      config: {
+        targetCollectionId: "22222222-2222-4222-8222-222222222222",
+        relationType: "MANY_TO_ONE",
+        displayField: "name",
+        bidirectional: false,
+        inverseFieldName: "orders",
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    expect(repository.create).toHaveBeenCalledTimes(2);
+    expect(repository.create.mock.calls[0][0].config?.value).toMatchObject({
+      bidirectional: true,
+      inverseFieldName: "orders",
+    });
+    expect(repository.create.mock.calls[1][0].fieldType.value).toBe("REVERSE_LOOKUP");
+    uuidSpy.mockRestore();
+  });
+
   it("lists and deletes fields via the repository port", async () => {
     resetFactories();
     const field = makeField({ collectionId: "collection-1" });

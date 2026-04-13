@@ -18,6 +18,7 @@ import { EagerLoadRecordUseCase } from "./use-cases/eager-load-record.use-case";
 import { DeleteFileUseCase, UploadFileUseCase } from "./use-cases/file-mgmt.use-case";
 import { GetCollectionUseCase } from "./use-cases/get-collection.use-case";
 import { GetFieldUseCase } from "./use-cases/get-field.use-case";
+import { GetPublicUrlUseCase } from "./use-cases/get-public-url.use-case";
 import { GetWorkspaceSchemaUseCase } from "./use-cases/get-workspace-schema.use-case";
 import { ListCollectionsUseCase } from "./use-cases/list-collections.use-case";
 import { ListFieldsUseCase } from "./use-cases/list-fields.use-case";
@@ -144,6 +145,10 @@ class CollectionUseCaseFactoryImpl {
 
   public downloadFile() {
     return new DownloadFileUseCase(this.repositories.storage);
+  }
+
+  public getPublicUrl() {
+    return new GetPublicUrlUseCase(this.repositories.storage);
   }
 
   public deleteFile() {
