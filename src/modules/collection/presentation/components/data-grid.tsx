@@ -5,6 +5,7 @@ import {
   ChevronUp,
   Download,
   Edit2,
+  Eye,
   FileText,
   ListFilter,
   Loader2,
@@ -12,6 +13,7 @@ import {
   Search,
   Trash2,
 } from "lucide-react";
+import Link from "next/link";
 import React, { useEffect, useMemo, useState } from "react";
 
 import { RecordDocumentSelectorModal } from "@/modules/document/presentation/components/record-document-selector-modal";
@@ -43,9 +45,11 @@ import {
 import { Field } from "../../domain/entities/field.entity";
 import { DataRecord } from "../../domain/entities/record.entity";
 import { ColumnFilter } from "../../domain/types/pagination.types";
+import { RecordQuickViewDialog } from "../components/record-quick-view-dialog";
 import { ReverseLookupResults } from "../hooks/use-records";
 import { RelationOption, useRelationRecords } from "../hooks/use-relation-records";
 import { useStorage } from "../hooks/use-storage";
+import { RelatedRecordSummary } from "../lib/record-relations";
 
 interface DataGridProps {
   collectionId?: string;
@@ -103,10 +107,15 @@ const RelationCell = React.memo(
     fetchOptionsByIds: (field: Field, ids: string[]) => Promise<void>;
   }) => {
     const items = Array.isArray(value) ? value : value ? [value] : [];
+    const [previewTarget, setPreviewTarget] = useState<RelatedRecordSummary | null>(null);
     if (items.length === 0) return <span className="text-muted opacity-40">—</span>;
 
     const options = relationOptions[field.name] || [];
     const isLoading = relationLoading[field.name];
+    const targetCollectionId =
+      ((field.config?.value as { targetCollectionId?: string } | undefined)?.targetCollectionId as
+        | string
+        | undefined) ?? "";
 
     const handleOpenChange = (open: boolean) => {
       // Only fetch if we have raw IDs (strings)
@@ -157,18 +166,34 @@ const RelationCell = React.memo(
                 }
 
                 return (
-                  <div
+                  <button
                     key={`${id}-${idx}`}
-                    className="text-xs text-foreground/80 truncate py-1.5 px-2 rounded-lg hover:bg-background/80 transition-colors border border-transparent hover:border-border/30"
+                    type="button"
+                    onClick={() =>
+                      targetCollectionId &&
+                      setPreviewTarget({
+                        id,
+                        label,
+                        collectionId: targetCollectionId,
+                        collectionName: "",
+                      })
+                    }
+                    className="w-full text-xs text-foreground/80 truncate py-1.5 px-2 rounded-lg hover:bg-background/80 transition-colors border border-transparent hover:border-border/30 text-left"
                   >
                     {String(label)}
-                  </div>
+                  </button>
                 );
               })
             ) : (
               <div className="text-xs text-muted italic px-2 py-1">Cargando vinculación...</div>
             )}
           </div>
+
+          <RecordQuickViewDialog
+            open={previewTarget !== null}
+            onOpenChange={(open) => !open && setPreviewTarget(null)}
+            target={previewTarget}
+          />
         </PopoverContent>
       </Popover>
     );
@@ -942,6 +967,19 @@ export function DataGrid({
                             onClick={() => onEdit(record as DataRecord)}
                           >
                             <Edit2 size={14} />
+                          </Button>
+                        )}
+                        {collectionId && canRead && (
+                          <Button
+                            asChild
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Ver registro ${record.id}`}
+                            className="h-8 w-8 text-muted hover:text-foreground hover:bg-surface-hover"
+                          >
+                            <Link href={`/collections/${collectionId}/records/${record.id}`}>
+                              <Eye size={14} />
+                            </Link>
                           </Button>
                         )}
                         {collectionId && canRead && (

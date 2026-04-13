@@ -34,6 +34,10 @@ import { Plate, type PlateElementProps, usePlateEditor } from "platejs/react";
 import * as React from "react";
 
 import { usePermissions } from "@/modules/authorization/presentation/providers/permission-provider";
+import {
+  formatShortRecordId,
+  toRecordLabelValue,
+} from "@/modules/collection/domain/services/record-label.service";
 import { useCollections } from "@/modules/collection/presentation/hooks/use-collections";
 import { useGuidancePage } from "@/modules/guidance/presentation/hooks/use-guidance-page";
 import { TEMPLATE_PREVIEW_MAX_EAGER_DEPTH } from "@/modules/template/application/constants/template-preview.constants";
@@ -126,41 +130,6 @@ import { getCurrentVariableFormatting } from "../lib/template-editor-formatting"
 
 interface TemplateEditorPageProps {
   templateId: string;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function toPreviewLabelValue(value: unknown): string {
-  if (typeof value === "string") return value.trim();
-  if (typeof value === "number" || typeof value === "boolean") return String(value);
-
-  if (isRecord(value) && typeof value.name === "string" && value.name.trim().length > 0) {
-    return value.name.trim();
-  }
-
-  if (Array.isArray(value)) {
-    const parts = value
-      .map((item) => {
-        if (typeof item === "string" || typeof item === "number" || typeof item === "boolean") {
-          return String(item);
-        }
-
-        if (isRecord(item) && typeof item.name === "string") {
-          return item.name;
-        }
-
-        return "";
-      })
-      .filter((item) => item.trim().length > 0);
-
-    if (parts.length > 0) {
-      return parts.join(", ");
-    }
-  }
-
-  return "";
 }
 
 export default function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
@@ -672,10 +641,12 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
                           <SelectContent>
                             {previewRecords.map((record) => {
                               const primaryValue = primaryFieldName
-                                ? toPreviewLabelValue(record.data[primaryFieldName])
+                                ? toRecordLabelValue(record.data[primaryFieldName])
                                 : "";
                               const optionLabel =
-                                primaryValue.length > 0 ? primaryValue : record.id.slice(0, 8);
+                                primaryValue.length > 0
+                                  ? primaryValue
+                                  : formatShortRecordId(record.id);
 
                               return (
                                 <SelectItem key={record.id} value={record.id}>

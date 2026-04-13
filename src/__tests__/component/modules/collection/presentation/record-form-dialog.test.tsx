@@ -30,6 +30,10 @@ vi.mock("@/modules/collection/presentation/hooks/use-storage", () => ({
   useStorage: () => storageState,
 }));
 
+vi.mock("@/modules/collection/presentation/components/record-quick-view-dialog", () => ({
+  RecordQuickViewDialog: () => null,
+}));
+
 vi.mock("@/modules/workspace/presentation/providers/workspace-provider", () => ({
   useWorkspace: () => workspaceState,
 }));
@@ -136,5 +140,48 @@ describe("RecordFormDialog", () => {
     await waitFor(() => {
       expect(screen.queryByText(`ID Vinculado: ${linkedRecordId}`)).not.toBeInTheDocument();
     });
+  });
+
+  it("shows resolved reverse lookups in read-only mode even when they are not stored in record.data", async () => {
+    const reverseLookupField = makeField({
+      id: "field-2",
+      collectionId: "collection-1",
+      name: "orders_inverse",
+      displayName: "Pedidos vinculados",
+      fieldType: "REVERSE_LOOKUP",
+      config: {
+        targetCollectionId: "11111111-1111-4111-8111-111111111111",
+        targetFieldId: "33333333-3333-4333-8333-333333333333",
+      },
+    });
+    const record = makeRecord({
+      id: "record-2",
+      collectionId: "collection-1",
+      data: {},
+    });
+
+    relationRecordsState.options = {
+      orders_inverse: [{ id: "order-1", label: "Pedido 001" }],
+    };
+
+    render(
+      <RecordFormDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        fields={[reverseLookupField]}
+        record={record}
+        onSubmit={vi.fn().mockResolvedValue({ ok: true })}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(relationRecordsState.findReverseRelations).toHaveBeenCalledWith(
+        reverseLookupField,
+        "record-2",
+      );
+    });
+
+    expect(screen.getByText("Pedido 001")).toBeInTheDocument();
+    expect(screen.queryByText("Sin vínculos inversos actualmente")).not.toBeInTheDocument();
   });
 });

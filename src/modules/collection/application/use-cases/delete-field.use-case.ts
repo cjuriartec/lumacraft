@@ -19,7 +19,6 @@ export class DeleteFieldUseCase {
 
     // 1. Handle cascading delete for bidirectional reverse fields
     interface RelationConfig {
-      bidirectional?: boolean;
       targetCollectionId?: string;
     }
     interface ReverseLookupConfig {
@@ -28,7 +27,7 @@ export class DeleteFieldUseCase {
 
     if (field.fieldType.value === "RELATION") {
       const config = field.config?.value as RelationConfig | undefined;
-      if (config?.bidirectional && config?.targetCollectionId) {
+      if (config?.targetCollectionId) {
         // Find reverse lookup field in target collection
         const targetFieldsRes = await this.fieldRepository.findByCollectionId(
           config.targetCollectionId,

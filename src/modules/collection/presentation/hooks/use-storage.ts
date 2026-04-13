@@ -13,6 +13,7 @@ export function useStorage() {
 
   const uploadUseCase = useMemo(() => factory.uploadFile(), [factory]);
   const downloadUseCase = useMemo(() => factory.downloadFile(), [factory]);
+  const getPublicUrlUseCase = useMemo(() => factory.getPublicUrl(), [factory]);
   const deleteUseCase = useMemo(() => factory.deleteFile(), [factory]);
 
   const uploadFile = async (bucket: string, path: string, file: File) => {
@@ -23,6 +24,10 @@ export function useStorage() {
     return downloadUseCase.execute(bucket, path);
   };
 
+  const getPublicUrl = (bucket: string, path: string) => {
+    return getPublicUrlUseCase.execute(bucket, path);
+  };
+
   const deleteFiles = async (bucket: string, paths: string[]) => {
     return deleteUseCase.execute(bucket, paths);
   };
@@ -30,6 +35,7 @@ export function useStorage() {
   return {
     uploadFile,
     downloadFile,
+    getPublicUrl,
     deleteFiles,
   };
 }

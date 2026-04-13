@@ -26,9 +26,17 @@ export class UpdateFieldUseCase {
     const fieldTypeRes = FieldType.create(request.fieldType);
     if (!fieldTypeRes.ok) return fail(fieldTypeRes.error);
 
+    const normalizedConfig =
+      fieldTypeRes.value.value === "RELATION"
+        ? {
+            ...(request.config || {}),
+            bidirectional: true,
+          }
+        : request.config || {};
+
     let fieldConfigRes: Result<FieldConfig>;
     try {
-      fieldConfigRes = FieldConfig.create(fieldTypeRes.value.value, request.config || {});
+      fieldConfigRes = FieldConfig.create(fieldTypeRes.value.value, normalizedConfig);
     } catch (error) {
       return fail(
         new DomainError(

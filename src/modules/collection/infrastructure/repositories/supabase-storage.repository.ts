@@ -25,6 +25,11 @@ export class SupabaseStorageRepository implements IStorageRepository {
     return ok(data);
   }
 
+  public getPublicUrl(bucket: string, path: string): Result<string> {
+    const { data } = this.supabase.storage.from(bucket).getPublicUrl(path);
+    return ok(data.publicUrl);
+  }
+
   public async delete(bucket: string, paths: string[]): Promise<Result<void>> {
     const { error } = await this.supabase.storage.from(bucket).remove(paths);
 

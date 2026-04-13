@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AlertCircle, Check, Loader2, Plus, Search, Trash2, Upload, X } from "lucide-react";
+import { AlertCircle, Check, Eye, Loader2, Plus, Search, Trash2, Upload, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -34,6 +34,8 @@ import { Field } from "../../domain/entities/field.entity";
 import { DataRecord } from "../../domain/entities/record.entity";
 import { useRelationRecords } from "../hooks/use-relation-records";
 import { useStorage } from "../hooks/use-storage";
+import { RelatedRecordSummary } from "../lib/record-relations";
+import { RecordQuickViewDialog } from "./record-quick-view-dialog";
 
 interface RecordFormDialogProps {
   open: boolean;
@@ -74,11 +76,12 @@ export function RecordFormDialog({
     fetchOptionsByIds,
     findReverseRelations,
   } = useRelationRecords();
-  const { uploadFile, deleteFiles } = useStorage();
+  const { uploadFile, deleteFiles, getPublicUrl } = useStorage();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [relationQuery, setRelationQuery] = useState<Record<string, string>>({});
   const [pendingFiles, setPendingFiles] = useState<Record<string, File | null>>({});
+  const [previewTarget, setPreviewTarget] = useState<RelatedRecordSummary | null>(null);
   const relationTimers = useRef<Record<string, ReturnType<typeof setTimeout> | null>>({});
 
   const getRelationConfig = (field: Field) =>
@@ -328,7 +331,7 @@ export function RecordFormDialog({
 
     return (
       <div className="space-y-3">
-        <Label className="text-[11px] font-bold uppercase tracking-widest text-foreground/70 ml-1 truncate block">
+        <Label className="text-[10px] font-semibold uppercase tracking-widest text-foreground/40 ml-1 truncate block">
           {field.displayName || field.name}
         </Label>
 
@@ -361,9 +364,9 @@ export function RecordFormDialog({
                 <Badge
                   key={id}
                   variant="secondary"
-                  className="group h-7 pl-2.5 pr-1 gap-1.5 bg-background border-border/50 text-foreground/80 hover:text-primary transition-all rounded-lg"
+                  className="group min-h-7 py-1 pl-2.5 pr-1 gap-1.5 bg-background border-border/50 text-foreground/80 hover:text-primary transition-all rounded-lg whitespace-normal"
                 >
-                  <span className="max-w-[150px] truncate">{label}</span>
+                  <span className="font-medium wrap-break-word leading-tight">{label}</span>
                   <button
                     type="button"
                     onClick={() => {
@@ -470,7 +473,10 @@ export function RecordFormDialog({
               checked={!!form.watch(name)}
               onCheckedChange={(val) => form.setValue(name, val)}
             />
-            <Label htmlFor={name} className="text-muted truncate block">
+            <Label
+              htmlFor={name}
+              className="text-[10px] font-semibold uppercase tracking-widest text-foreground/40 truncate block ml-1"
+            >
               {displayName || name}
             </Label>
           </div>
@@ -480,7 +486,9 @@ export function RecordFormDialog({
         const options = (config?.value as { options?: string[] })?.options || [];
         return (
           <div className="space-y-2">
-            <Label className="text-muted">{displayName || name}</Label>
+            <Label className="text-[10px] font-semibold uppercase tracking-widest text-foreground/40 truncate block ml-1">
+              {displayName || name}
+            </Label>
             <Select
               value={(form.watch(name) as string) || ""}
               onValueChange={(val) => form.setValue(name, val)}
@@ -502,7 +510,10 @@ export function RecordFormDialog({
       case "NUMBER":
         return (
           <div className="space-y-2">
-            <Label htmlFor={name} className="text-muted truncate block">
+            <Label
+              htmlFor={name}
+              className="text-[10px] font-semibold uppercase tracking-widest text-foreground/40 truncate block ml-1"
+            >
               {displayName || name}
             </Label>
             <Input
@@ -524,7 +535,10 @@ export function RecordFormDialog({
         if (textCfg.multiline) {
           return (
             <div className="space-y-2">
-              <Label htmlFor={name} className="text-muted truncate block">
+              <Label
+                htmlFor={name}
+                className="text-[10px] font-semibold uppercase tracking-widest text-foreground/40 truncate block ml-1"
+              >
                 {displayName || name}
               </Label>
               <Textarea
@@ -541,7 +555,10 @@ export function RecordFormDialog({
         }
         return (
           <div className="space-y-2">
-            <Label htmlFor={name} className="text-muted truncate block">
+            <Label
+              htmlFor={name}
+              className="text-[10px] font-semibold uppercase tracking-widest text-foreground/40 truncate block ml-1"
+            >
               {displayName || name}
             </Label>
             <Input
@@ -559,7 +576,10 @@ export function RecordFormDialog({
       case "DATE":
         return (
           <div className="space-y-2">
-            <Label htmlFor={name} className="text-muted truncate block">
+            <Label
+              htmlFor={name}
+              className="text-[10px] font-semibold uppercase tracking-widest text-foreground/40 truncate block ml-1"
+            >
               {displayName || name}
             </Label>
             <Input
@@ -580,8 +600,37 @@ export function RecordFormDialog({
         const fileValue = form.watch(name) as FileMetadata | undefined;
         const pending = pendingFiles[name];
         const isImageField = fieldType.value === "IMAGE";
+
+        const handleViewFile = (e: React.MouseEvent) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (fileValue?.path) {
+            const res = getPublicUrl(fileValue.bucket, fileValue.path);
+            if (res.ok) {
+              window.open(res.value, "_blank");
+            }
+          }
+        };
+
         return (
           <div className="group relative">
+            <div className="flex items-center justify-between mb-2">
+              <Label className="text-[10px] font-semibold uppercase tracking-widest text-foreground/40 truncate block ml-1">
+                {displayName || name}
+              </Label>
+              {fileValue?.path && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-[10px] font-bold uppercase tracking-wider text-primary hover:bg-primary/5 gap-1.5"
+                  onClick={handleViewFile}
+                >
+                  <Eye size={12} />
+                  Ver Documento
+                </Button>
+              )}
+            </div>
             <label
               htmlFor={`${name}-file`}
               className={cn(
@@ -594,16 +643,16 @@ export function RecordFormDialog({
               <div className="flex items-center gap-3 min-w-0">
                 <div
                   className={cn(
-                    "h-8 w-8 rounded-lg flex items-center justify-center shrink-0 transition-colors",
+                    "h-8 w-8 rounded-lg flex items-center justify-center shrink-0 transition-all duration-300",
                     pending || fileValue
-                      ? "bg-primary text-background"
+                      ? "bg-primary text-background shadow-lg shadow-primary/20"
                       : "bg-foreground/5 text-muted",
                   )}
                 >
                   <Upload size={16} />
                 </div>
                 <div className="flex flex-col min-w-0">
-                  <span className="text-[11px] font-bold uppercase tracking-wide text-foreground/80 truncate">
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-foreground/80 truncate">
                     {pending?.name ||
                       fileValue?.name ||
                       (isImageField ? "Seleccionar Imagen" : "Seleccionar Archivo")}
@@ -660,7 +709,9 @@ export function RecordFormDialog({
         const location = (form.watch(name) as { lat?: number; lng?: number } | undefined) ?? {};
         return (
           <div className="space-y-2">
-            <Label className="text-muted">{displayName || name}</Label>
+            <Label className="text-[10px] font-semibold uppercase tracking-widest text-foreground/40 truncate block ml-1">
+              {displayName || name}
+            </Label>
             <div className="grid grid-cols-2 gap-2">
               <Input
                 type="number"
@@ -693,18 +744,17 @@ export function RecordFormDialog({
         );
 
       case "REVERSE_LOOKUP": {
-        const reverseData = record?.data?.[name];
-        const reverseItems = Array.isArray(reverseData)
-          ? reverseData
-          : reverseData
-            ? [reverseData]
-            : [];
+        const reverseItems = relationOptions[name] || [];
+        const reverseCollectionId =
+          ((field.config?.value as { targetCollectionId?: string } | undefined)
+            ?.targetCollectionId as string | undefined) ?? "";
+        const isLoading = relationLoading[name] ?? false;
 
         return (
           <div className="space-y-4 p-5 rounded-2xl bg-foreground/2 border border-border/30">
             <div className="flex items-start justify-between">
               <div className="space-y-1">
-                <Label className="text-[11px] font-bold uppercase tracking-[0.12em] text-foreground/70 truncate block">
+                <Label className="text-[10px] font-semibold uppercase tracking-widest text-foreground/40 truncate block ml-1">
                   {displayName || name}
                 </Label>
                 <p className="text-[10px] text-muted-foreground/40 leading-tight pr-8">
@@ -721,28 +771,38 @@ export function RecordFormDialog({
             </div>
 
             <div className="flex flex-wrap gap-2 min-h-[32px]">
-              {reverseItems.length > 0 ? (
-                reverseItems.map((item: Record<string, unknown> | string, idx) => {
-                  const isObj = typeof item === "object" && item !== null;
-                  const label = isObj
-                    ? (item as Record<string, string>).displayName ||
-                      (item as Record<string, string>).name ||
-                      (item as Record<string, string>).id
-                    : String(item);
-                  return (
-                    <Badge
-                      key={idx}
-                      variant="secondary"
-                      className="bg-primary/5 text-primary/70 border-primary/10 hover:bg-primary/10 transition-colors pointer-events-none max-w-full"
-                    >
-                      <span className="truncate">{label}</span>
-                    </Badge>
-                  );
-                })
+              {isLoading ? (
+                <div className="flex items-center gap-2 py-3 px-4 rounded-xl bg-foreground/2 border border-border/10 w-full justify-center">
+                  <Loader2 size={12} className="animate-spin text-primary" />
+                  <span className="text-[10px] text-muted-foreground/50 font-medium">
+                    Resolviendo vínculos inversos...
+                  </span>
+                </div>
+              ) : reverseItems.length > 0 ? (
+                reverseItems.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() =>
+                      reverseCollectionId &&
+                      setPreviewTarget({
+                        id: item.id,
+                        label: item.label,
+                        collectionId: reverseCollectionId,
+                        collectionName: "",
+                      })
+                    }
+                    className="max-w-full rounded-lg border border-primary/10 bg-primary/5 px-2.5 py-1.5 text-left text-xs text-primary/70 transition-colors hover:border-primary/30 hover:bg-primary/10"
+                  >
+                    <span className="font-medium whitespace-normal wrap-break-word leading-tight">
+                      {item.label}
+                    </span>
+                  </button>
+                ))
               ) : (
                 <div className="flex items-center gap-2 py-3 px-4 rounded-xl bg-foreground/2 border border-border/10 w-full justify-center">
                   <span className="text-[10px] text-muted-foreground/30 font-medium italic">
-                    Sin registros vinculados actualmente
+                    Sin vínculos inversos actualmente
                   </span>
                 </div>
               )}
@@ -754,7 +814,10 @@ export function RecordFormDialog({
       default:
         return (
           <div className="space-y-2">
-            <Label htmlFor={name} className="text-muted truncate block">
+            <Label
+              htmlFor={name}
+              className="text-[10px] font-semibold uppercase tracking-widest text-foreground/40 truncate block ml-1"
+            >
               {displayName || name}
             </Label>
             <Input
@@ -827,6 +890,12 @@ export function RecordFormDialog({
           </DialogFooter>
         </form>
       </DialogContent>
+
+      <RecordQuickViewDialog
+        open={previewTarget !== null}
+        onOpenChange={(nextOpen) => !nextOpen && setPreviewTarget(null)}
+        target={previewTarget}
+      />
     </Dialog>
   );
 }
