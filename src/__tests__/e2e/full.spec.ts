@@ -24,14 +24,38 @@ test.describe("full collection lifecycle", () => {
     const authMeta = JSON.parse(await readFile(AUTH_META_PATH, "utf8")) as {
       accountId: string;
     };
+    const goToCollectionsFromDashboard = async () => {
+      await page.getByRole("link", { name: "Ir a Colecciones" }).click();
+      await expect(page).toHaveURL(/\/collections$/);
+      await expect(page.getByRole("heading", { name: "Colecciones", exact: true })).toBeVisible();
+    };
+    const openCollectionFromCollectionsPage = async () => {
+      await page
+        .locator("div")
+        .filter({
+          has: page.getByRole("heading", { name: collectionName, exact: true }),
+        })
+        .filter({
+          has: page.getByRole("link", { name: "Ver Datos" }),
+        })
+        .first()
+        .getByRole("link", { name: "Ver Datos" })
+        .click();
+      await expect(page.getByRole("heading", { name: collectionName, exact: true })).toBeVisible();
+    };
 
-    await page.goto("/collections");
-    await page.getByRole("button", { name: "Nueva Colección" }).first().click();
+    await page.goto("/");
+    await expect(page.getByRole("heading", { name: /Hola,/ })).toBeVisible();
+
+    await goToCollectionsFromDashboard();
+    await expect(page.getByTestId("create-collection-button").first()).toBeVisible();
+
+    await page.getByTestId("create-collection-button").first().click();
     await page.getByPlaceholder("ej: Portafolio de Proyectos").fill(collectionName);
     await page.getByRole("button", { name: "Crear Colección" }).click();
 
     await expect(page.getByRole("heading", { name: collectionName })).toBeVisible();
-    await page.getByRole("link", { name: "Ver Datos" }).first().click();
+    await openCollectionFromCollectionsPage();
 
     await page.getByRole("tab", { name: /Esquema/ }).click();
     await page.getByRole("button", { name: "Añadir Campo" }).click();
@@ -80,8 +104,14 @@ test.describe("full collection lifecycle", () => {
       throw recordSeedError;
     }
 
-    await page.reload();
-    await page.getByRole("columnheader", { name: /Title/ }).click();
+    await page.getByRole("link", { name: "Workspace" }).click();
+    await expect(page.getByRole("heading", { name: /Hola,/ })).toBeVisible();
+    await goToCollectionsFromDashboard();
+    await openCollectionFromCollectionsPage();
+
+    const titleColumnHeader = page.getByRole("columnheader", { name: /^Title$/ });
+    await expect(titleColumnHeader).toBeVisible();
+    await titleColumnHeader.click();
     await expect(page.getByRole("cell", { name: "Alpha Updated", exact: true })).toBeVisible();
 
     await page.getByPlaceholder("Buscar registros...").fill("Alpha Updated");
@@ -120,7 +150,8 @@ test.describe("full collection lifecycle", () => {
     await page.getByRole("button", { name: "Siguiente" }).click();
     await expect(page.getByText("2 / 2")).toBeVisible();
 
-    await page.goto("/collections");
+    await page.getByRole("link", { name: "Colecciones", exact: true }).click();
+    await expect(page).toHaveURL(/\/collections$/);
     const collectionCard = page.locator("div", { hasText: collectionName }).first();
     await collectionCard.hover();
     await page.getByLabel(`Eliminar colección ${collectionName}`).click();

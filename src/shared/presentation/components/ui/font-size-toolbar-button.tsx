@@ -43,6 +43,29 @@ const FONT_SIZES = [
   "96",
 ] as const;
 
+export function resolveDisplayedFontSize(params: {
+  block?: { fontSize?: string | number; type?: string } | null;
+  marksFontSize?: string | number;
+}) {
+  if (params.marksFontSize) {
+    return toUnitLess(String(params.marksFontSize));
+  }
+
+  const block = params.block;
+
+  if (!block?.type) {
+    return DEFAULT_FONT_SIZE;
+  }
+
+  if (typeof block.fontSize === "string" || typeof block.fontSize === "number") {
+    return toUnitLess(String(block.fontSize));
+  }
+
+  return block.type in FONT_SIZE_MAP
+    ? FONT_SIZE_MAP[block.type as keyof typeof FONT_SIZE_MAP]
+    : DEFAULT_FONT_SIZE;
+}
+
 export function FontSizeToolbarButton() {
   const [inputValue, setInputValue] = React.useState(DEFAULT_FONT_SIZE);
   const [isFocused, setIsFocused] = React.useState(false);
@@ -50,18 +73,13 @@ export function FontSizeToolbarButton() {
 
   const cursorFontSize = useEditorSelector((editor) => {
     const fontSize = editor.api.marks()?.[KEYS.fontSize];
-
-    if (fontSize) {
-      return toUnitLess(fontSize as string);
-    }
-
     const [block] = editor.api.block<TElement>() || [];
 
-    if (!block?.type) return DEFAULT_FONT_SIZE;
-
-    return block.type in FONT_SIZE_MAP
-      ? FONT_SIZE_MAP[block.type as keyof typeof FONT_SIZE_MAP]
-      : DEFAULT_FONT_SIZE;
+    return resolveDisplayedFontSize({
+      block,
+      marksFontSize:
+        typeof fontSize === "string" || typeof fontSize === "number" ? fontSize : undefined,
+    });
   }, []);
 
   const handleInputChange = () => {

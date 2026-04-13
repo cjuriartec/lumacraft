@@ -202,7 +202,10 @@ export function HelpLauncher() {
           <p className="text-[13px] font-semibold text-foreground">Guías y manual</p>
         </div>
         {hasNewHelpNudge && (
-          <span className="absolute right-3 top-3 h-2 w-2 rounded-full bg-primary ring-4 ring-primary/20" />
+          <span
+            data-testid="help-new-badge"
+            className="absolute right-3 top-3 h-2 w-2 rounded-full bg-primary ring-4 ring-primary/20"
+          />
         )}
       </button>
     </div>

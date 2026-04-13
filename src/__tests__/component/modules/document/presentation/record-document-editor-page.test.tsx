@@ -276,6 +276,8 @@ describe("RecordDocumentEditorPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     documentState.payload.permissions.canUpdate = true;
+    documentState.payload.document.sourceTemplateVersion = 1;
+    documentState.payload.template.version = 1;
     documentState.saveStatus = "idle";
     documentState.loading = false;
     documentState.error = null;
@@ -317,6 +319,27 @@ describe("RecordDocumentEditorPage", () => {
     await waitFor(() => {
       expect(screen.queryByText("Regenerar documento")).not.toBeInTheDocument();
     });
+  });
+
+  it("warns when the document was compiled from an older template version", () => {
+    documentState.payload.document.sourceTemplateVersion = 1;
+    documentState.payload.template.version = 2;
+
+    render(
+      <RecordDocumentEditorPage
+        collectionId="collection-1"
+        recordId="record-1"
+        templateId="template-1"
+      />,
+    );
+
+    expect(
+      screen.getAllByText(
+        (_, element) =>
+          element?.textContent ===
+          "Este documento fue compilado con la versión 1 del template. La versión actual es 2. Usa Regenerar para aplicar los cambios más recientes.",
+      ),
+    ).not.toHaveLength(0);
   });
 
   it("shows a loading state while regenerating from the modal", () => {

@@ -382,6 +382,129 @@ describe("compileTemplatePreviewBlocks", () => {
     expect(compiledText).toContain('"underline":true');
   });
 
+  it("preserves inline ai typography when flattening ai output inside paragraphs", async () => {
+    const templateBlocks: TemplateBlocks = [
+      {
+        type: "p",
+        children: [
+          { text: "Asunto: " },
+          {
+            type: "template_ai",
+            promptTemplate: "Genera un asunto institucional para {{nombre}}",
+            fontSize: 11,
+            fontFamily: "roboto",
+            children: [{ text: "" }],
+          },
+        ],
+      },
+    ];
+
+    const context: TemplateRuntimeContext = {
+      recordId: "record-1",
+      collectionId: "collection-1",
+      collectionName: "Clientes",
+      root: {
+        nombre: "Coti1",
+      },
+    };
+
+    const result = await compileTemplatePreviewBlocks({
+      requestId: "req-inline-ai-fonts",
+      blocks: templateBlocks,
+      context,
+      aiProviderFactory: new StructuredAIProviderFactory(),
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const paragraph = (
+      result.value.blocks as Array<{
+        children: Array<Record<string, unknown>>;
+      }>
+    )[0];
+    const generatedText = paragraph.children.find(
+      (child) => child.text === "Informe técnico generado",
+    ) as Record<string, unknown> | undefined;
+
+    expect(generatedText).toBeDefined();
+    expect(generatedText?.fontSize).toBe("11pt");
+    expect(generatedText?.fontFamily).toBe("roboto");
+  });
+
+  it("preserves ai block typography when rendering ai content inside table cells", async () => {
+    const templateBlocks: TemplateBlocks = [
+      {
+        type: "table",
+        children: [
+          {
+            type: "tr",
+            children: [
+              {
+                type: "td",
+                children: [
+                  {
+                    type: "template_ai",
+                    promptTemplate: "Genera un asunto institucional para {{nombre}}",
+                    fontSize: 11,
+                    fontFamily: "roboto",
+                    lineHeight: 1,
+                    children: [{ text: "" }],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ];
+
+    const context: TemplateRuntimeContext = {
+      recordId: "record-1",
+      collectionId: "collection-1",
+      collectionName: "Clientes",
+      root: {
+        nombre: "Coti1",
+      },
+    };
+
+    const result = await compileTemplatePreviewBlocks({
+      requestId: "req-table-ai-fonts",
+      blocks: templateBlocks,
+      context,
+      aiProviderFactory: new StructuredAIProviderFactory(),
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const table = (
+      result.value.blocks as Array<{
+        children: Array<{
+          children: Array<{
+            children: Array<Record<string, unknown>>;
+          }>;
+        }>;
+      }>
+    )[0];
+    const paragraph = table.children[0].children[0].children[0] as {
+      type: string;
+      fontFamily?: string;
+      fontSize?: string;
+      lineHeight?: number;
+      children: Array<Record<string, unknown>>;
+    };
+    const generatedText = paragraph.children[0];
+
+    expect(paragraph.type).toBe("p");
+    expect(paragraph.fontSize).toBe("11pt");
+    expect(paragraph.fontFamily).toBe("roboto");
+    expect(paragraph.lineHeight).toBe(1);
+    expect(generatedText.text).toBe("Informe técnico generado");
+    expect(generatedText.fontSize).toBe("11pt");
+    expect(generatedText.fontFamily).toBe("roboto");
+  });
+
   it("keeps final block order stable even when resolved events arrive out of order", async () => {
     const events: string[] = [];
     const templateBlocks: TemplateBlocks = [

@@ -5,6 +5,10 @@ import { AIProviderFactoryPort } from "@/modules/ai/domain/ports/ai-provider-fac
 import { TemplateAIBlockCachePort } from "@/modules/template/application/ports/template-ai-block-cache.port";
 import { DomainError, fail, ok, Result } from "@/shared/domain/result";
 import { createAsyncLimiter, parallelMapLimit } from "@/shared/lib/async-limiter";
+import {
+  resolveDocumentFontSize,
+  resolveDocumentLineHeight,
+} from "@/shared/lib/document-typography";
 import { hashStableValue } from "@/shared/lib/stable-hash";
 
 import {
@@ -200,29 +204,57 @@ function toPlateText(text: string, marks?: TemplateTextMarks): PlateTextNode {
   };
 }
 
+function resolveFontSizeWithUnit(value: unknown, blockType: string): string | undefined {
+  if (value === undefined || value === null) {
+    return `${resolveDocumentFontSize(undefined, blockType)}pt`;
+  }
+  if (typeof value === "number") {
+    return `${value}pt`;
+  }
+  if (typeof value === "string") {
+    // If it already has a unit, respect it
+    if (
+      value.endsWith("px") ||
+      value.endsWith("pt") ||
+      value.endsWith("rem") ||
+      value.endsWith("em")
+    ) {
+      return value;
+    }
+    const parsed = parseFloat(value);
+    if (!isNaN(parsed)) {
+      return `${parsed}pt`;
+    }
+  }
+  return `${resolveDocumentFontSize(value, blockType)}pt`;
+}
+
 function toParagraph(
   text: string,
   options?: {
     align?: string;
     lineHeight?: number;
-    indent?: number;
-    fontSize?: number;
+    fontSize?: string | number;
     fontFamily?: string;
+    indent?: number;
     marks?: TemplateTextMarks;
   },
 ): PlateElementNode {
-  const fontSize = options?.fontSize ? `${options.fontSize}pt` : undefined;
+  const resolvedFontSize = resolveFontSizeWithUnit(options?.fontSize, "p");
+  const resolvedLineHeight = resolveDocumentLineHeight(options?.lineHeight);
+
   const inheritedMarks: TemplateTextMarks = {
     ...(options?.marks ?? {}),
-    ...(fontSize ? { fontSize } : {}),
+    ...(resolvedFontSize ? { fontSize: resolvedFontSize } : {}),
     ...(options?.fontFamily ? { fontFamily: options.fontFamily } : {}),
   };
+
   return {
     type: "p",
     ...(options?.align ? { align: options.align } : {}),
-    ...(options?.lineHeight ? { lineHeight: options.lineHeight } : {}),
+    ...(resolvedLineHeight !== undefined ? { lineHeight: resolvedLineHeight } : {}),
     ...(options?.indent ? { indent: options.indent } : {}),
-    ...(fontSize ? { fontSize } : {}),
+    ...(resolvedFontSize ? { fontSize: resolvedFontSize } : {}),
     ...(options?.fontFamily ? { fontFamily: options.fontFamily } : {}),
     children: [
       toPlateText(text, Object.keys(inheritedMarks).length > 0 ? inheritedMarks : undefined),
@@ -254,6 +286,69 @@ function extractTextMarks(
     strikethrough: node.strikethrough === true ? true : undefined,
     underline: node.underline === true ? true : undefined,
   };
+}
+
+function normalizeTextMarks(marks?: TemplateTextMarks): TemplateTextMarks | undefined {
+  if (!marks) {
+    return undefined;
+  }
+
+  const normalized: TemplateTextMarks = {
+    ...marks,
+    ...(typeof marks.fontSize === "number" ? { fontSize: `${marks.fontSize}pt` } : {}),
+  };
+
+  return Object.values(normalized).some((value) => value !== undefined) ? normalized : undefined;
+}
+
+function mergeTextMarks(
+  base?: TemplateTextMarks,
+  override?: TemplateTextMarks,
+): TemplateTextMarks | undefined {
+  return normalizeTextMarks({
+    ...(base ?? {}),
+    ...(override ?? {}),
+  });
+}
+
+function collectInlineTextNodes(
+  node: PlateDescendantNode,
+  fallbackMarks?: TemplateTextMarks,
+): PlateTextNode[] {
+  if (isTextNode(node)) {
+    return [toPlateText(node.text, mergeTextMarks(fallbackMarks, extractTextMarks(node)))];
+  }
+
+  if (!isElementNode(node)) {
+    return [];
+  }
+
+  const nextFallbackMarks = mergeTextMarks(fallbackMarks, extractTextMarks(node));
+
+  return node.children.flatMap((child) => collectInlineTextNodes(child, nextFallbackMarks));
+}
+
+function flattenBlocksToInlineTextNodes(
+  blocks: PlateElementNode[],
+  fallbackMarks?: TemplateTextMarks,
+): PlateTextNode[] {
+  const flattened: PlateTextNode[] = [];
+
+  for (const block of blocks) {
+    const textNodes = collectInlineTextNodes(block, fallbackMarks);
+
+    if (textNodes.length === 0) {
+      continue;
+    }
+
+    if (flattened.length > 0) {
+      flattened.push(toPlateText(" "));
+    }
+
+    flattened.push(...textNodes);
+  }
+
+  return flattened;
 }
 
 function toImage(
@@ -590,8 +685,7 @@ async function parseLineToBlock(
   const align = options?.align ?? "left";
   const lineHeight = options?.lineHeight;
   const baseIndent = options?.indent ?? 0;
-  const fontSizeRaw = options?.fontSize;
-  const fontSize = fontSizeRaw ? `${fontSizeRaw}pt` : undefined;
+  const fontSize = resolveFontSizeWithUnit(options?.fontSize, "p");
   const fontFamily = options?.fontFamily;
   const typographyMarks: TemplateTextMarks = {
     ...(fontSize ? { fontSize } : {}),
@@ -600,7 +694,7 @@ async function parseLineToBlock(
   const hasMarks = Object.keys(typographyMarks).length > 0;
 
   if (trimmed.length === 0)
-    return toParagraph("", { align, lineHeight, fontSize: fontSizeRaw, fontFamily });
+    return toParagraph("", { align, lineHeight, fontSize: options?.fontSize, fontFamily });
 
   const headingMatch = /^(#{1,3})\s+(.+)$/.exec(trimmed);
   if (headingMatch) {
@@ -664,7 +758,7 @@ async function parseLineToBlock(
       align: align as "left" | "center" | "right" | "justify",
     });
   }
-  return toParagraph(trimmed, { align, lineHeight, fontSize: fontSizeRaw, fontFamily });
+  return toParagraph(trimmed, { align, lineHeight, fontSize: options?.fontSize, fontFamily });
 }
 
 async function renderTemplateToBlocks(
@@ -721,8 +815,7 @@ async function structuredBlockToPlate(
   const align = options?.align ?? "left";
   const lineHeight = options?.lineHeight;
   const baseIndent = options?.indent ?? 0;
-  const fontSizeRaw = options?.fontSize;
-  const fontSize = fontSizeRaw ? `${fontSizeRaw}pt` : undefined;
+  const fontSize = resolveFontSizeWithUnit(options?.fontSize, "p");
   const fontFamily = options?.fontFamily;
   const typographyMarks: TemplateTextMarks = {
     ...(fontSize ? { fontSize } : {}),
@@ -732,7 +825,14 @@ async function structuredBlockToPlate(
 
   switch (block.type) {
     case "paragraph":
-      return [toParagraph(block.text, { align, lineHeight, fontSize: fontSizeRaw, fontFamily })];
+      return [
+        toParagraph(block.text, {
+          align,
+          lineHeight,
+          fontSize: options?.fontSize,
+          fontFamily,
+        }),
+      ];
     case "heading":
       return [
         {
@@ -1215,18 +1315,13 @@ async function compileParagraphNode(
         warnings,
         blockMeta,
       );
-      const aiText = aiBlocks
-        .map((block) =>
-          block.children
-            .filter(isTextNode)
-            .map((textNode) => textNode.text)
-            .join(" "),
-        )
-        .join(" ")
-        .trim();
+      const inlineAiChildren = flattenBlocksToInlineTextNodes(
+        aiBlocks,
+        mergeTextMarks(extractTextMarks(node), extractTextMarks(child)),
+      );
 
-      if (aiText.length > 0) {
-        compiledChildren.push(toPlateText(aiText));
+      if (inlineAiChildren.length > 0) {
+        compiledChildren.push(...inlineAiChildren);
       }
       continue;
     }
@@ -1606,18 +1701,19 @@ async function compileNode(
             warnings,
             blockMeta,
           );
-          const aiText = aiBlocks
-            .map((block) =>
-              block.children
-                .filter(isTextNode)
-                .map((textNode) => textNode.text)
-                .join(" "),
-            )
-            .join(" ")
-            .trim();
 
-          if (aiText.length > 0) {
-            compiledChildren.push(toPlateText(aiText));
+          if (node.type === "td" || node.type === "th") {
+            compiledChildren.push(...aiBlocks);
+            continue;
+          }
+
+          const inlineAiChildren = flattenBlocksToInlineTextNodes(
+            aiBlocks,
+            mergeTextMarks(extractTextMarks(node), extractTextMarks(child)),
+          );
+
+          if (inlineAiChildren.length > 0) {
+            compiledChildren.push(...inlineAiChildren);
           }
           continue;
         }

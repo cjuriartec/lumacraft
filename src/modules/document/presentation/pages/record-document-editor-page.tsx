@@ -119,6 +119,8 @@ export default function RecordDocumentEditorPage({
   const recordLabel = payload?.record.label ?? recordId.slice(0, 8);
   const templateName = payload?.template.name ?? "Documento";
   const canUpdate = payload?.permissions.canUpdate ?? false;
+  const hasTemplateVersionMismatch =
+    payload && payload.document.sourceTemplateVersion !== payload.template.version;
 
   useBreadcrumbs([
     { label: "Colecciones", href: "/collections" },
@@ -402,11 +404,22 @@ export default function RecordDocumentEditorPage({
                 !canUpdate && "pt-6",
               )}
             >
-              {(error || payload.warnings.length > 0) && (
+              {(error || payload.warnings.length > 0 || hasTemplateVersionMismatch) && (
                 <div className="mx-auto mb-4 w-[794px] max-w-full space-y-2">
                   {error && (
                     <div className="rounded-md border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
                       {error}
+                    </div>
+                  )}
+                  {hasTemplateVersionMismatch && (
+                    <div className="rounded-md border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-sm text-amber-600 dark:text-amber-400">
+                      Este documento fue compilado con la versión{" "}
+                      <span className="font-semibold">
+                        {payload.document.sourceTemplateVersion}
+                      </span>{" "}
+                      del template. La versión actual es{" "}
+                      <span className="font-semibold">{payload.template.version}</span>. Usa
+                      Regenerar para aplicar los cambios más recientes.
                     </div>
                   )}
                   {payload.warnings.length > 0 && (
