@@ -253,6 +253,7 @@ function renderLeaf(
   context: InlineRenderContext,
 ): React.ReactElement {
   const inlineStyle = resolveInlineTextStyle(node, context);
+  const textContent = node.text === "" ? "\u00A0" : node.text;
 
   if (node.code) {
     return (
@@ -266,18 +267,18 @@ function renderLeaf(
           },
         ]}
       >
-        {node.text}
+        {textContent}
       </Text>
     );
   }
 
   if (!inlineStyle) {
-    return <Text key={key}>{node.text}</Text>;
+    return <Text key={key}>{textContent}</Text>;
   }
 
   return (
     <Text key={key} style={inlineStyle}>
-      {node.text}
+      {textContent}
     </Text>
   );
 }
@@ -435,6 +436,11 @@ function renderBlock(
   };
   const inlines = renderInlineChildren(node.children, inlineContext);
 
+  const minHeight =
+    typeof blockStyle.fontSize === "number" && typeof blockStyle.lineHeight === "number"
+      ? blockStyle.fontSize * blockStyle.lineHeight
+      : undefined;
+
   if (node.type === "hr") {
     return <View key={key} style={styles.hr} />;
   }
@@ -570,7 +576,7 @@ function renderBlock(
                       ),
                     )
                   ) : (
-                    <Text
+                    <View
                       style={[
                         resolveBlockTypography(
                           {
@@ -582,13 +588,15 @@ function renderBlock(
                         { marginBottom: 0, marginTop: 0 },
                       ]}
                     >
-                      {renderInlineChildren(cell.children, {
-                        blockType: "p",
-                        fontFamily: inheritedCellTypography.fontFamily,
-                        fontSize: inheritedCellTypography.fontSize,
-                        lineHeight: inheritedCellTypography.lineHeight,
-                      })}
-                    </Text>
+                      <Text>
+                        {renderInlineChildren(cell.children, {
+                          blockType: "p",
+                          fontFamily: inheritedCellTypography.fontFamily,
+                          fontSize: inheritedCellTypography.fontSize,
+                          lineHeight: inheritedCellTypography.lineHeight,
+                        })}
+                      </Text>
+                    </View>
                   )}
                 </View>
               );
@@ -602,8 +610,10 @@ function renderBlock(
   if (node.listStyleType === "disc") {
     return (
       <View key={key} style={[styles.listItem, { paddingLeft }]}>
-        <Text style={[styles.listMarker, blockStyle]}>{"•"}</Text>
-        <Text style={[styles.listContent, blockStyle, { marginBottom: 0, marginTop: 0 }]}>
+        <Text style={[styles.listMarker, blockStyle, { minHeight }]}>{"•"}</Text>
+        <Text
+          style={[styles.listContent, blockStyle, { marginBottom: 0, marginTop: 0, minHeight }]}
+        >
           {inlines}
         </Text>
       </View>
@@ -621,8 +631,10 @@ function renderBlock(
 
     return (
       <View key={key} style={[styles.listItem, { paddingLeft }]}>
-        <Text style={[styles.listMarker, blockStyle]}>{`${listNumber}.`}</Text>
-        <Text style={[styles.listContent, blockStyle, { marginBottom: 0, marginTop: 0 }]}>
+        <Text style={[styles.listMarker, blockStyle, { minHeight }]}>{`${listNumber}.`}</Text>
+        <Text
+          style={[styles.listContent, blockStyle, { marginBottom: 0, marginTop: 0, minHeight }]}
+        >
           {inlines}
         </Text>
       </View>
@@ -632,18 +644,15 @@ function renderBlock(
   if (node.type === "blockquote") {
     return (
       <View key={key} style={[styles.blockquote, { marginLeft: paddingLeft }]}>
-        <Text style={[blockStyle, { fontStyle: "italic" }]}>{inlines}</Text>
+        <Text style={[blockStyle, { fontStyle: "italic", minHeight }]}>{inlines}</Text>
       </View>
     );
   }
 
   return (
-    <Text
-      key={key}
-      style={[blockStyle, { paddingLeft }, node.type.startsWith("h") ? { fontWeight: 700 } : {}]}
-    >
-      {inlines}
-    </Text>
+    <View key={key} style={[blockStyle, { paddingLeft, minHeight }]}>
+      <Text style={[node.type.startsWith("h") ? { fontWeight: 700 } : {}]}>{inlines}</Text>
+    </View>
   );
 }
 
