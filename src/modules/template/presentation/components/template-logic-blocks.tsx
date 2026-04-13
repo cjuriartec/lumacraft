@@ -28,6 +28,8 @@ import { TemplateBlocks } from "@/modules/template/domain/types/template-blocks"
 import {
   DOCUMENT_FONT_FAMILY_OPTIONS,
   resolveDocumentFontFamily,
+  resolveDocumentFontSize,
+  resolveDocumentLineHeight,
   type SupportedDocumentFontFamily,
 } from "@/shared/lib/document-typography";
 import { cn } from "@/shared/lib/utils";
@@ -64,9 +66,9 @@ type LogicNodeChildren = Descendant[];
 /** Shared typography options for all logic block types */
 export interface LogicBlockTypographyOptions {
   align?: "left" | "center" | "right" | "justify";
-  lineHeight?: number;
+  lineHeight?: string | number;
   indent?: number;
-  fontSize?: number;
+  fontSize?: string | number;
   fontFamily?: SupportedDocumentFontFamily;
 }
 
@@ -238,6 +240,7 @@ function BlockShell({
   icon,
   title,
   style,
+  contentStyle,
   actions,
   variant = "default",
 }: {
@@ -245,6 +248,7 @@ function BlockShell({
   title: string;
   children: ReactNode;
   style?: React.CSSProperties;
+  contentStyle?: React.CSSProperties;
   actions?: ReactNode;
   variant?: "default" | "ai";
 }) {
@@ -260,10 +264,10 @@ function BlockShell({
       )}
       style={style}
     >
-      <div className="mb-3 flex items-center justify-between px-0.5">
+      <div className="mb-3 flex items-center justify-between px-0.5 select-none">
         <div
           className={cn(
-            "flex items-center gap-2.5 text-[10px] font-bold uppercase tracking-[0.25em]",
+            "flex items-center gap-2.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.2em]",
             variant === "ai" ? "text-indigo-500/80" : "text-slate-500/60",
           )}
         >
@@ -277,20 +281,22 @@ function BlockShell({
           >
             {icon}
           </div>
-          {title}
+          <span className="leading-none pt-0.5">{title}</span>
         </div>
         <div className="flex items-center gap-1.5">{actions}</div>
       </div>
-      <div className="px-0.5 text-[#1a1a1a]">{children}</div>
+      <div className="px-0.5 text-[#1a1a1a]" style={contentStyle}>
+        {children}
+      </div>
     </div>
   );
 }
 
 interface LogicBlockStylesPopoverProps {
   align: "left" | "center" | "right" | "justify";
-  lineHeight: number;
-  fontSize: number;
-  fontFamily: SupportedDocumentFontFamily;
+  lineHeight: string | number;
+  fontSize: string | number;
+  fontFamily: string;
   onSave: (updates: Partial<LogicBlockTypographyOptions>) => void;
 }
 
@@ -388,8 +394,10 @@ function LogicBlockStylesPopover({
             Tipografía
           </span>
           <Select
-            value={fontFamily}
-            onValueChange={(v) => onSave({ fontFamily: v as SupportedDocumentFontFamily })}
+            value={fontFamily ?? ""}
+            onValueChange={(v) =>
+              onSave({ fontFamily: (v || undefined) as SupportedDocumentFontFamily })
+            }
           >
             <SelectTrigger className="h-8 rounded-md border-border/40 bg-muted/10 text-sm">
               <SelectValue />
@@ -414,10 +422,10 @@ function LogicBlockStylesPopover({
               <Button
                 key={val}
                 size="sm"
-                variant={lineHeight === val ? "secondary" : "ghost"}
+                variant={Number(lineHeight) === val ? "secondary" : "ghost"}
                 className={cn(
                   "h-8 text-[11px] font-bold",
-                  lineHeight === val &&
+                  Number(lineHeight) === val &&
                     "bg-primary/10 text-primary border border-primary/20 shadow-sm",
                 )}
                 onClick={() => onSave({ lineHeight: val })}
@@ -538,9 +546,11 @@ export function TemplateConditionalElement(
 
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const align = element.align ?? "left";
-  const lineHeight = element.lineHeight ?? 1.5;
-  const fontSize = element.fontSize ?? 16;
+  const lineHeight = resolveDocumentLineHeight(element.lineHeight);
+  const fontSize = resolveDocumentFontSize(element.fontSize, TEMPLATE_CONDITIONAL_TYPE);
   const fontFamily = element.fontFamily ?? "arial";
+
+  const indent = element.indent ?? 0;
 
   const onSave = (updatedElement: Partial<TemplateConditionalElementNode>) => {
     const path = editor.api.findPath(element);
@@ -552,17 +562,20 @@ export function TemplateConditionalElement(
     <PlateElement {...props} as="div" attributes={attributes}>
       <BlockShell
         icon={<GitBranch size={14} />}
-        title="Conditional Block"
+        title="Bloque Condicional"
         actions={
           <LogicBlockStylesPopover
             align={align}
             lineHeight={lineHeight}
             fontSize={fontSize}
             fontFamily={fontFamily}
-            onSave={onSave}
+            onSave={(updates) => onSave(updates as Partial<TemplateConditionalElementNode>)}
           />
         }
         style={{
+          marginLeft: indent ? `${indent * 24}px` : undefined,
+        }}
+        contentStyle={{
           textAlign: align,
           lineHeight,
           fontSize: `${fontSize}pt`,
@@ -609,9 +622,11 @@ export function TemplateListElement(props: PlateElementProps<TemplateListElement
 
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const align = element.align ?? "left";
-  const lineHeight = element.lineHeight ?? 1.5;
-  const fontSize = element.fontSize ?? 16;
+  const lineHeight = resolveDocumentLineHeight(element.lineHeight);
+  const fontSize = resolveDocumentFontSize(element.fontSize, TEMPLATE_LIST_TYPE);
   const fontFamily = element.fontFamily ?? "arial";
+
+  const indent = element.indent ?? 0;
 
   const onSave = (updatedElement: Partial<TemplateListElementNode>) => {
     const path = editor.api.findPath(element);
@@ -623,17 +638,20 @@ export function TemplateListElement(props: PlateElementProps<TemplateListElement
     <PlateElement {...props} as="div" attributes={attributes}>
       <BlockShell
         icon={<ListTree size={14} />}
-        title="List Block"
+        title="Bloque de Bucle (Lista)"
         actions={
           <LogicBlockStylesPopover
             align={align}
             lineHeight={lineHeight}
             fontSize={fontSize}
             fontFamily={fontFamily}
-            onSave={onSave}
+            onSave={(updates) => onSave(updates as Partial<TemplateListElementNode>)}
           />
         }
         style={{
+          marginLeft: indent ? `${indent * 24}px` : undefined,
+        }}
+        contentStyle={{
           textAlign: align,
           lineHeight,
           fontSize: `${fontSize}pt`,
@@ -679,9 +697,11 @@ export function TemplateSwitchElement(props: PlateElementProps<TemplateSwitchEle
 
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const align = element.align ?? "left";
-  const lineHeight = element.lineHeight ?? 1.5;
-  const fontSize = element.fontSize ?? 16;
+  const lineHeight = resolveDocumentLineHeight(element.lineHeight);
+  const fontSize = resolveDocumentFontSize(element.fontSize, TEMPLATE_SWITCH_TYPE);
   const fontFamily = element.fontFamily ?? "arial";
+
+  const indent = element.indent ?? 0;
 
   const onSave = (updatedElement: Partial<TemplateSwitchElementNode>) => {
     const path = editor.api.findPath(element);
@@ -693,17 +713,20 @@ export function TemplateSwitchElement(props: PlateElementProps<TemplateSwitchEle
     <PlateElement {...props} as="div" attributes={attributes}>
       <BlockShell
         icon={<Split size={14} />}
-        title="Switch Block"
+        title="Bloque de Selección (Switch)"
         actions={
           <LogicBlockStylesPopover
             align={align}
             lineHeight={lineHeight}
             fontSize={fontSize}
             fontFamily={fontFamily}
-            onSave={onSave}
+            onSave={(updates) => onSave(updates as Partial<TemplateSwitchElementNode>)}
           />
         }
         style={{
+          marginLeft: indent ? `${indent * 24}px` : undefined,
+        }}
+        contentStyle={{
           textAlign: align,
           lineHeight,
           fontSize: `${fontSize}pt`,
@@ -744,9 +767,9 @@ export function TemplateAIElement(props: PlateElementProps<TemplateAIElementNode
   const editor = useEditorRef();
 
   const align = element.align ?? "left";
-  const lineHeight = element.lineHeight ?? 1.5;
+  const lineHeight = resolveDocumentLineHeight(element.lineHeight);
   const indent = element.indent ?? 0;
-  const fontSize = element.fontSize ?? 16;
+  const fontSize = resolveDocumentFontSize(element.fontSize, TEMPLATE_AI_TYPE);
   const fontFamily = element.fontFamily ?? "arial";
 
   const promptValue = element.promptTemplate?.trim().length
@@ -771,15 +794,17 @@ export function TemplateAIElement(props: PlateElementProps<TemplateAIElementNode
             lineHeight={lineHeight}
             fontSize={fontSize}
             fontFamily={fontFamily}
-            onSave={onSave}
+            onSave={(updates) => onSave(updates as Partial<TemplateAIElementNode>)}
           />
         }
         style={{
+          marginLeft: indent ? `${indent * 24}px` : undefined,
+        }}
+        contentStyle={{
           textAlign: align,
           lineHeight,
           fontSize: `${fontSize}pt`,
           fontFamily: resolveDocumentFontFamily("web", fontFamily),
-          marginLeft: indent ? `${indent * 24}px` : undefined,
         }}
       >
         <TemplateAIInlinePromptEditor

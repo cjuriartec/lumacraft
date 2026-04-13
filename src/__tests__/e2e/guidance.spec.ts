@@ -8,6 +8,7 @@ test.describe("guidance surfaces", () => {
   test("opens the help launcher and navigates into the help center @smoke", async ({ page }) => {
     await page.goto("/");
 
+    await expect(page.getByRole("button", { name: "Abrir centro de ayuda" })).toBeVisible();
     await page.getByRole("button", { name: "Abrir centro de ayuda" }).click();
     await expect(page.getByText("Siguiente mejor paso")).toBeVisible();
 
@@ -17,6 +18,8 @@ test.describe("guidance surfaces", () => {
     ).toBeVisible();
 
     await page.getByPlaceholder("Buscar por tema, feature o problema...").fill("plantillas");
-    await expect(page.getByText("Editor avanzado de plantillas")).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /Editor avanzado de plantillas/i }).first(),
+    ).toBeVisible();
   });
 });

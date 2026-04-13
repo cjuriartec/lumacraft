@@ -112,6 +112,7 @@ export function CreateCollectionDialog({
 
   const triggerEl = children ?? (
     <button
+      data-testid="create-collection-button"
       data-guidance-anchor="create-collection"
       className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-[13px] text-primary-foreground bg-primary hover:bg-primary-hover transition-all duration-150 hover:-translate-y-0.5"
     >

@@ -35,6 +35,8 @@ export const metadata: Metadata = {
   description: "Dynamic data engine with smart templates and AI integration.",
 };
 
+const shouldHideNextDevOverlayForE2E = process.env.ENABLE_TEST_AUTH === "true";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -49,6 +51,7 @@ export default function RootLayout({
       <body
         className="min-h-full flex flex-col bg-background text-foreground antialiased"
         style={{ fontFamily: "var(--font-poppins), 'Poppins', sans-serif" }}
+        data-e2e-test-mode={shouldHideNextDevOverlayForE2E ? "true" : undefined}
       >
         <ThemeProvider
           attribute="class"
@@ -56,6 +59,21 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          {shouldHideNextDevOverlayForE2E ? (
+            <style>{`
+              nextjs-portal,
+              [data-nextjs-dev-overlay],
+              [data-next-badge-root] {
+                display: none !important;
+                pointer-events: none !important;
+              }
+
+              [data-e2e-test-mode="true"] [data-guidance-coachmark] {
+                display: none !important;
+                pointer-events: none !important;
+              }
+            `}</style>
+          ) : null}
           {children}
         </ThemeProvider>
       </body>

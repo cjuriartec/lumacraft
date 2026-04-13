@@ -156,7 +156,10 @@ export default function CollectionsPage() {
           {/* Add new card */}
           {currentUserIsAdmin && (
             <CreateCollectionDialog onSuccess={refresh}>
-              <div className="rounded-xl p-5 flex flex-col items-center justify-center gap-2.5 cursor-pointer transition-all duration-200 hover:-translate-y-0.5 min-h-[180px] bg-transparent hover:bg-surface/50 dark:hover:bg-surface-hover/30">
+              <div
+                data-testid="create-collection-button"
+                className="rounded-xl p-5 flex flex-col items-center justify-center gap-2.5 cursor-pointer transition-all duration-200 hover:-translate-y-0.5 min-h-[180px] bg-transparent hover:bg-surface/50 dark:hover:bg-surface-hover/30"
+              >
                 <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-primary/10 text-primary/50">
                   <Plus size={18} />
                 </div>

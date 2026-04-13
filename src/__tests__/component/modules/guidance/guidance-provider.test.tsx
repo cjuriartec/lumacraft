@@ -231,7 +231,7 @@ describe("GuidanceProvider", () => {
     );
 
     expect(screen.queryByText("El workspace define el contexto")).not.toBeInTheDocument();
-    expect(screen.getByText("Nuevo")).toBeInTheDocument();
+    expect(screen.getByTestId("help-new-badge")).toBeInTheDocument();
   });
 
   it("renders the coachmark even when the anchor is missing", async () => {

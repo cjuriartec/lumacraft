@@ -21,13 +21,27 @@ test.describe("authenticated smoke flows", () => {
     await page.goto("/");
     await expect(page.getByRole("heading", { name: /Hola,/ })).toBeVisible();
 
-    await page.goto("/collections");
-    await page.getByRole("button", { name: "Nueva Colección" }).first().click();
+    await page.getByRole("link", { name: "Ir a Colecciones" }).click();
+    await expect(page).toHaveURL(/\/collections$/);
+    await expect(page.getByRole("heading", { name: "Colecciones", exact: true })).toBeVisible();
+    await expect(page.getByTestId("create-collection-button").first()).toBeVisible();
+
+    await page.getByTestId("create-collection-button").first().click();
     await page.getByPlaceholder("ej: Portafolio de Proyectos").fill(collectionName);
     await page.getByRole("button", { name: "Crear Colección" }).click();
 
     await expect(page.getByRole("heading", { name: collectionName })).toBeVisible();
-    await page.getByRole("link", { name: "Ver Datos" }).first().click();
+    await page
+      .locator("div")
+      .filter({
+        has: page.getByRole("heading", { name: collectionName, exact: true }),
+      })
+      .filter({
+        has: page.getByRole("link", { name: "Ver Datos" }),
+      })
+      .first()
+      .getByRole("link", { name: "Ver Datos" })
+      .click();
 
     await page.getByRole("tab", { name: /Esquema/ }).click();
     await page.getByRole("button", { name: "Añadir Campo" }).click();
