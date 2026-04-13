@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.8](https://github.com/cjuriartec/lumacraft/compare/v0.1.7...v0.1.8) (2026-04-13)
+
+
+### ♻️ Code Refactoring
+
+* standardize font size resolution and improve text mark handling in template compilation ([0cea64e](https://github.com/cjuriartec/lumacraft/commit/0cea64e1c4babd3e7fa7013776b9762156d070ab))
+
 ### [0.1.7](https://github.com/cjuriartec/lumacraft/compare/v0.1.6...v0.1.7) (2026-04-12)
 
 
