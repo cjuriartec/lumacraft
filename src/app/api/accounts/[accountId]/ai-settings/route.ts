@@ -7,10 +7,13 @@ import { AccountAISettingsDto } from "@/modules/ai/application/types/account-ai-
 import { GetAccountAISettingsUseCase } from "@/modules/ai/application/use-cases/get-account-ai-settings.use-case";
 import { SaveAccountAISettingsUseCase } from "@/modules/ai/application/use-cases/save-account-ai-settings.use-case";
 import { AccountAISettings } from "@/modules/ai/domain/entities/account-ai-settings.entity";
-import { buildProviderSecretSummaries } from "@/modules/ai/domain/types/account-ai-settings.types";
+import { type AccountAIProviderSecretSummaries } from "@/modules/ai/domain/types/account-ai-settings.types";
 import { AI_PROVIDER_IDS } from "@/modules/ai/domain/types/ai-provider.types";
 import { SupabaseAccountAISettingsRepository } from "@/modules/ai/infrastructure/repositories/supabase-account-ai-settings.repository";
-import { encryptSecret } from "@/modules/ai/infrastructure/security/account-ai-settings-crypto";
+import {
+  canDecryptSecret,
+  encryptSecret,
+} from "@/modules/ai/infrastructure/security/account-ai-settings-crypto";
 import { resolveAccountAccess } from "@/shared/infrastructure/supabase/account-access";
 import { createAdminClientOrNull } from "@/shared/infrastructure/supabase/admin";
 import { createClient } from "@/shared/infrastructure/supabase/server";
@@ -77,6 +80,28 @@ function getErrorCode(error: Error, fallback: string) {
   return "code" in error && typeof error.code === "string" ? error.code : fallback;
 }
 
+function buildRuntimeSecretSummaries(settings: AccountAISettings): AccountAIProviderSecretSummaries {
+  return AI_PROVIDER_IDS.reduce<AccountAIProviderSecretSummaries>(
+    (accumulator, providerId) => {
+      const secret = settings.providerSecrets[providerId];
+      const isReadable = secret ? canDecryptSecret(secret) : false;
+
+      accumulator[providerId] = {
+        isConfigured: isReadable,
+        last4: isReadable ? secret?.last4 ?? null : null,
+        updatedAt: isReadable ? secret?.updatedAt ?? null : null,
+      };
+
+      return accumulator;
+    },
+    {
+      GEMINI: { isConfigured: false, last4: null, updatedAt: null },
+      OPENAI: { isConfigured: false, last4: null, updatedAt: null },
+      ANTHROPIC: { isConfigured: false, last4: null, updatedAt: null },
+    },
+  );
+}
+
 function toDto(settings: AccountAISettings): AccountAISettingsDto {
   return {
     accountId: settings.accountId,
@@ -94,7 +119,7 @@ function toDto(settings: AccountAISettings): AccountAISettingsDto {
     fallbackProvider: settings.fallbackProvider,
     fallbackModel: settings.fallbackModel,
     providerOptions: settings.providerOptions,
-    providerSecrets: buildProviderSecretSummaries(settings.providerSecrets),
+    providerSecrets: buildRuntimeSecretSummaries(settings),
   };
 }
 

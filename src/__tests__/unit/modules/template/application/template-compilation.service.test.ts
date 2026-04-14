@@ -194,4 +194,54 @@ describe("TemplateCompilationService", () => {
     expect(second.ok).toBe(true);
     expect(streamSpy).toHaveBeenCalledTimes(1);
   });
+
+  it("busts preview cache when ai settings hash changes", async () => {
+    const previewCache = new InMemoryPreviewCacheRepository();
+    const streamSpy = vi.fn();
+    const service = new TemplateCompilationService();
+    const blocks: TemplateBlocks = [
+      {
+        type: "template_ai",
+        promptTemplate: "Resume {{cliente.nombre}}",
+        children: [{ text: "" }],
+      },
+    ];
+
+    const first = await service.compile({
+      requestId: "req-cache-hash-1",
+      templateId: "template-1",
+      templateVersion: 2,
+      accountId: "workspace-1",
+      collectionId: "collection-1",
+      recordId: "record-1",
+      blocks,
+      context: buildContext(),
+      aiProviderFactory: new SlowStructuredAIProviderFactory(
+        new SlowStructuredAIProvider(streamSpy),
+      ),
+      previewCache,
+      aiSettingsHash: "settings-hash-1",
+    });
+
+    const second = await service.compile({
+      requestId: "req-cache-hash-2",
+      templateId: "template-1",
+      templateVersion: 2,
+      accountId: "workspace-1",
+      collectionId: "collection-1",
+      recordId: "record-1",
+      blocks,
+      context: buildContext(),
+      aiProviderFactory: new SlowStructuredAIProviderFactory(
+        new SlowStructuredAIProvider(streamSpy),
+      ),
+      previewCache,
+      aiSettingsHash: "settings-hash-2",
+    });
+
+    expect(first.ok).toBe(true);
+    expect(second.ok).toBe(true);
+    expect(streamSpy).toHaveBeenCalledTimes(2);
+    expect(previewCache.save).toHaveBeenCalledTimes(2);
+  });
 });

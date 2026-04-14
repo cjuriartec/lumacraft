@@ -67,8 +67,100 @@ class CountingStructuredAIProvider extends StructuredAIProvider {
   }
 }
 
+class LinkedStructuredAIProvider implements AIProviderPort {
+  readonly id = "GEMINI" as const;
+
+  async generate(
+    _request: AIGenerationRequest,
+  ): Promise<Result<AIGenerationResponse, DomainError>> {
+    return ok({
+      provider: "GEMINI",
+      model: "gemini-test",
+      text: JSON.stringify({
+        blocks: [
+          {
+            type: "paragraph",
+            text: "Consulta la [guia tecnica](https://docs.example.com/guia) para continuar.",
+          },
+        ],
+      }),
+    });
+  }
+
+  async *stream(): AsyncGenerator<Result<AIGenerationChunk, DomainError>, void, void> {
+    yield ok({
+      provider: "GEMINI",
+      model: "gemini-test",
+      index: 0,
+      text: JSON.stringify({
+        blocks: [
+          {
+            type: "paragraph",
+            text: "Consulta la [guia tecnica](https://docs.example.com/guia) para continuar.",
+          },
+        ],
+      }),
+    });
+  }
+
+  async testConnection(): Promise<Result<void, DomainError>> {
+    return ok(undefined);
+  }
+}
+
+class UnsafeLinkStructuredAIProvider implements AIProviderPort {
+  readonly id = "GEMINI" as const;
+
+  async generate(
+    _request: AIGenerationRequest,
+  ): Promise<Result<AIGenerationResponse, DomainError>> {
+    return ok({
+      provider: "GEMINI",
+      model: "gemini-test",
+      text: "Abre [este recurso](javascript:alert(1)) con cuidado.",
+    });
+  }
+
+  async *stream(): AsyncGenerator<Result<AIGenerationChunk, DomainError>, void, void> {
+    yield ok({
+      provider: "GEMINI",
+      model: "gemini-test",
+      index: 0,
+      text: "Abre [este recurso](javascript:alert(1)) con cuidado.",
+    });
+  }
+
+  async testConnection(): Promise<Result<void, DomainError>> {
+    return ok(undefined);
+  }
+}
+
 class StructuredAIProviderFactory implements AIProviderFactoryPort {
   private readonly provider = new StructuredAIProvider();
+
+  getDefaultProviderId() {
+    return "GEMINI" as const;
+  }
+
+  create() {
+    return ok(this.provider);
+  }
+}
+
+class LinkedStructuredAIProviderFactory implements AIProviderFactoryPort {
+  private readonly provider = new LinkedStructuredAIProvider();
+
+  getDefaultProviderId() {
+    return "GEMINI" as const;
+  }
+
+  create() {
+    return ok(this.provider);
+  }
+}
+
+class UnsafeLinkStructuredAIProviderFactory implements AIProviderFactoryPort {
+  private readonly provider = new UnsafeLinkStructuredAIProvider();
 
   getDefaultProviderId() {
     return "GEMINI" as const;
@@ -499,6 +591,125 @@ describe("compileTemplatePreviewBlocks", () => {
     expect(generatedText?.fontFamily).toBe("roboto");
   });
 
+  it("renders inline hyperlinks returned by ai blocks", async () => {
+    const templateBlocks: TemplateBlocks = [
+      {
+        type: "template_ai",
+        promptTemplate: "Genera una recomendacion con una fuente enlazada",
+        children: [{ text: "" }],
+      },
+    ];
+
+    const context: TemplateRuntimeContext = {
+      recordId: "record-1",
+      collectionId: "collection-1",
+      collectionName: "Clientes",
+      root: {},
+    };
+
+    const result = await compileTemplatePreviewBlocks({
+      requestId: "req-ai-links",
+      blocks: templateBlocks,
+      context,
+      aiProviderFactory: new LinkedStructuredAIProviderFactory(),
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const paragraph = result.value.blocks[0] as {
+      type: string;
+      children: Array<Record<string, unknown>>;
+    };
+    const linkChild = paragraph.children.find((child) => child.type === "a") as
+      | { type: string; url: string; children: Array<{ text: string }> }
+      | undefined;
+
+    expect(paragraph.type).toBe("p");
+    expect(linkChild).toBeDefined();
+    expect(linkChild?.url).toBe("https://docs.example.com/guia");
+    expect(linkChild?.children[0]?.text).toBe("guia tecnica");
+  });
+
+  it("preserves inline hyperlinks when ai content is embedded inside a paragraph", async () => {
+    const templateBlocks: TemplateBlocks = [
+      {
+        type: "p",
+        children: [
+          { text: "Fuente: " },
+          {
+            type: "template_ai",
+            promptTemplate: "Genera una recomendacion con una fuente enlazada",
+            children: [{ text: "" }],
+          },
+        ],
+      },
+    ];
+
+    const context: TemplateRuntimeContext = {
+      recordId: "record-1",
+      collectionId: "collection-1",
+      collectionName: "Clientes",
+      root: {},
+    };
+
+    const result = await compileTemplatePreviewBlocks({
+      requestId: "req-inline-ai-links",
+      blocks: templateBlocks,
+      context,
+      aiProviderFactory: new LinkedStructuredAIProviderFactory(),
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const paragraph = result.value.blocks[0] as {
+      children: Array<Record<string, unknown>>;
+    };
+    const linkChild = paragraph.children.find((child) => child.type === "a") as
+      | { type: string; url: string; children: Array<{ text: string }> }
+      | undefined;
+
+    expect(paragraph.children[0]?.text).toBe("Fuente: ");
+    expect(linkChild).toBeDefined();
+    expect(linkChild?.url).toBe("https://docs.example.com/guia");
+    expect(linkChild?.children[0]?.text).toBe("guia tecnica");
+  });
+
+  it("does not convert unsafe ai links into anchor nodes", async () => {
+    const templateBlocks: TemplateBlocks = [
+      {
+        type: "template_ai",
+        promptTemplate: "Genera un link inseguro",
+        children: [{ text: "" }],
+      },
+    ];
+
+    const context: TemplateRuntimeContext = {
+      recordId: "record-1",
+      collectionId: "collection-1",
+      collectionName: "Clientes",
+      root: {},
+    };
+
+    const result = await compileTemplatePreviewBlocks({
+      requestId: "req-unsafe-ai-links",
+      blocks: templateBlocks,
+      context,
+      aiProviderFactory: new UnsafeLinkStructuredAIProviderFactory(),
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const paragraph = result.value.blocks[0] as {
+      children: Array<Record<string, unknown>>;
+    };
+
+    expect(paragraph.children.some((child) => child.type === "a")).toBe(false);
+    expect(JSON.stringify(paragraph.children)).toContain("[este recurso](javascript:alert(1))");
+  });
+
   it("preserves ai block typography when rendering ai content inside table cells", async () => {
     const templateBlocks: TemplateBlocks = [
       {
@@ -641,6 +852,56 @@ describe("compileTemplatePreviewBlocks", () => {
     expect(secondParagraph.type).toBe("p");
     expect(secondParagraph.fontFamily).toBe("arial");
     expect(secondParagraph.lineHeight).toBe(1.2);
+    expect(aiProviderFactory.provider.streamCalls).toBe(2);
+    expect(aiBlockCache.size).toBe(2);
+  });
+
+  it("invalidates ai block cache when ai secret state changes", async () => {
+    const aiProviderFactory = new CountingStructuredAIProviderFactory();
+    const aiBlockCache = new InMemoryTemplateAIBlockCache();
+    const context: TemplateRuntimeContext = {
+      recordId: "record-1",
+      collectionId: "collection-1",
+      collectionName: "Clientes",
+      root: {
+        nombre: "Coti1",
+      },
+    };
+
+    const firstResult = await compileTemplatePreviewBlocks({
+      requestId: "req-ai-secret-hash-1",
+      accountId: "account-1",
+      aiSettingsHash: "secret-version-1",
+      blocks: [
+        {
+          type: "template_ai",
+          promptTemplate: "Genera un asunto institucional para {{nombre}}",
+          children: [{ text: "" }],
+        },
+      ],
+      context,
+      aiProviderFactory,
+      aiBlockCache,
+    });
+
+    const secondResult = await compileTemplatePreviewBlocks({
+      requestId: "req-ai-secret-hash-2",
+      accountId: "account-1",
+      aiSettingsHash: "secret-version-2",
+      blocks: [
+        {
+          type: "template_ai",
+          promptTemplate: "Genera un asunto institucional para {{nombre}}",
+          children: [{ text: "" }],
+        },
+      ],
+      context,
+      aiProviderFactory,
+      aiBlockCache,
+    });
+
+    expect(firstResult.ok).toBe(true);
+    expect(secondResult.ok).toBe(true);
     expect(aiProviderFactory.provider.streamCalls).toBe(2);
     expect(aiBlockCache.size).toBe(2);
   });

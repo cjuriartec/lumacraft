@@ -64,6 +64,7 @@ interface CompileTemplatePreviewBlocksParams {
   context: TemplateRuntimeContext;
   aiProviderFactory: AIProviderFactoryPort;
   accountId?: string;
+  aiSettingsHash?: string;
   aiSystemInstruction?: string;
   assetUrlResolver?: TemplateAssetUrlResolverPort;
   aiBlockCache?: TemplateAIBlockCachePort;
@@ -87,6 +88,7 @@ interface CompileContext {
   context: TemplateRuntimeContext;
   aiProviderFactory: AIProviderFactoryPort;
   accountId?: string;
+  aiSettingsHash?: string;
   aiSystemInstruction?: string;
   assetUrlResolver?: TemplateAssetUrlResolverPort;
   aiBlockCache?: TemplateAIBlockCachePort;
@@ -256,9 +258,10 @@ function toParagraph(
     ...(options?.indent ? { indent: options.indent } : {}),
     ...(resolvedFontSize ? { fontSize: resolvedFontSize } : {}),
     ...(options?.fontFamily ? { fontFamily: options.fontFamily } : {}),
-    children: [
-      toPlateText(text, Object.keys(inheritedMarks).length > 0 ? inheritedMarks : undefined),
-    ],
+    children: parseInlineRichText(
+      text,
+      Object.keys(inheritedMarks).length > 0 ? inheritedMarks : undefined,
+    ),
   };
 }
 
@@ -311,12 +314,61 @@ function mergeTextMarks(
   });
 }
 
-function collectInlineTextNodes(
+function isSafeLinkUrl(url: string): boolean {
+  const trimmed = url.trim();
+
+  return (
+    /^https?:\/\//i.test(trimmed) ||
+    /^mailto:/i.test(trimmed) ||
+    /^tel:/i.test(trimmed) ||
+    trimmed.startsWith("/") ||
+    trimmed.startsWith("#")
+  );
+}
+
+function parseInlineRichText(
+  text: string,
+  marks?: TemplateTextMarks,
+): Array<PlateElementNode | PlateTextNode> {
+  const inlineNodes: Array<PlateElementNode | PlateTextNode> = [];
+  const markdownLinkPattern = /\[([^\]]+)\]\(((?:https?:\/\/|mailto:|tel:|\/|#)[^)]+)\)/g;
+  let lastIndex = 0;
+
+  for (const match of text.matchAll(markdownLinkPattern)) {
+    const start = match.index ?? 0;
+    const [fullMatch, label, rawUrl] = match;
+    const safeUrl = rawUrl.trim();
+
+    if (start > lastIndex) {
+      inlineNodes.push(toPlateText(text.slice(lastIndex, start), marks));
+    }
+
+    if (label && isSafeLinkUrl(safeUrl)) {
+      inlineNodes.push({
+        type: "a",
+        url: safeUrl,
+        children: [toPlateText(label, marks)],
+      });
+    } else {
+      inlineNodes.push(toPlateText(fullMatch, marks));
+    }
+
+    lastIndex = start + fullMatch.length;
+  }
+
+  if (lastIndex < text.length) {
+    inlineNodes.push(toPlateText(text.slice(lastIndex), marks));
+  }
+
+  return inlineNodes.length > 0 ? inlineNodes : [toPlateText(text, marks)];
+}
+
+function collectInlineDescendantNodes(
   node: PlateDescendantNode,
   fallbackMarks?: TemplateTextMarks,
-): PlateTextNode[] {
+): Array<PlateElementNode | PlateTextNode> {
   if (isTextNode(node)) {
-    return [toPlateText(node.text, mergeTextMarks(fallbackMarks, extractTextMarks(node)))];
+    return parseInlineRichText(node.text, mergeTextMarks(fallbackMarks, extractTextMarks(node)));
   }
 
   if (!isElementNode(node)) {
@@ -325,17 +377,30 @@ function collectInlineTextNodes(
 
   const nextFallbackMarks = mergeTextMarks(fallbackMarks, extractTextMarks(node));
 
-  return node.children.flatMap((child) => collectInlineTextNodes(child, nextFallbackMarks));
+  if (node.type === "a") {
+    const linkChildren = node.children.flatMap((child) =>
+      collectInlineDescendantNodes(child, nextFallbackMarks),
+    );
+
+    return [
+      {
+        ...node,
+        children: linkChildren.filter(isTextNode).map((child) => ({ ...child })),
+      },
+    ];
+  }
+
+  return node.children.flatMap((child) => collectInlineDescendantNodes(child, nextFallbackMarks));
 }
 
-function flattenBlocksToInlineTextNodes(
+function flattenBlocksToInlineDescendants(
   blocks: PlateElementNode[],
   fallbackMarks?: TemplateTextMarks,
-): PlateTextNode[] {
-  const flattened: PlateTextNode[] = [];
+): Array<PlateElementNode | PlateTextNode> {
+  const flattened: Array<PlateElementNode | PlateTextNode> = [];
 
   for (const block of blocks) {
-    const textNodes = collectInlineTextNodes(block, fallbackMarks);
+    const textNodes = collectInlineDescendantNodes(block, fallbackMarks);
 
     if (textNodes.length === 0) {
       continue;
@@ -706,7 +771,7 @@ async function parseLineToBlock(
       ...(baseIndent > 0 ? { indent: baseIndent } : {}),
       ...(fontSize ? { fontSize } : {}),
       ...(fontFamily ? { fontFamily } : {}),
-      children: [toPlateText(headingMatch[2], hasMarks ? typographyMarks : undefined)],
+      children: parseInlineRichText(headingMatch[2], hasMarks ? typographyMarks : undefined),
     };
   }
   const unorderedMatch = /^[-*]\s+(.+)$/.exec(trimmed);
@@ -719,7 +784,7 @@ async function parseLineToBlock(
       ...(fontFamily ? { fontFamily } : {}),
       listStyleType: "disc",
       indent: baseIndent + 1,
-      children: [toPlateText(unorderedMatch[1], hasMarks ? typographyMarks : undefined)],
+      children: parseInlineRichText(unorderedMatch[1], hasMarks ? typographyMarks : undefined),
     };
   }
   const orderedMatch = /^\d+\.\s+(.+)$/.exec(trimmed);
@@ -732,7 +797,7 @@ async function parseLineToBlock(
       ...(fontFamily ? { fontFamily } : {}),
       listStyleType: "decimal",
       indent: baseIndent + 1,
-      children: [toPlateText(orderedMatch[1], hasMarks ? typographyMarks : undefined)],
+      children: parseInlineRichText(orderedMatch[1], hasMarks ? typographyMarks : undefined),
     };
   }
   const quoteMatch = /^>\s+(.+)$/.exec(trimmed);
@@ -744,7 +809,7 @@ async function parseLineToBlock(
       ...(baseIndent > 0 ? { indent: baseIndent } : {}),
       ...(fontSize ? { fontSize } : {}),
       ...(fontFamily ? { fontFamily } : {}),
-      children: [toPlateText(quoteMatch[1], hasMarks ? typographyMarks : undefined)],
+      children: parseInlineRichText(quoteMatch[1], hasMarks ? typographyMarks : undefined),
     };
   }
   const imageMatch = /^!\[([^\]]*)\]\(([^)]+)\)$/.exec(trimmed);
@@ -842,7 +907,7 @@ async function structuredBlockToPlate(
           ...(baseIndent > 0 ? { indent: baseIndent } : {}),
           ...(fontSize ? { fontSize } : {}),
           ...(fontFamily ? { fontFamily } : {}),
-          children: [toPlateText(block.text, hasMarks ? typographyMarks : undefined)],
+          children: parseInlineRichText(block.text, hasMarks ? typographyMarks : undefined),
         },
       ];
     case "quote":
@@ -854,7 +919,7 @@ async function structuredBlockToPlate(
           ...(baseIndent > 0 ? { indent: baseIndent } : {}),
           ...(fontSize ? { fontSize } : {}),
           ...(fontFamily ? { fontFamily } : {}),
-          children: [toPlateText(block.text, hasMarks ? typographyMarks : undefined)],
+          children: parseInlineRichText(block.text, hasMarks ? typographyMarks : undefined),
         },
       ];
     case "bullet_list":
@@ -866,7 +931,7 @@ async function structuredBlockToPlate(
         ...(fontFamily ? { fontFamily } : {}),
         listStyleType: "disc",
         indent: baseIndent + 1,
-        children: [toPlateText(item, hasMarks ? typographyMarks : undefined)],
+        children: parseInlineRichText(item, hasMarks ? typographyMarks : undefined),
       }));
     case "ordered_list":
       return block.items.map((item) => ({
@@ -877,7 +942,7 @@ async function structuredBlockToPlate(
         ...(fontFamily ? { fontFamily } : {}),
         listStyleType: "decimal",
         indent: baseIndent + 1,
-        children: [toPlateText(item, hasMarks ? typographyMarks : undefined)],
+        children: parseInlineRichText(item, hasMarks ? typographyMarks : undefined),
       }));
     case "image": {
       const path = block.url;
@@ -1113,6 +1178,7 @@ async function compileTemplateAiNodeStreamed(
     groundingContext: request.groundingContext,
     metadata: request.metadata,
     responseFormat: request.responseFormat,
+    aiSettingsHash: compileContext.aiSettingsHash ?? "default",
     presentation: {
       align: typeof node.align === "string" ? node.align : "default",
       lineHeight: typeof node.lineHeight === "number" ? node.lineHeight : "default",
@@ -1322,7 +1388,7 @@ async function compileParagraphNode(
         warnings,
         blockMeta,
       );
-      const inlineAiChildren = flattenBlocksToInlineTextNodes(
+      const inlineAiChildren = flattenBlocksToInlineDescendants(
         aiBlocks,
         mergeTextMarks(extractTextMarks(node), extractTextMarks(child)),
       );
@@ -1714,7 +1780,7 @@ async function compileNode(
             continue;
           }
 
-          const inlineAiChildren = flattenBlocksToInlineTextNodes(
+          const inlineAiChildren = flattenBlocksToInlineDescendants(
             aiBlocks,
             mergeTextMarks(extractTextMarks(node), extractTextMarks(child)),
           );
@@ -1846,6 +1912,7 @@ export async function compileTemplatePreviewBlocks(
       context: params.context,
       aiProviderFactory: params.aiProviderFactory,
       accountId: params.accountId,
+      aiSettingsHash: params.aiSettingsHash,
       aiSystemInstruction: params.aiSystemInstruction,
       assetUrlResolver: params.assetUrlResolver,
       aiBlockCache: params.aiBlockCache,
