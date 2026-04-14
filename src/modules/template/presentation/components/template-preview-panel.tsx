@@ -5,14 +5,17 @@ import { Sparkles } from "lucide-react";
 import { Plate, usePlateEditor } from "platejs/react";
 import * as React from "react";
 
+import { PdfPageConfig } from "@/modules/template/domain/types/pdf-page-config";
 import { TemplateBlocks } from "@/modules/template/domain/types/template-blocks";
 import { ExtendedNodesKit } from "@/shared/presentation/components/editor/plugins/extended-nodes-kit";
 import { Editor, EditorContainer } from "@/shared/presentation/components/ui/editor";
 
 import { templateBlocksToPlateValue } from "../lib/template-blocks.adapter";
+import { PdfPageSectionEditor } from "./pdf-page-section-editor";
 
 interface TemplatePreviewPanelProps {
   blocks: TemplateBlocks;
+  pageConfig?: PdfPageConfig | null;
   loading: boolean;
   error?: string | null;
   warnings?: string[];
@@ -74,6 +77,7 @@ function TemplatePreviewSkeleton() {
 
 export function TemplatePreviewPanel({
   blocks,
+  pageConfig,
   loading,
   error,
   warnings = [],
@@ -127,11 +131,49 @@ export function TemplatePreviewPanel({
               {showLoadingSkeleton ? (
                 <TemplatePreviewSkeleton />
               ) : blocks.length > 0 ? (
-                <Plate editor={previewEditor} readOnly>
-                  <EditorContainer className="p-0 border-none shadow-none bg-transparent">
-                    <Editor readOnly variant="a4" placeholder="" />
-                  </EditorContainer>
-                </Plate>
+                <div className="mx-auto flex w-[794px] max-w-full flex-col shadow-[0_2px_20px_rgba(0,0,0,0.12)]">
+                  {/* ── HEADER mini-editor ── */}
+                  {pageConfig?.header?.enabled && (
+                    <div className="overflow-hidden rounded-t-sm bg-white shadow-[0_-2px_8px_rgba(0,0,0,0.05)] ring-1 ring-black/[0.05]">
+                      <PdfPageSectionEditor
+                        section="header"
+                        value={pageConfig.header}
+                        readOnly
+                        onChange={() => {}}
+                        idSuffix="-preview"
+                      />
+                    </div>
+                  )}
+
+                  {/* ── BODY editor ── */}
+                  <Plate editor={previewEditor} readOnly>
+                    <EditorContainer className="p-0 border-none shadow-none bg-transparent">
+                      <Editor
+                        readOnly
+                        variant="a4"
+                        placeholder=""
+                        className={
+                          pageConfig?.header?.enabled || pageConfig?.footer?.enabled
+                            ? "rounded-none shadow-none border-none"
+                            : ""
+                        }
+                      />
+                    </EditorContainer>
+                  </Plate>
+
+                  {/* ── FOOTER mini-editor ── */}
+                  {pageConfig?.footer?.enabled && (
+                    <div className="overflow-hidden rounded-b-sm bg-white shadow-[0_4px_8px_rgba(0,0,0,0.05)] ring-1 ring-black/[0.05]">
+                      <PdfPageSectionEditor
+                        section="footer"
+                        value={pageConfig.footer}
+                        readOnly
+                        onChange={() => {}}
+                        idSuffix="-preview"
+                      />
+                    </div>
+                  )}
+                </div>
               ) : (
                 <div className="flex min-h-[1122px] items-center justify-center text-sm text-foreground/20 italic bg-white shadow-[0_2px_20px_rgba(0,0,0,0.12)] border border-[#e0e0e0] rounded-sm">
                   {loading

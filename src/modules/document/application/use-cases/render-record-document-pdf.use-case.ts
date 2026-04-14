@@ -1,10 +1,15 @@
+import { PdfPageConfig } from "@/modules/template/domain/types/pdf-page-config";
 import { TemplateBlocks } from "@/modules/template/domain/types/template-blocks";
 import { DomainError, fail, ok, Result } from "@/shared/domain/result";
 
 import { IRecordDocumentRepository } from "../../domain/ports/record-document-repository.port";
 
 interface RenderPdfPort {
-  render(blocks: TemplateBlocks, title?: string): Promise<Buffer>;
+  render(
+    blocks: TemplateBlocks,
+    title?: string,
+    pageConfig?: PdfPageConfig | null,
+  ): Promise<Buffer>;
 }
 
 export class RenderRecordDocumentPdfUseCase {
@@ -17,6 +22,7 @@ export class RenderRecordDocumentPdfUseCase {
     templateId: string;
     recordId: string;
     title?: string;
+    pageConfig?: PdfPageConfig | null;
   }): Promise<Result<Buffer, DomainError>> {
     const document = await this.repository.findByTemplateAndRecord(
       params.templateId,
@@ -31,7 +37,11 @@ export class RenderRecordDocumentPdfUseCase {
     }
 
     try {
-      const buffer = await this.renderer.render(document.value.editedBlocks, params.title);
+      const buffer = await this.renderer.render(
+        document.value.editedBlocks,
+        params.title,
+        params.pageConfig,
+      );
       return ok(buffer);
     } catch (error) {
       const message = error instanceof Error ? error.message : "PDF render failed";

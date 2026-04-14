@@ -16,6 +16,8 @@ import type { TemplateBlocks } from "@/modules/template/domain/types/template-bl
 import { renderTemplateToPdfBuffer } from "@/modules/template/presentation/lib/template-pdf-renderer";
 
 const PDF_MAGIC_BYTES = "%PDF";
+const TINY_PNG_DATA_URL =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO2Z0wAAAABJRU5ErkJggg==";
 
 function getPdfHeader(buffer: Buffer): string {
   return buffer.subarray(0, 8).toString("ascii");
@@ -236,6 +238,22 @@ describe("renderTemplateToPdfBuffer", () => {
     expect(getPdfHeader(result)).toContain(PDF_MAGIC_BYTES);
   });
 
+  it("renders header and footer images from normalized remote sources", async () => {
+    const blocks: TemplateBlocks = [{ type: "p", children: [{ text: "Body" }] }];
+    const result = await renderTemplateToPdfBuffer(blocks, "Doc", {
+      header: {
+        enabled: true,
+        blocks: [{ type: "img", url: TINY_PNG_DATA_URL, children: [{ text: "" }] }],
+      },
+      footer: {
+        enabled: true,
+        blocks: [{ type: "img", path: TINY_PNG_DATA_URL, children: [{ text: "" }] }],
+      },
+    });
+
+    expect(getPdfHeader(result)).toContain(PDF_MAGIC_BYTES);
+  });
+
   it("handles inline link (anchor) nodes", async () => {
     const blocks: TemplateBlocks = [
       {
@@ -311,6 +329,21 @@ describe("renderTemplateToPdfBuffer", () => {
     expect(getPdfHeader(result)).toContain(PDF_MAGIC_BYTES);
   });
 
+  it("respects persisted width and height fields for PDF images", async () => {
+    const blocks: TemplateBlocks = [
+      {
+        type: "img",
+        height: 180,
+        url: TINY_PNG_DATA_URL,
+        width: "42%",
+        children: [{ text: "" }],
+      },
+    ];
+
+    const result = await renderTemplateToPdfBuffer(blocks);
+    expect(getPdfHeader(result)).toContain(PDF_MAGIC_BYTES);
+  });
+
   it("handles logic block styles (compiled)", async () => {
     // Compiled logic blocks are standard nodes with inherited styles
     const blocks: TemplateBlocks = [
@@ -323,6 +356,130 @@ describe("renderTemplateToPdfBuffer", () => {
       },
     ];
     const result = await renderTemplateToPdfBuffer(blocks);
+    expect(getPdfHeader(result)).toContain(PDF_MAGIC_BYTES);
+  });
+});
+
+describe("renderTemplateToPdfBuffer — pageConfig (header/footer)", () => {
+  it("is backward compatible: renders without pageConfig", async () => {
+    const blocks: TemplateBlocks = [{ type: "p", children: [{ text: "Body only" }] }];
+    const result = await renderTemplateToPdfBuffer(blocks, "Test", null);
+    expect(getPdfHeader(result)).toContain(PDF_MAGIC_BYTES);
+  });
+
+  it("renders with an enabled header", async () => {
+    const blocks: TemplateBlocks = [{ type: "p", children: [{ text: "Body" }] }];
+    const result = await renderTemplateToPdfBuffer(blocks, "Doc", {
+      header: {
+        enabled: true,
+        blocks: [{ type: "p", children: [{ text: "Empresa SRL" }] }],
+      },
+    });
+    expect(getPdfHeader(result)).toContain(PDF_MAGIC_BYTES);
+  });
+
+  it("renders with an enabled footer", async () => {
+    const blocks: TemplateBlocks = [{ type: "p", children: [{ text: "Body" }] }];
+    const result = await renderTemplateToPdfBuffer(blocks, "Doc", {
+      footer: {
+        enabled: true,
+        blocks: [{ type: "p", children: [{ text: "Pie de página" }] }],
+      },
+    });
+    expect(getPdfHeader(result)).toContain(PDF_MAGIC_BYTES);
+  });
+
+  it("renders with both header and footer enabled", async () => {
+    const blocks: TemplateBlocks = [{ type: "p", children: [{ text: "Contenido" }] }];
+    const result = await renderTemplateToPdfBuffer(blocks, "Informe", {
+      header: {
+        enabled: true,
+        blocks: [{ type: "p", children: [{ text: "Cabecera" }] }],
+        height: 60,
+      },
+      footer: {
+        enabled: true,
+        blocks: [{ type: "p", children: [{ text: "Pié" }] }],
+        height: 45,
+      },
+    });
+    expect(getPdfHeader(result)).toContain(PDF_MAGIC_BYTES);
+  });
+
+  it("skips disabled header/footer sections", async () => {
+    const blocks: TemplateBlocks = [{ type: "p", children: [{ text: "Body" }] }];
+    const result = await renderTemplateToPdfBuffer(blocks, "Doc", {
+      header: { enabled: false, blocks: [{ type: "p", children: [{ text: "Ignored" }] }] },
+      footer: { enabled: false, blocks: [] },
+    });
+    expect(getPdfHeader(result)).toContain(PDF_MAGIC_BYTES);
+  });
+
+  it("resolves $page_number system variable in header", async () => {
+    const blocks: TemplateBlocks = [{ type: "p", children: [{ text: "Body" }] }];
+    const result = await renderTemplateToPdfBuffer(blocks, "Doc", {
+      header: {
+        enabled: true,
+        blocks: [
+          {
+            type: "p",
+            children: [
+              {
+                type: "variable",
+                fieldPath: "$page_number",
+                fieldType: "TEXT",
+                children: [{ text: "Pág." }],
+              },
+            ],
+          },
+        ],
+      },
+    });
+    expect(getPdfHeader(result)).toContain(PDF_MAGIC_BYTES);
+  });
+
+  it("resolves $total_pages, $current_date, $template_name system variables in footer", async () => {
+    const blocks: TemplateBlocks = [{ type: "p", children: [{ text: "Body" }] }];
+    const result = await renderTemplateToPdfBuffer(blocks, "Mi Plantilla", {
+      footer: {
+        enabled: true,
+        blocks: [
+          {
+            type: "p",
+            children: [
+              {
+                type: "variable",
+                fieldPath: "$total_pages",
+                fieldType: "TEXT",
+                children: [{ text: "" }],
+              },
+              { text: " | " },
+              {
+                type: "variable",
+                fieldPath: "$current_date",
+                fieldType: "TEXT",
+                children: [{ text: "" }],
+              },
+              { text: " | " },
+              {
+                type: "variable",
+                fieldPath: "$template_name",
+                fieldType: "TEXT",
+                children: [{ text: "" }],
+              },
+            ],
+          },
+        ],
+      },
+    });
+    expect(getPdfHeader(result)).toContain(PDF_MAGIC_BYTES);
+  });
+
+  it("handles empty header blocks gracefully", async () => {
+    const blocks: TemplateBlocks = [{ type: "p", children: [{ text: "Body" }] }];
+    const result = await renderTemplateToPdfBuffer(blocks, "Doc", {
+      header: { enabled: true, blocks: [] },
+    });
     expect(getPdfHeader(result)).toContain(PDF_MAGIC_BYTES);
   });
 });

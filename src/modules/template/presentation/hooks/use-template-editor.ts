@@ -8,6 +8,7 @@ import { useSupabase } from "@/shared/presentation/providers/supabase-provider";
 
 import { TemplateUseCaseFactory } from "../../application/template-use-case.factory";
 import type { Template } from "../../domain/entities/template.entity";
+import type { PdfPageConfig } from "../../domain/types/pdf-page-config";
 import type { TemplateBlocks } from "../../domain/types/template-blocks";
 
 export function useTemplateEditor(templateId: string) {
@@ -93,6 +94,53 @@ export function useTemplateEditor(templateId: string) {
     [template, updateUseCase],
   );
 
+  const savePageConfig = useCallback(
+    async (pageConfig: PdfPageConfig | null) => {
+      if (!template) return;
+
+      const requestId = saveRequestIdRef.current + 1;
+      saveRequestIdRef.current = requestId;
+      if (isMountedRef.current) setSaveStatus("saving");
+
+      const res = await updateUseCase.execute({
+        id: template.id,
+        accountId: template.accountId,
+        name: template.name,
+        description: template.description,
+        collectionId: template.collectionId,
+        blocks: template.blocks,
+        pageConfig,
+      });
+
+      if (!isMountedRef.current) return;
+      if (requestId !== saveRequestIdRef.current) return;
+
+      if (res.ok) {
+        setTemplate(res.value);
+        setSaveStatus("saved");
+        if (statusTimeoutRef.current) clearTimeout(statusTimeoutRef.current);
+        statusTimeoutRef.current = setTimeout(() => {
+          if (isMountedRef.current) setSaveStatus("idle");
+        }, 2000);
+      } else {
+        setSaveStatus("error");
+      }
+    },
+    [template, updateUseCase],
+  );
+
+  const pageConfigSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handlePageConfigChange = useCallback(
+    (pageConfig: PdfPageConfig | null) => {
+      if (pageConfigSaveTimeoutRef.current) clearTimeout(pageConfigSaveTimeoutRef.current);
+      pageConfigSaveTimeoutRef.current = setTimeout(() => {
+        void savePageConfig(pageConfig);
+      }, 1500);
+    },
+    [savePageConfig],
+  );
+
   const handleBlocksChange = useCallback(
     (blocks: TemplateBlocks) => {
       if (saveTimeoutRef.current) {
@@ -135,6 +183,7 @@ export function useTemplateEditor(templateId: string) {
     loading,
     saveStatus,
     handleBlocksChange,
+    handlePageConfigChange,
     updateName,
   };
 }

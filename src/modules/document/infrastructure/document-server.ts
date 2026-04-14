@@ -101,6 +101,7 @@ export function buildRecordDocumentPayload(params: {
       name: params.template.name,
       collectionId: params.template.collectionId ?? null,
       version: params.template.version,
+      pageConfig: params.template.pageConfig ?? null,
     },
     record: {
       id: params.record.id,

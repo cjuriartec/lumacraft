@@ -180,6 +180,7 @@ describe("Record document use cases", () => {
     expect(render).toHaveBeenCalledWith(
       [{ type: "p", children: [{ text: "Editado final" }] }],
       "Documento final",
+      undefined,
     );
   });
 
