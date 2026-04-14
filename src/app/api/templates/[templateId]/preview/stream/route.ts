@@ -105,10 +105,12 @@ function resolveEdgeFunctionKey(): string | null {
 function buildTemplateAISettingsHash(params: {
   settings: Record<string, unknown>;
   systemInstruction: string;
+  providerSecrets: Record<string, unknown>;
 }) {
   return hashStableValue({
     settings: params.settings,
     systemInstruction: params.systemInstruction,
+    providerSecrets: params.providerSecrets,
   });
 }
 
@@ -308,6 +310,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         templatePreviewMaxAIBlocks: accountAISettings.templatePreviewMaxAIBlocks,
       },
       systemInstruction: aiSystemInstruction,
+      providerSecrets: accountAISettings.providerSecrets,
     });
     const contextResult = await contextResolver.resolve({
       collectionId: bodyResult.data.collectionId,
