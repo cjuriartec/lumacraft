@@ -87,7 +87,10 @@ describe("template-pdf-image-utils", () => {
     ];
 
     const normalized = await normalizePdfImageSources(blocks, resolver);
-    const children = (normalized[0] as Record<string, unknown>).children as Record<string, unknown>[];
+    const children = (normalized[0] as Record<string, unknown>).children as Record<
+      string,
+      unknown
+    >[];
 
     expect(resolver.resolveImageUrl).toHaveBeenCalledWith({
       bucket: "template-media",

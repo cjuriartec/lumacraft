@@ -253,7 +253,11 @@ function resolveBlockTypography(
   };
 }
 
-function resolveBlockContainerStyle(blockStyle: Style, paddingLeft: number, minHeight?: number): Style {
+function resolveBlockContainerStyle(
+  blockStyle: Style,
+  paddingLeft: number,
+  minHeight?: number,
+): Style {
   return {
     marginBottom: blockStyle.marginBottom,
     marginTop: blockStyle.marginTop,
