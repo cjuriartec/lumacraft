@@ -68,7 +68,8 @@ test.describe("full collection lifecycle", () => {
 
     const alphaRow = page.locator("tr", { hasText: "Alpha" });
     await alphaRow.hover();
-    await alphaRow.getByRole("button", { name: /Acciones para registro/i }).click();
+    await expect(alphaRow.getByTestId("actions-cell")).toBeVisible();
+    await alphaRow.getByTestId("row-actions").click({ force: true });
     await page.getByRole("menuitem", { name: /Editar/i }).click();
     const editDialog = page.getByRole("dialog").filter({ hasText: "Editar Registro" });
     await expect(editDialog).toBeVisible();
