@@ -16,6 +16,8 @@ import type { TemplateBlocks } from "@/modules/template/domain/types/template-bl
 import { renderTemplateToPdfBuffer } from "@/modules/template/presentation/lib/template-pdf-renderer";
 
 const PDF_MAGIC_BYTES = "%PDF";
+const TINY_PNG_DATA_URL =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO2Z0wAAAABJRU5ErkJggg==";
 
 function getPdfHeader(buffer: Buffer): string {
   return buffer.subarray(0, 8).toString("ascii");
@@ -236,6 +238,22 @@ describe("renderTemplateToPdfBuffer", () => {
     expect(getPdfHeader(result)).toContain(PDF_MAGIC_BYTES);
   });
 
+  it("renders header and footer images from normalized remote sources", async () => {
+    const blocks: TemplateBlocks = [{ type: "p", children: [{ text: "Body" }] }];
+    const result = await renderTemplateToPdfBuffer(blocks, "Doc", {
+      header: {
+        enabled: true,
+        blocks: [{ type: "img", url: TINY_PNG_DATA_URL, children: [{ text: "" }] }],
+      },
+      footer: {
+        enabled: true,
+        blocks: [{ type: "img", path: TINY_PNG_DATA_URL, children: [{ text: "" }] }],
+      },
+    });
+
+    expect(getPdfHeader(result)).toContain(PDF_MAGIC_BYTES);
+  });
+
   it("handles inline link (anchor) nodes", async () => {
     const blocks: TemplateBlocks = [
       {
@@ -304,6 +322,21 @@ describe("renderTemplateToPdfBuffer", () => {
         type: "p",
         fontFamily: "roboto",
         children: [{ text: "Texto en Roboto " }, { text: "negrita", bold: true }],
+      },
+    ];
+
+    const result = await renderTemplateToPdfBuffer(blocks);
+    expect(getPdfHeader(result)).toContain(PDF_MAGIC_BYTES);
+  });
+
+  it("respects persisted width and height fields for PDF images", async () => {
+    const blocks: TemplateBlocks = [
+      {
+        type: "img",
+        height: 180,
+        url: TINY_PNG_DATA_URL,
+        width: "42%",
+        children: [{ text: "" }],
       },
     ];
 

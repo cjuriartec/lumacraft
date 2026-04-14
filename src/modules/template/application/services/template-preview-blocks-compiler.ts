@@ -1113,6 +1113,13 @@ async function compileTemplateAiNodeStreamed(
     groundingContext: request.groundingContext,
     metadata: request.metadata,
     responseFormat: request.responseFormat,
+    presentation: {
+      align: typeof node.align === "string" ? node.align : "default",
+      lineHeight: typeof node.lineHeight === "number" ? node.lineHeight : "default",
+      indent: typeof node.indent === "number" ? node.indent : "default",
+      fontSize: typeof node.fontSize === "number" ? node.fontSize : "default",
+      fontFamily: typeof node.fontFamily === "string" ? node.fontFamily : "default",
+    },
   });
 
   if (compileContext.aiBlockCache) {

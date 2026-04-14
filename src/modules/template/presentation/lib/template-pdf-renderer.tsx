@@ -28,11 +28,26 @@ import { applyTextTransform } from "../../application/services/template-path-res
 import type { PdfHeaderFooterSection, PdfPageConfig } from "../../domain/types/pdf-page-config";
 import { DEFAULT_FOOTER_HEIGHT, DEFAULT_HEADER_HEIGHT } from "../../domain/types/pdf-page-config";
 import type { TemplateBlocks } from "../../domain/types/template-blocks";
+import { resolvePdfImageLayout, resolvePdfImageSource } from "./template-pdf-image-utils";
 
 const ROBOTO_REGULAR_FONT_PATH = path.join(process.cwd(), "public/fonts/Roboto-Regular.ttf");
 const ROBOTO_BOLD_FONT_PATH = path.join(process.cwd(), "public/fonts/Roboto-Bold.ttf");
 
 let pdfFontsRegistered = false;
+
+const DEFAULT_PDF_IMAGE_ESTIMATE_HEIGHT = 36;
+const PDF_HEADER_FOOTER_FONT_SIZE = 10;
+const PDF_HEADER_FOOTER_LINE_HEIGHT = 1.625;
+const PDF_PAGE_BODY_PADDING_BOTTOM = 60;
+const PDF_PAGE_BODY_PADDING_TOP = 60;
+const PDF_PAGE_HORIZONTAL_PADDING = 72;
+const PDF_SECTION_SAFE_INSET = 24;
+const PDF_SECTION_VERTICAL_PADDING = 4;
+
+const PDF_HEADER_FOOTER_TYPOGRAPHY: InheritedBlockTypography = {
+  fontSize: PDF_HEADER_FOOTER_FONT_SIZE,
+  lineHeight: PDF_HEADER_FOOTER_LINE_HEIGHT,
+};
 
 function registerPdfFonts() {
   if (pdfFontsRegistered) {
@@ -133,6 +148,8 @@ interface InheritedBlockTypography {
   lineHeight?: string | number;
 }
 
+type PdfRenderMode = "body" | "headerFooter";
+
 function isTextNode(node: unknown): node is PlateTextNode {
   return (
     typeof node === "object" &&
@@ -148,6 +165,18 @@ function isElementNode(node: unknown): node is PlateElementNode {
     typeof (node as Record<string, unknown>).type === "string" &&
     Array.isArray((node as Record<string, unknown>).children)
   );
+}
+
+function collectNodeTextContent(node: PlateNode): string {
+  if (isTextNode(node)) {
+    return node.text;
+  }
+
+  if (!isElementNode(node)) {
+    return "";
+  }
+
+  return node.children.map(collectNodeTextContent).join(" ");
 }
 
 function resolveColor(value: string | undefined): string | undefined {
@@ -190,8 +219,16 @@ function resolveIndent(indent?: number): number {
 function resolveBlockTypography(
   node: PlateElementNode,
   inheritedTypography?: InheritedBlockTypography,
+  renderMode: PdfRenderMode = "body",
 ): Style {
-  const spacing = resolvePdfBlockSpacing(node.type);
+  const baseSpacing = resolvePdfBlockSpacing(node.type);
+  const spacing =
+    renderMode === "headerFooter"
+      ? {
+          pdfMarginBottom: node.type === "p" ? 4 : Math.min(baseSpacing.pdfMarginBottom, 6),
+          pdfMarginTop: Math.min(baseSpacing.pdfMarginTop, 4),
+        }
+      : baseSpacing;
   const fontFamily = resolvePdfFontFamily(
     typeof node.fontFamily === "string"
       ? node.fontFamily
@@ -213,6 +250,33 @@ function resolveBlockTypography(
     marginBottom: spacing.pdfMarginBottom,
     marginTop: spacing.pdfMarginTop,
     ...(resolveTextAlign(node.align) ? { textAlign: resolveTextAlign(node.align) } : {}),
+  };
+}
+
+function resolveBlockContainerStyle(blockStyle: Style, paddingLeft: number, minHeight?: number): Style {
+  return {
+    marginBottom: blockStyle.marginBottom,
+    marginTop: blockStyle.marginTop,
+    ...(minHeight ? { minHeight } : {}),
+    paddingLeft,
+  };
+}
+
+function resolveBlockTextStyle(
+  blockStyle: Style,
+  options?: {
+    bold?: boolean;
+    minHeight?: number;
+  },
+): Style {
+  return {
+    color: blockStyle.color,
+    fontFamily: blockStyle.fontFamily,
+    fontSize: blockStyle.fontSize,
+    lineHeight: blockStyle.lineHeight,
+    ...(options?.bold ? { fontWeight: 700 } : {}),
+    ...(options?.minHeight ? { minHeight: options.minHeight } : {}),
+    ...(blockStyle.textAlign ? { textAlign: blockStyle.textAlign } : {}),
   };
 }
 
@@ -438,9 +502,9 @@ const styles = StyleSheet.create({
     fontFamily: resolveDocumentFontFamily("pdf", DEFAULT_DOCUMENT_FONT_FAMILY),
     fontSize: DEFAULT_DOCUMENT_FONT_SIZE,
     lineHeight: DEFAULT_DOCUMENT_LINE_HEIGHT,
-    paddingBottom: 60,
-    paddingHorizontal: 72,
-    paddingTop: 60,
+    paddingBottom: PDF_PAGE_BODY_PADDING_BOTTOM,
+    paddingHorizontal: PDF_PAGE_HORIZONTAL_PADDING,
+    paddingTop: PDF_PAGE_BODY_PADDING_TOP,
   },
   blockquote: {
     borderLeftColor: "#9ca3af",
@@ -500,11 +564,85 @@ const styles = StyleSheet.create({
   },
 });
 
+function estimatePdfBlockHeight(
+  node: PlateElementNode,
+  inheritedTypography?: InheritedBlockTypography,
+  renderMode: PdfRenderMode = "body",
+): number {
+  const spacing =
+    renderMode === "headerFooter"
+      ? {
+          pdfMarginBottom: node.type === "p" ? 4 : 6,
+          pdfMarginTop: 4,
+        }
+      : resolvePdfBlockSpacing(node.type);
+  const verticalSpacing = spacing.pdfMarginTop + spacing.pdfMarginBottom;
+
+  if (node.type === "img" || node.type === "image") {
+    const { heightPx } = resolvePdfImageLayout(node);
+    return Math.ceil((heightPx ?? DEFAULT_PDF_IMAGE_ESTIMATE_HEIGHT) + 12);
+  }
+
+  if (node.type === "hr") {
+    return Math.ceil(12 + verticalSpacing);
+  }
+
+  if (node.type === "table") {
+    const rows = node.children.filter(isElementNode).length || 1;
+    return Math.ceil(rows * 28 + verticalSpacing);
+  }
+
+  const fontSize = resolveDocumentFontSize(
+    node.fontSize ?? inheritedTypography?.fontSize,
+    node.type,
+  );
+  const lineHeight = resolveDocumentLineHeight(
+    node.lineHeight ?? inheritedTypography?.lineHeight ?? DEFAULT_DOCUMENT_LINE_HEIGHT,
+  );
+  const textContent = collectNodeTextContent(node).trim();
+  const charsPerLine = node.type.startsWith("h") ? 42 : 70;
+  const lineCount = Math.max(1, Math.ceil(Math.max(textContent.length, 1) / charsPerLine));
+
+  return Math.ceil(fontSize * lineHeight * lineCount + verticalSpacing);
+}
+
+function resolvePdfSectionHeight(
+  section: PdfHeaderFooterSection | undefined,
+  fallbackHeight: number,
+): number {
+  if (!section?.enabled) {
+    return 0;
+  }
+
+  if (typeof section.height === "number" && Number.isFinite(section.height) && section.height > 0) {
+    return Math.max(fallbackHeight, Math.round(section.height));
+  }
+
+  const blocks: PlateElementNode[] = Array.isArray(section.blocks)
+    ? (section.blocks as unknown[]).filter(isElementNode)
+    : [];
+  if (blocks.length === 0) {
+    return fallbackHeight;
+  }
+
+  const estimatedContentHeight = blocks.reduce(
+    (total, block) =>
+      total + estimatePdfBlockHeight(block, PDF_HEADER_FOOTER_TYPOGRAPHY, "headerFooter"),
+    0,
+  );
+
+  return Math.max(
+    fallbackHeight,
+    Math.ceil(estimatedContentHeight + PDF_SECTION_VERTICAL_PADDING * 2),
+  );
+}
+
 function renderBlock(
   node: PlateElementNode,
   key: string,
   siblings: PlateElementNode[],
   inheritedTypography?: InheritedBlockTypography,
+  renderMode: PdfRenderMode = "body",
 ): React.ReactElement | null {
   const paddingLeft = resolveIndent(node.indent);
   const effectiveFontFamily =
@@ -517,7 +655,7 @@ function renderBlock(
     typeof node.lineHeight === "string" || typeof node.lineHeight === "number"
       ? node.lineHeight
       : inheritedTypography?.lineHeight;
-  const blockStyle = resolveBlockTypography(node, inheritedTypography);
+  const blockStyle = resolveBlockTypography(node, inheritedTypography, renderMode);
   const inlineContext: InlineRenderContext = {
     blockType: node.type,
     fontFamily: effectiveFontFamily,
@@ -535,25 +673,25 @@ function renderBlock(
     return <View key={key} style={styles.hr} />;
   }
 
-  if (node.type === "img") {
-    const src =
-      typeof node.url === "string" ? node.url : typeof node.path === "string" ? node.path : null;
+  if (node.type === "img" || node.type === "image") {
+    const src = resolvePdfImageSource(node);
 
     if (!src) return null;
 
-    const widthPercent = typeof node.imageWidthPercent === "number" ? node.imageWidthPercent : 100;
-    const height = typeof node.imageHeightPx === "number" ? node.imageHeightPx : undefined;
-    const align = resolveTextAlign(node.align);
+    const { heightPx, widthPercent, widthPoints } = resolvePdfImageLayout(node);
+    const align = resolveTextAlign(node.align) ?? "center";
 
     return (
       <View
         key={key}
         style={[
           styles.image,
+          renderMode === "headerFooter" ? { marginBottom: 6, marginTop: 6 } : {},
           {
             alignItems:
               align === "center" ? "center" : align === "right" ? "flex-end" : "flex-start",
             paddingLeft,
+            width: "100%",
           },
         ]}
       >
@@ -561,9 +699,10 @@ function renderBlock(
         <Image
           src={src}
           style={{
-            height,
+            height: heightPx,
             objectFit: "contain",
-            width: `${widthPercent}%`,
+            ...(typeof widthPoints === "number" ? { width: widthPoints } : {}),
+            ...(typeof widthPercent === "number" ? { width: `${widthPercent}%` } : {}),
           }}
         />
       </View>
@@ -663,6 +802,7 @@ function renderBlock(
                         `${key}-row-${rowIndex}-cell-${cellIndex}-block-${blockIndex}`,
                         blockChildren,
                         inheritedCellTypography,
+                        renderMode,
                       ),
                     )
                   ) : (
@@ -674,6 +814,7 @@ function renderBlock(
                             type: "p",
                           },
                           inheritedCellTypography,
+                          renderMode,
                         ),
                         { marginBottom: 0, marginTop: 0 },
                       ]}
@@ -740,8 +881,10 @@ function renderBlock(
   }
 
   return (
-    <View key={key} style={[blockStyle, { paddingLeft, minHeight }]}>
-      <Text style={[node.type.startsWith("h") ? { fontWeight: 700 } : {}]}>{inlines}</Text>
+    <View key={key} style={resolveBlockContainerStyle(blockStyle, paddingLeft, minHeight)}>
+      <Text style={resolveBlockTextStyle(blockStyle, { bold: node.type.startsWith("h") })}>
+        {inlines}
+      </Text>
     </View>
   );
 }
@@ -784,7 +927,15 @@ function renderHeaderFooterBlocks(
   return elementNodes
     .map((node, index) => {
       const patched = patchSystemVariables(node, sysCtx);
-      return renderBlock(patched, `hf-${index}`, elementNodes) ?? <View key={`hf-${index}`} />;
+      return (
+        renderBlock(
+          patched,
+          `hf-${index}`,
+          elementNodes,
+          PDF_HEADER_FOOTER_TYPOGRAPHY,
+          "headerFooter",
+        ) ?? <View key={`hf-${index}`} />
+      );
     })
     .filter((el): el is React.ReactElement => el !== null);
 }
@@ -805,12 +956,11 @@ function TemplateDocument({
     ? pageConfig.footer
     : undefined;
 
-  const headerHeight = header ? (header.height ?? DEFAULT_HEADER_HEIGHT) : 0;
-  const footerHeight = footer ? (footer.height ?? DEFAULT_FOOTER_HEIGHT) : 0;
+  const headerHeight = resolvePdfSectionHeight(header, DEFAULT_HEADER_HEIGHT);
+  const footerHeight = resolvePdfSectionHeight(footer, DEFAULT_FOOTER_HEIGHT);
 
-  // Extra padding to accommodate fixed header/footer so they don't overlap the body
-  const paddingTop = 60 + headerHeight;
-  const paddingBottom = 60 + footerHeight;
+  const paddingTop = PDF_PAGE_BODY_PADDING_TOP + headerHeight;
+  const paddingBottom = PDF_PAGE_BODY_PADDING_BOTTOM + footerHeight;
 
   const currentDate = new Date().toLocaleDateString("es-PE");
   const templateName = title ?? "";
@@ -826,11 +976,12 @@ function TemplateDocument({
               styles.headerSection,
               {
                 position: "absolute",
-                top: 0,
-                left: 72,
-                right: 72,
-                height: headerHeight,
-                paddingTop: 10,
+                top: PDF_SECTION_SAFE_INSET,
+                left: PDF_PAGE_HORIZONTAL_PADDING,
+                minHeight: headerHeight,
+                paddingBottom: PDF_SECTION_VERTICAL_PADDING,
+                paddingTop: PDF_SECTION_VERTICAL_PADDING,
+                right: PDF_PAGE_HORIZONTAL_PADDING,
               },
             ]}
           >
@@ -852,11 +1003,12 @@ function TemplateDocument({
               styles.footerSection,
               {
                 position: "absolute",
-                bottom: 0,
-                left: 72,
-                right: 72,
-                height: footerHeight,
-                paddingBottom: 10,
+                bottom: PDF_SECTION_SAFE_INSET,
+                left: PDF_PAGE_HORIZONTAL_PADDING,
+                minHeight: footerHeight,
+                paddingBottom: PDF_SECTION_VERTICAL_PADDING,
+                paddingTop: PDF_SECTION_VERTICAL_PADDING,
+                right: PDF_PAGE_HORIZONTAL_PADDING,
               },
             ]}
           >

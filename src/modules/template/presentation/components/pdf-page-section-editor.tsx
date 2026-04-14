@@ -26,6 +26,7 @@ import { Button } from "@/shared/presentation/components/ui/button";
 import { Editor, EditorContainer } from "@/shared/presentation/components/ui/editor";
 import { FontColorToolbarButton } from "@/shared/presentation/components/ui/font-color-toolbar-button";
 import { FontSizeToolbarButton } from "@/shared/presentation/components/ui/font-size-toolbar-button";
+import { LineHeightToolbarButton } from "@/shared/presentation/components/ui/line-height-toolbar-button";
 import { MarkToolbarButton } from "@/shared/presentation/components/ui/mark-toolbar-button";
 import { MediaToolbarButton } from "@/shared/presentation/components/ui/media-toolbar-button";
 import { Toolbar, ToolbarGroup } from "@/shared/presentation/components/ui/toolbar";
@@ -257,6 +258,7 @@ export function PdfPageSectionEditor({
 
               <ToolbarGroup className="gap-0 scale-90 origin-center">
                 <AlignToolbarButton />
+                <LineHeightToolbarButton />
               </ToolbarGroup>
 
               <div className="mx-0.5 h-3 w-px bg-border/40" />
