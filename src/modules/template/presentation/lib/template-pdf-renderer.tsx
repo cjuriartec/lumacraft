@@ -557,13 +557,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
   },
   headerSection: {
-    borderBottomColor: "#e5e7eb",
-    borderBottomWidth: 0.5,
+    opacity: 0.6,
     paddingBottom: 6,
   },
   footerSection: {
-    borderTopColor: "#e5e7eb",
-    borderTopWidth: 0.5,
+    opacity: 0.6,
     paddingTop: 6,
   },
 });

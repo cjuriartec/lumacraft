@@ -203,7 +203,7 @@ export function PdfPageSectionEditor({
                 className={cn(
                   "min-h-[40px] w-full px-[96px] pb-4 pt-1",
                   "text-[10pt] leading-relaxed",
-                  "bg-white text-zinc-900",
+                  "bg-white text-zinc-900 opacity-60",
                   "focus-visible:outline-none",
                   readOnly && "cursor-default select-text",
                 )}
