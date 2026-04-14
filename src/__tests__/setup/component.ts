@@ -47,3 +47,22 @@ if (!window.matchMedia) {
     })),
   });
 }
+
+// Fix for Radix UI DropdownMenu and other headless components
+if (!globalThis.PointerEvent) {
+  Object.defineProperty(globalThis, "PointerEvent", {
+    value: class extends MouseEvent {
+      pointerId: number;
+      isPrimary: boolean;
+      constructor(type: string, params: PointerEventInit = {}) {
+        super(type, params);
+        this.pointerId = params.pointerId || 0;
+        this.isPrimary = params.isPrimary !== undefined ? params.isPrimary : true;
+      }
+    },
+  });
+}
+
+if (!HTMLElement.prototype.scrollIntoView) {
+  HTMLElement.prototype.scrollIntoView = vi.fn();
+}

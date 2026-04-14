@@ -1,11 +1,27 @@
 "use client";
 
-import { Clock, ExternalLink, FileText, Plus, Search, Settings2, Trash2 } from "lucide-react";
+import {
+  Clock,
+  ExternalLink,
+  FileText,
+  MoreHorizontal,
+  Plus,
+  Search,
+  Settings2,
+  Trash2,
+} from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
 
 import { useCollections } from "@/modules/collection/presentation/hooks/use-collections";
 import { Button } from "@/shared/presentation/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/shared/presentation/components/ui/dropdown-menu";
 import { Input } from "@/shared/presentation/components/ui/input";
 import { useBreadcrumbs } from "@/shared/presentation/providers/breadcrumb-provider";
 
@@ -201,37 +217,60 @@ export default function TemplateListPage({
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Link
-                          href={
-                            template.collectionId
-                              ? `/collections/${template.collectionId}/templates/${template.id}`
-                              : `/templates/${template.id}`
-                          }
-                          className="w-8 h-8 rounded-lg flex items-center justify-center transition-all text-foreground/60 hover:text-primary hover:bg-primary/10"
-                          title="Abrir Editor"
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Acciones para ${template.name}`}
+                            className="h-8 w-8 text-muted hover:text-foreground transition-all"
+                          >
+                            <MoreHorizontal size={14} />
+                            <span className="sr-only">Acciones para {template.name}</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align="end"
+                          className="w-48 bg-surface border-border/50"
                         >
-                          <ExternalLink size={14} />
-                        </Link>
-                        {canUpdate && (
-                          <button
-                            onClick={() => handleEdit(template)}
-                            className="w-8 h-8 rounded-lg flex items-center justify-center transition-all text-foreground/60 hover:text-primary hover:bg-primary/10"
-                            title="Configuración"
-                          >
-                            <Settings2 size={14} />
-                          </button>
-                        )}
-                        {canDelete && (
-                          <button
-                            onClick={() => deleteTemplate(template.id)}
-                            className="w-8 h-8 rounded-lg flex items-center justify-center transition-all text-foreground/60 hover:text-red-400 hover:bg-red-400/10"
-                            title="Eliminar"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        )}
-                      </div>
+                          <DropdownMenuItem asChild>
+                            <Link
+                              href={
+                                template.collectionId
+                                  ? `/collections/${template.collectionId}/templates/${template.id}`
+                                  : `/templates/${template.id}`
+                              }
+                              className="flex items-center gap-2 cursor-pointer"
+                            >
+                              <ExternalLink size={14} className="text-muted" />
+                              <span>Abrir Editor</span>
+                            </Link>
+                          </DropdownMenuItem>
+
+                          {canUpdate && (
+                            <DropdownMenuItem
+                              onClick={() => handleEdit(template)}
+                              className="flex items-center gap-2 cursor-pointer"
+                            >
+                              <Settings2 size={14} className="text-muted" />
+                              <span>Configuración</span>
+                            </DropdownMenuItem>
+                          )}
+
+                          {canDelete && (
+                            <>
+                              <DropdownMenuSeparator className="bg-border/10" />
+                              <DropdownMenuItem
+                                onClick={() => deleteTemplate(template.id)}
+                                className="flex items-center gap-2 cursor-pointer text-red-500 focus:text-red-500 focus:bg-red-500/10"
+                              >
+                                <Trash2 size={14} />
+                                <span>Eliminar</span>
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </td>
                   </tr>
                 ))}

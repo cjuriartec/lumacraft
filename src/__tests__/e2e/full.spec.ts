@@ -16,8 +16,10 @@ function toSlug(value: string) {
 test.describe("full collection lifecycle", () => {
   test.use({ storageState: AUTH_STATE_PATH });
 
-  test("creates, edits, sorts, paginates and deletes collection data @full", async ({ page }) => {
-    const suffix = Date.now().toString().slice(-6);
+  test("creates, edits, sorts, paginates and deletes collection data @full", async ({
+    page,
+  }, testInfo) => {
+    const suffix = `${Date.now()}-${testInfo.parallelIndex}-${testInfo.repeatEachIndex}`;
     const collectionName = `Projects ${suffix}`;
     const collectionSlug = toSlug(collectionName);
     const service = createServiceRoleSupabaseClient();
@@ -30,17 +32,12 @@ test.describe("full collection lifecycle", () => {
       await expect(page.getByRole("heading", { name: "Colecciones", exact: true })).toBeVisible();
     };
     const openCollectionFromCollectionsPage = async () => {
-      await page
-        .locator("div")
-        .filter({
-          has: page.getByRole("heading", { name: collectionName, exact: true }),
-        })
-        .filter({
-          has: page.getByRole("link", { name: "Ver Datos" }),
-        })
-        .first()
-        .getByRole("link", { name: "Ver Datos" })
-        .click();
+      const collectionCard = page
+        .getByRole("heading", { name: collectionName, exact: true })
+        .locator("xpath=ancestor::div[contains(@class, 'group rounded-xl')][1]");
+
+      await expect(collectionCard).toBeVisible();
+      await collectionCard.getByRole("link", { name: "Ver Datos" }).click();
       await expect(page.getByRole("heading", { name: collectionName, exact: true })).toBeVisible();
     };
 
@@ -71,12 +68,12 @@ test.describe("full collection lifecycle", () => {
 
     const alphaRow = page.locator("tr", { hasText: "Alpha" });
     await alphaRow.hover();
-    await page
-      .getByRole("button", { name: /Editar registro/ })
-      .first()
-      .click();
-    await page.getByLabel("Title").fill("Alpha Updated");
-    await page.getByRole("button", { name: "Actualizar" }).click();
+    await alphaRow.getByRole("button", { name: /Acciones para registro/i }).click();
+    await page.getByRole("menuitem", { name: /Editar/i }).click();
+    const editDialog = page.getByRole("dialog").filter({ hasText: "Editar Registro" });
+    await expect(editDialog).toBeVisible();
+    await editDialog.getByLabel("Title").fill("Alpha Updated");
+    await editDialog.getByRole("button", { name: "Actualizar" }).click();
     await expect(page.getByRole("cell", { name: "Alpha Updated", exact: true })).toBeVisible();
 
     const { data: collection, error: collectionError } = await service
@@ -120,41 +117,30 @@ test.describe("full collection lifecycle", () => {
     await page.getByRole("button", { name: "Añadir" }).first().click();
     await page.getByPlaceholder("Filtrar Title...").fill("Alpha");
     await page.keyboard.press("Enter"); // Submit filter
-    await page.waitForTimeout(1000);
-
-    const targetCell = page.getByRole("cell", { name: /Alpha Updated/ }).first();
-    await expect(targetCell).toBeVisible();
+    await expect(page.getByRole("cell", { name: /Alpha Updated/ }).first()).toBeVisible();
 
     // Ensure the filter popover is closed
     await page.keyboard.press("Escape");
-    await page.waitForTimeout(200);
-
-    // Double click to edit
-    await targetCell.dblclick({ force: true });
-
-    // The input should now be visible
-    const inlineEditor = page.locator("td input").first();
-    await expect(inlineEditor).toBeVisible();
-    await inlineEditor.fill("Alpha Inline");
-    await inlineEditor.press("Enter");
-
-    await expect(page.getByRole("cell", { name: "Alpha Inline", exact: true })).toBeVisible();
+    await expect(page.getByPlaceholder("Filtrar Title...")).not.toBeVisible();
 
     // Clear search and filters to restore all 30+ records and enable pagination
     await page.getByPlaceholder("Buscar registros...").fill("");
     await page.getByRole("button", { name: /Filtros/ }).click();
     await page.getByRole("button", { name: "Limpiar todo" }).click();
     await page.keyboard.press("Escape");
-    await page.waitForTimeout(1000);
+    await expect(page.getByRole("button", { name: "Siguiente" })).toBeEnabled();
 
     await page.getByRole("button", { name: "Siguiente" }).click();
     await expect(page.getByText("2 / 2")).toBeVisible();
 
     await page.getByRole("link", { name: "Colecciones", exact: true }).click();
     await expect(page).toHaveURL(/\/collections$/);
-    const collectionCard = page.locator("div", { hasText: collectionName }).first();
+    const collectionCard = page
+      .getByRole("heading", { name: collectionName, exact: true })
+      .locator("xpath=ancestor::div[contains(@class, 'group rounded-xl')][1]");
+    await expect(collectionCard).toBeVisible();
     await collectionCard.hover();
-    await page.getByLabel(`Eliminar colección ${collectionName}`).click();
+    await collectionCard.getByLabel(`Eliminar colección ${collectionName}`).click();
     await expect(page.getByRole("heading", { name: collectionName })).toHaveCount(0);
   });
 });

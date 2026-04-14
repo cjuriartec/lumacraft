@@ -9,6 +9,7 @@ import {
   FileText,
   ListFilter,
   Loader2,
+  MoreHorizontal,
   Plus,
   Search,
   Trash2,
@@ -20,6 +21,13 @@ import { RecordDocumentSelectorModal } from "@/modules/document/presentation/com
 import { cn } from "@/shared/lib/utils";
 import { Badge } from "@/shared/presentation/components/ui/badge";
 import { Button } from "@/shared/presentation/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/shared/presentation/components/ui/dropdown-menu";
 import { Input } from "@/shared/presentation/components/ui/input";
 import {
   Popover,
@@ -955,56 +963,67 @@ export function DataGrid({
                       {renderCellValue(record, field)}
                     </TableCell>
                   ))}
-                  <TableCell className="text-right py-4 px-4">
+                  <TableCell className="text-right py-3 px-4">
                     {(canRead || canUpdate || canDelete) && (
-                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        {canUpdate && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
                           <Button
                             variant="ghost"
                             size="icon"
-                            aria-label={`Editar registro ${record.id}`}
-                            className="h-8 w-8 text-muted hover:text-foreground hover:bg-surface-hover"
-                            onClick={() => onEdit(record as DataRecord)}
+                            aria-label={`Acciones para registro ${record.id}`}
+                            className="h-8 w-8 text-muted hover:text-foreground hover:bg-surface-hover transition-all cursor-pointer"
                           >
-                            <Edit2 size={14} />
+                            <MoreHorizontal size={14} />
+                            <span className="sr-only">Acciones para registro {record.id}</span>
                           </Button>
-                        )}
-                        {collectionId && canRead && (
-                          <Button
-                            asChild
-                            variant="ghost"
-                            size="icon"
-                            aria-label={`Ver registro ${record.id}`}
-                            className="h-8 w-8 text-muted hover:text-foreground hover:bg-surface-hover"
-                          >
-                            <Link href={`/collections/${collectionId}/records/${record.id}`}>
-                              <Eye size={14} />
-                            </Link>
-                          </Button>
-                        )}
-                        {collectionId && canRead && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            aria-label={`Abrir documento del registro ${record.id}`}
-                            className="h-8 w-8 text-muted hover:text-primary hover:bg-primary/10"
-                            onClick={() => setDocumentRecordId(record.id)}
-                          >
-                            <FileText size={14} />
-                          </Button>
-                        )}
-                        {canDelete && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            aria-label={`Eliminar registro ${record.id}`}
-                            className="h-8 w-8 text-muted hover:text-red-500 hover:bg-red-500/10"
-                            onClick={() => onDelete(record.id)}
-                          >
-                            <Trash2 size={14} />
-                          </Button>
-                        )}
-                      </div>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align="end"
+                          className="w-48 bg-surface border-border/50"
+                        >
+                          {collectionId && canRead && (
+                            <DropdownMenuItem asChild>
+                              <Link
+                                href={`/collections/${collectionId}/records/${record.id}`}
+                                className="flex items-center gap-2 cursor-pointer"
+                              >
+                                <Eye size={14} className="text-muted" />
+                                <span>Ver detalle</span>
+                              </Link>
+                            </DropdownMenuItem>
+                          )}
+                          {canUpdate && (
+                            <DropdownMenuItem
+                              onClick={() => onEdit(record as DataRecord)}
+                              className="flex items-center gap-2 cursor-pointer"
+                            >
+                              <Edit2 size={14} className="text-muted" />
+                              <span>Editar</span>
+                            </DropdownMenuItem>
+                          )}
+                          {collectionId && canRead && (
+                            <DropdownMenuItem
+                              onClick={() => setDocumentRecordId(record.id)}
+                              className="flex items-center gap-2 cursor-pointer"
+                            >
+                              <FileText size={14} className="text-muted" />
+                              <span>Documento</span>
+                            </DropdownMenuItem>
+                          )}
+                          {canDelete && (
+                            <>
+                              <DropdownMenuSeparator className="bg-border/10" />
+                              <DropdownMenuItem
+                                onClick={() => onDelete(record.id)}
+                                className="flex items-center gap-2 cursor-pointer text-red-500 focus:text-red-500 focus:bg-red-500/10"
+                              >
+                                <Trash2 size={14} />
+                                <span>Eliminar</span>
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     )}
                   </TableCell>
                 </TableRow>

@@ -103,14 +103,19 @@ describe("TemplateListPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("delegates deletion to useTemplates", () => {
+  it("delegates deletion to useTemplates", async () => {
     templatesState.templates = [
       makeTemplate({ id: "template-1", name: "Contrato", collectionId: "collection-1" }),
     ];
 
     render(<TemplateListPage />);
 
-    fireEvent.click(screen.getByTitle("Eliminar"));
+    const trigger = screen.getByRole("button", { name: /acciones/i });
+    fireEvent.pointerDown(trigger);
+    fireEvent.click(trigger);
+    await waitFor(() => {
+      fireEvent.click(screen.getByText("Eliminar"));
+    });
     expect(templatesState.deleteTemplate).toHaveBeenCalledWith("template-1");
   });
 
@@ -135,7 +140,12 @@ describe("TemplateListPage", () => {
 
     render(<TemplateListPage />);
 
-    fireEvent.click(screen.getByTitle("Configuración"));
+    const trigger = screen.getByRole("button", { name: /acciones/i });
+    fireEvent.pointerDown(trigger);
+    fireEvent.click(trigger);
+    await waitFor(() => {
+      fireEvent.click(screen.getByText("Configuración"));
+    });
     fireEvent.click(screen.getByText("submit-update"));
 
     await waitFor(() => {
