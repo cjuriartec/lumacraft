@@ -1,4 +1,4 @@
-import { SupabaseClient } from "@supabase/supabase-js";
+import { SupabaseClient, type User as SupabaseUser } from "@supabase/supabase-js";
 
 import { User } from "@/modules/auth/domain/entities/user.entity";
 import { IAuthProvider } from "@/modules/auth/domain/ports/auth-provider.port";
@@ -40,26 +40,54 @@ export class SupabaseAuthService implements IAuthProvider {
 
   public async getCurrentUser(): Promise<Result<User | null>> {
     const {
-      data: { user },
+      data: { session },
       error,
-    } = await this.supabase.auth.getUser();
+    } = await this.supabase.auth.getSession();
 
     if (error) {
       return fail(new DomainError(error.message, "AUTH_ERROR"));
     }
 
+    return this.mapSupabaseUser(session?.user ?? null);
+  }
+
+  public onAuthStateChange(callback: (user: User | null) => void): () => void {
+    const {
+      data: { subscription },
+    } = this.supabase.auth.onAuthStateChange((_event, session) => {
+      const mappedUser = this.mapSupabaseUser(session?.user ?? null);
+      if (mappedUser.ok) {
+        callback(mappedUser.value);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }
+
+  private mapSupabaseUser(user: SupabaseUser | null): Result<User | null> {
     if (!user) {
       return ok(null);
     }
 
-    const emailRes = Email.create(user.email!);
+    const email = user.email;
+    if (!email) {
+      return fail(new DomainError("Authenticated user is missing email", "AUTH_INVALID_USER"));
+    }
+
+    const metadata = user.user_metadata ?? {};
+    const emailRes = Email.create(email);
     if (!emailRes.ok) return fail(emailRes.error);
 
     const userRes = User.create({
       id: user.id,
       email: emailRes.value,
-      fullName: user.user_metadata.full_name || user.user_metadata.name || undefined,
-      avatarUrl: user.user_metadata.avatar_url,
+      fullName:
+        typeof metadata.full_name === "string"
+          ? metadata.full_name
+          : typeof metadata.name === "string"
+            ? metadata.name
+            : undefined,
+      avatarUrl: typeof metadata.avatar_url === "string" ? metadata.avatar_url : undefined,
       createdAt: new Date(user.created_at),
       updatedAt: new Date(user.updated_at || user.created_at),
     });
@@ -67,35 +95,5 @@ export class SupabaseAuthService implements IAuthProvider {
     if (!userRes.ok) return fail(userRes.error);
 
     return ok(userRes.value);
-  }
-
-  public onAuthStateChange(callback: (user: User | null) => void): () => void {
-    const {
-      data: { subscription },
-    } = this.supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session?.user) {
-        callback(null);
-        return;
-      }
-
-      const emailRes = Email.create(session.user.email!);
-      if (emailRes.ok) {
-        const userRes = User.create({
-          id: session.user.id,
-          email: emailRes.value,
-          fullName:
-            session.user.user_metadata.full_name || session.user.user_metadata.name || undefined,
-          avatarUrl: session.user.user_metadata.avatar_url,
-          createdAt: new Date(session.user.created_at),
-          updatedAt: new Date(session.user.updated_at || session.user.created_at),
-        });
-
-        if (userRes.ok) {
-          callback(userRes.value);
-        }
-      }
-    });
-
-    return () => subscription.unsubscribe();
   }
 }
