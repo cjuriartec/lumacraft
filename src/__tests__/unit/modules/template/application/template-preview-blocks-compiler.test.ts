@@ -7,6 +7,7 @@ import {
   AIGenerationRequest,
   AIGenerationResponse,
 } from "@/modules/ai/domain/types/ai-provider.types";
+import { TemplateAIBlockCachePort } from "@/modules/template/application/ports/template-ai-block-cache.port";
 import { TemplateAssetUrlResolverPort } from "@/modules/template/application/ports/template-asset-url-resolver.port";
 import { compileTemplatePreviewBlocks } from "@/modules/template/application/services/template-preview-blocks-compiler";
 import { TemplateBlocks } from "@/modules/template/domain/types/template-blocks";
@@ -57,6 +58,15 @@ class DelayedStructuredAIProvider extends StructuredAIProvider {
   }
 }
 
+class CountingStructuredAIProvider extends StructuredAIProvider {
+  public streamCalls = 0;
+
+  override async *stream(): AsyncGenerator<Result<AIGenerationChunk, DomainError>, void, void> {
+    this.streamCalls += 1;
+    yield* super.stream();
+  }
+}
+
 class StructuredAIProviderFactory implements AIProviderFactoryPort {
   private readonly provider = new StructuredAIProvider();
 
@@ -81,12 +91,69 @@ class DelayedStructuredAIProviderFactory implements AIProviderFactoryPort {
   }
 }
 
+class CountingStructuredAIProviderFactory implements AIProviderFactoryPort {
+  public readonly provider = new CountingStructuredAIProvider();
+
+  getDefaultProviderId() {
+    return "GEMINI" as const;
+  }
+
+  create() {
+    return ok(this.provider);
+  }
+}
+
 class StaticAssetUrlResolver implements TemplateAssetUrlResolverPort {
   public async resolveImageUrl(params: {
     bucket: string;
     path: string;
   }): Promise<Result<string, DomainError>> {
     return ok(`https://signed.example/${params.bucket}/${params.path}`);
+  }
+}
+
+class InMemoryTemplateAIBlockCache implements TemplateAIBlockCachePort {
+  private readonly entries = new Map<
+    string,
+    {
+      cacheKey: string;
+      blocks: TemplateBlocks;
+      warnings: string[];
+    }
+  >();
+
+  get size() {
+    return this.entries.size;
+  }
+
+  async findByKey(cacheKey: string) {
+    const entry = this.entries.get(cacheKey);
+    if (!entry) {
+      return ok(null);
+    }
+
+    return ok({
+      cacheKey: entry.cacheKey,
+      blocks: JSON.parse(JSON.stringify(entry.blocks)) as TemplateBlocks,
+      warnings: [...entry.warnings],
+    });
+  }
+
+  async save(params: {
+    cacheKey: string;
+    accountId: string;
+    providerId: string;
+    model: string;
+    blocks: TemplateBlocks;
+    warnings: string[];
+  }) {
+    this.entries.set(params.cacheKey, {
+      cacheKey: params.cacheKey,
+      blocks: JSON.parse(JSON.stringify(params.blocks)) as TemplateBlocks,
+      warnings: [...params.warnings],
+    });
+
+    return ok(undefined);
   }
 }
 
@@ -503,6 +570,79 @@ describe("compileTemplatePreviewBlocks", () => {
     expect(generatedText.text).toBe("Informe técnico generado");
     expect(generatedText.fontSize).toBe("11pt");
     expect(generatedText.fontFamily).toBe("roboto");
+  });
+
+  it("invalidates ai block cache when template ai presentation changes", async () => {
+    const aiProviderFactory = new CountingStructuredAIProviderFactory();
+    const aiBlockCache = new InMemoryTemplateAIBlockCache();
+    const context: TemplateRuntimeContext = {
+      recordId: "record-1",
+      collectionId: "collection-1",
+      collectionName: "Clientes",
+      root: {
+        nombre: "Coti1",
+      },
+    };
+
+    const firstResult = await compileTemplatePreviewBlocks({
+      requestId: "req-ai-cache-roboto",
+      accountId: "account-1",
+      blocks: [
+        {
+          type: "template_ai",
+          promptTemplate: "Genera un asunto institucional para {{nombre}}",
+          fontSize: 11,
+          fontFamily: "roboto",
+          lineHeight: 1,
+          children: [{ text: "" }],
+        },
+      ],
+      context,
+      aiProviderFactory,
+      aiBlockCache,
+    });
+
+    const secondResult = await compileTemplatePreviewBlocks({
+      requestId: "req-ai-cache-arial",
+      accountId: "account-1",
+      blocks: [
+        {
+          type: "template_ai",
+          promptTemplate: "Genera un asunto institucional para {{nombre}}",
+          fontSize: 11,
+          fontFamily: "arial",
+          lineHeight: 1.2,
+          children: [{ text: "" }],
+        },
+      ],
+      context,
+      aiProviderFactory,
+      aiBlockCache,
+    });
+
+    expect(firstResult.ok).toBe(true);
+    expect(secondResult.ok).toBe(true);
+    if (!firstResult.ok || !secondResult.ok) return;
+
+    const firstParagraph = firstResult.value.blocks[0] as {
+      type: string;
+      fontFamily?: string;
+      lineHeight?: number;
+    };
+    const secondParagraph = secondResult.value.blocks[0] as {
+      type: string;
+      fontFamily?: string;
+      lineHeight?: number;
+    };
+
+    expect(firstParagraph.type).toBe("p");
+    expect(firstParagraph.fontFamily).toBe("roboto");
+    expect(firstParagraph.lineHeight).toBe(1);
+    expect(secondParagraph.type).toBe("p");
+    expect(secondParagraph.fontFamily).toBe("arial");
+    expect(secondParagraph.lineHeight).toBe(1.2);
+    expect(aiProviderFactory.provider.streamCalls).toBe(2);
+    expect(aiBlockCache.size).toBe(2);
   });
 
   it("keeps final block order stable even when resolved events arrive out of order", async () => {

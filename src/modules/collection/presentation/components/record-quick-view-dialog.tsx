@@ -46,10 +46,14 @@ export function RecordQuickViewDialog({ open, onOpenChange, target }: RecordQuic
   const collectionId = target?.collectionId ?? "";
   const recordId = target?.id ?? "";
   const { collections } = useCollections();
-  const { record, loading, error } = useEagerRecord(collectionId, recordId, {
-    depth: 1,
-    enabled: open && Boolean(target),
-  });
+  const eagerOptions = useMemo(
+    () => ({
+      depth: 1,
+      enabled: open && Boolean(target),
+    }),
+    [open, target],
+  );
+  const { record, loading, error } = useEagerRecord(collectionId, recordId, eagerOptions);
   const { fields, loading: loadingFields } = useFields(collectionId);
 
   const collection = collections.find((item) => item.id === collectionId);

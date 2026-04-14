@@ -32,7 +32,8 @@ export function RecordDetailPage({
 }: RecordDetailPageProps) {
   const { collections } = useCollections();
   const { fields, loading: loadingFields } = useFields(collectionId);
-  const { record, loading, error, refresh } = useEagerRecord(collectionId, recordId, { depth: 2 });
+  const eagerOptions = useMemo(() => ({ depth: 1 }), []);
+  const { record, loading, error, refresh } = useEagerRecord(collectionId, recordId, eagerOptions);
   const [previewTarget, setPreviewTarget] = useState<RelatedRecordSummary | null>(null);
 
   const collection = collections.find((item) => item.id === collectionId);

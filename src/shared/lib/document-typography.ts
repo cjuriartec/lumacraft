@@ -58,7 +58,7 @@ const DOCUMENT_FONT_FAMILY_DEFINITIONS: Record<
 
 const DOCUMENT_BLOCK_SPACING: Record<DocumentBlockType, DocumentSpacingDefinition> = {
   p: {
-    pdfMarginBottom: 8,
+    pdfMarginBottom: 14,
     pdfMarginTop: 0,
   },
   blockquote: {

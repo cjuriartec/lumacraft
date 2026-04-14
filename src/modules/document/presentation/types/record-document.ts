@@ -1,3 +1,4 @@
+import { PdfPageConfig } from "@/modules/template/domain/types/pdf-page-config";
 import { TemplateBlocks } from "@/modules/template/domain/types/template-blocks";
 
 export interface RecordDocumentDto {
@@ -25,6 +26,7 @@ export interface RecordDocumentPreviewPayload {
     name: string;
     collectionId: string | null;
     version: number;
+    pageConfig?: PdfPageConfig | null;
   };
   record: {
     id: string;

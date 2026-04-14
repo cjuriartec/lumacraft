@@ -4,6 +4,8 @@ import { resolveCollectionRecordLabel } from "@/modules/collection/domain/servic
 import { RenderRecordDocumentPdfUseCase } from "@/modules/document/application/use-cases/render-record-document-pdf.use-case";
 import { resolveDocumentRouteContext } from "@/modules/document/infrastructure/document-server";
 import type { TemplateBlocks } from "@/modules/template/domain/types/template-blocks";
+import { SupabaseTemplateAssetUrlResolverAdapter } from "@/modules/template/infrastructure/adapters/supabase-template-asset-url-resolver.adapter";
+import { normalizePdfImageSources } from "@/modules/template/presentation/lib/template-pdf-image-utils";
 import { renderTemplateToPdfBuffer } from "@/modules/template/presentation/lib/template-pdf-renderer";
 import { createClient } from "@/shared/infrastructure/supabase/server";
 
@@ -51,7 +53,26 @@ export async function GET(_request: Request, { params }: RouteParams) {
   }
 
   const useCase = new RenderRecordDocumentPdfUseCase(contextResult.value.documentRepository, {
-    render: (blocks: TemplateBlocks, title) => renderTemplateToPdfBuffer(blocks, title),
+    render: async (blocks: TemplateBlocks, title, pageConfig) => {
+      const resolver = new SupabaseTemplateAssetUrlResolverAdapter(supabase);
+      const resolvedBlocks = await normalizePdfImageSources(blocks, resolver);
+      const resolvedPageConfig = pageConfig ? { ...pageConfig } : pageConfig;
+
+      if (resolvedPageConfig?.header?.blocks) {
+        resolvedPageConfig.header.blocks = await normalizePdfImageSources(
+          resolvedPageConfig.header.blocks,
+          resolver,
+        );
+      }
+      if (resolvedPageConfig?.footer?.blocks) {
+        resolvedPageConfig.footer.blocks = await normalizePdfImageSources(
+          resolvedPageConfig.footer.blocks,
+          resolver,
+        );
+      }
+
+      return renderTemplateToPdfBuffer(resolvedBlocks, title, resolvedPageConfig);
+    },
   });
   const title = `${contextResult.value.template.name} - ${resolveCollectionRecordLabel(
     contextResult.value.record,
@@ -61,6 +82,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
     templateId,
     recordId,
     title,
+    pageConfig: contextResult.value.template.pageConfig,
   });
 
   if (!pdfResult.ok) {
