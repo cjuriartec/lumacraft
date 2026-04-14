@@ -1,12 +1,13 @@
 "use client";
 
-import { ArrowLeft, Loader2, PencilLine, RefreshCw } from "lucide-react";
+import { ArrowLeft, FileText, Loader2, PencilLine, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { useAuth } from "@/modules/auth/presentation/providers/auth-provider";
 import { usePermissions } from "@/modules/authorization/presentation/providers/permission-provider";
 import { CollectionUseCaseFactory } from "@/modules/collection/application/collection-use-case.factory";
+import { RecordDocumentSelectorModal } from "@/modules/document/presentation/components/record-document-selector-modal";
 import { useWorkspace } from "@/modules/workspace/presentation/providers/workspace-provider";
 import { Badge } from "@/shared/presentation/components/ui/badge";
 import { Button } from "@/shared/presentation/components/ui/button";
@@ -50,9 +51,11 @@ export function RecordDetailPage({
   const { record, loading, error, refresh } = useEagerRecord(collectionId, recordId, eagerOptions);
   const [previewTarget, setPreviewTarget] = useState<RelatedRecordSummary | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [isDocumentSelectorOpen, setIsDocumentSelectorOpen] = useState(false);
 
   const collection = collections.find((item) => item.id === collectionId);
   const resolvedCollectionName = collection?.displayName || collection?.name || collectionName;
+  const canRead = can(collectionId, "read");
   const canUpdate = can(collectionId, "update");
   const recordLabel = record
     ? resolveRecordLabel(record, collection?.primaryFieldName)
@@ -122,16 +125,31 @@ export function RecordDetailPage({
                   {formatShortRecordId(recordId)}
                 </Badge>
               </div>
-              {canUpdate && !loading && !error && record && (
-                <Button
-                  type="button"
-                  variant={isEditing ? "outline" : "default"}
-                  className={isEditing ? "" : "gap-2"}
-                  onClick={() => setIsEditing((prev) => !prev)}
-                >
-                  {!isEditing && <PencilLine size={14} />}
-                  {isEditing ? "Volver a vista" : "Editar en línea"}
-                </Button>
+              {!loading && !error && record && (canRead || canUpdate) && (
+                <div className="flex items-center gap-2">
+                  {canRead && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="gap-2"
+                      onClick={() => setIsDocumentSelectorOpen(true)}
+                    >
+                      <FileText size={14} />
+                      Documentos
+                    </Button>
+                  )}
+                  {canUpdate && (
+                    <Button
+                      type="button"
+                      variant={isEditing ? "outline" : "default"}
+                      size="icon"
+                      aria-label={isEditing ? "Volver a vista" : "Editar en línea"}
+                      onClick={() => setIsEditing((prev) => !prev)}
+                    >
+                      <PencilLine size={14} />
+                    </Button>
+                  )}
+                </div>
               )}
             </div>
             <h1 className="text-[2rem] md:text-[2.5rem] font-bold tracking-[-0.02em] text-foreground">
@@ -217,6 +235,12 @@ export function RecordDetailPage({
         open={previewTarget !== null}
         onOpenChange={(open) => !open && setPreviewTarget(null)}
         target={previewTarget}
+      />
+      <RecordDocumentSelectorModal
+        isOpen={isDocumentSelectorOpen}
+        onOpenChange={setIsDocumentSelectorOpen}
+        collectionId={collectionId}
+        recordId={recordId}
       />
     </>
   );

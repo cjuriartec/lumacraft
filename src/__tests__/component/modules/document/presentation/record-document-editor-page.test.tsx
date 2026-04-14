@@ -307,6 +307,21 @@ describe("RecordDocumentEditorPage", () => {
     ]);
   });
 
+  it("links the back button to the record detail page", () => {
+    render(
+      <RecordDocumentEditorPage
+        collectionId="collection-1"
+        recordId="record-1"
+        templateId="template-1"
+      />,
+    );
+
+    expect(screen.getAllByRole("link")[0]).toHaveAttribute(
+      "href",
+      "/collections/collection-1/records/record-1",
+    );
+  });
+
   it("renders the persisted document header and pdf action", () => {
     render(
       <RecordDocumentEditorPage

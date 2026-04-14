@@ -100,6 +100,11 @@ vi.mock("@/modules/collection/presentation/components/record-quick-view-dialog",
   RecordQuickViewDialog: () => null,
 }));
 
+vi.mock("@/modules/document/presentation/components/record-document-selector-modal", () => ({
+  RecordDocumentSelectorModal: ({ isOpen }: { isOpen: boolean }) =>
+    isOpen ? <div>record-document-selector</div> : null,
+}));
+
 vi.mock("@/modules/collection/presentation/components/record-editor-form", () => ({
   RecordEditorForm: ({ onCancel }: { onCancel?: () => void }) => (
     <div>
@@ -158,5 +163,19 @@ describe("RecordDetailPage", () => {
 
     expect(screen.queryByText("inline-editor")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Editar en línea" })).toBeInTheDocument();
+  });
+
+  it("opens the related documents selector from the detail actions", () => {
+    render(
+      <RecordDetailPage
+        collectionId="collection-1"
+        recordId="record-1"
+        collectionName="Projects"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Documentos" }));
+
+    expect(screen.getByText("record-document-selector")).toBeInTheDocument();
   });
 });

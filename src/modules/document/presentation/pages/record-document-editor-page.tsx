@@ -224,7 +224,7 @@ export default function RecordDocumentEditorPage({
             <div className="sticky top-0 z-20 flex items-center justify-between px-6 py-3 backdrop-blur-md">
               <div className="flex items-center gap-4">
                 <Button variant="ghost" size="icon" asChild className="rounded-full">
-                  <Link href={`/collections/${collectionId}`}>
+                  <Link href={`/collections/${collectionId}/records/${recordId}`}>
                     <ArrowLeft size={18} />
                   </Link>
                 </Button>
@@ -439,7 +439,7 @@ export default function RecordDocumentEditorPage({
               <div className="mx-auto flex w-[794px] max-w-full flex-col shadow-[0_2px_20px_rgba(0,0,0,0.12)]">
                 {/* ── HEADER mini-editor ── */}
                 {payload.template.pageConfig?.header?.enabled && (
-                  <div className="overflow-hidden rounded-t-sm bg-white shadow-[0_-2px_8px_rgba(0,0,0,0.05)] ring-1 ring-black/[0.05]">
+                  <div className="overflow-hidden rounded-t-sm bg-white shadow-[0_-2px_8px_rgba(0,0,0,0.05)] ring-1 ring-black/5">
                     <PdfPageSectionEditor
                       section="header"
                       value={payload.template.pageConfig.header}
@@ -468,7 +468,7 @@ export default function RecordDocumentEditorPage({
 
                 {/* ── FOOTER mini-editor ── */}
                 {payload.template.pageConfig?.footer?.enabled && (
-                  <div className="overflow-hidden rounded-b-sm bg-white shadow-[0_4px_8px_rgba(0,0,0,0.05)] ring-1 ring-black/[0.05]">
+                  <div className="overflow-hidden rounded-b-sm bg-white shadow-[0_4px_8px_rgba(0,0,0,0.05)] ring-1 ring-black/5">
                     <PdfPageSectionEditor
                       section="footer"
                       value={payload.template.pageConfig.footer}

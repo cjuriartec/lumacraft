@@ -519,8 +519,8 @@ export function RecordEditorForm({
               </Label>
               <Textarea
                 id={name}
-                rows={4}
-                className="min-h-[100px] resize-y border-border bg-background text-foreground placeholder:text-muted/40"
+                autoSize={true}
+                className="min-h-[100px] border-border bg-background text-foreground placeholder:text-muted/40"
                 placeholder={placeholder}
                 {...form.register(name)}
                 value={(currentValue as string) ?? ""}
@@ -844,7 +844,7 @@ export function RecordEditorForm({
             "flex gap-2 pt-4",
             layout === "dialog"
               ? "border-t border-border justify-end"
-              : "sticky bottom-0 -mx-6 mt-8 border-t border-border/40 bg-surface/95 px-6 pb-0 pt-4 backdrop-blur supports-[backdrop-filter]:bg-surface/85 md:-mx-8 md:px-8",
+              : "sticky bottom-0 -mx-6 mt-8 border-t border-border/40 bg-surface/95 px-6 pb-0 pt-4 backdrop-blur supports-backdrop-filter:bg-surface/85 md:-mx-8 md:px-8",
           )}
         >
           {onCancel && (
