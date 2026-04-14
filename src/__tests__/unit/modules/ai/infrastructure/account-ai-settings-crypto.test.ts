@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  canDecryptSecret,
   decryptSecret,
   encryptSecret,
 } from "@/modules/ai/infrastructure/security/account-ai-settings-crypto";
@@ -42,5 +43,20 @@ describe("account-ai-settings-crypto", () => {
     if (decrypted.ok) return;
 
     expect(decrypted.error.code).toBe("AI_SECRET_DECRYPTION_FAILED");
+  });
+
+  it("reports whether a stored secret remains decryptable with the current master key", () => {
+    const encrypted = encryptSecret("sk-test-1234", env);
+    if (!encrypted.ok) {
+      throw encrypted.error;
+    }
+
+    expect(canDecryptSecret(encrypted.value, env)).toBe(true);
+    expect(
+      canDecryptSecret(encrypted.value, {
+        AI_SETTINGS_MASTER_KEY: "another-master-key",
+        NODE_ENV: "test",
+      } as unknown as NodeJS.ProcessEnv),
+    ).toBe(false);
   });
 });

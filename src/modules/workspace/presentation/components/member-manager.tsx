@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Mail, Plus, Shield, User, UserMinus } from "lucide-react";
+import { Loader2, Mail, MoreHorizontal, Plus, Shield, User, UserMinus } from "lucide-react";
 import React, { useState } from "react";
 
 import { useAuth } from "@/modules/auth/presentation/providers/auth-provider";
@@ -8,6 +8,12 @@ import { cn } from "@/shared/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/presentation/components/ui/avatar";
 import { Badge } from "@/shared/presentation/components/ui/badge";
 import { Button } from "@/shared/presentation/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/shared/presentation/components/ui/dropdown-menu";
 import {
   Select,
   SelectContent,
@@ -190,14 +196,33 @@ export function MemberManager() {
                   </TableCell>
                   <TableCell className="py-4 text-right px-6">
                     {!isOwner ? (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-muted hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => handleRemove(member.id)}
-                      >
-                        <UserMinus size={14} />
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Acciones para miembro ${member.userName || member.userEmail}`}
+                            className="h-8 w-8 text-muted hover:text-foreground transition-all"
+                          >
+                            <MoreHorizontal size={14} />
+                            <span className="sr-only">
+                              Acciones para miembro {member.userName || member.userEmail}
+                            </span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align="end"
+                          className="w-48 bg-surface border-border/50"
+                        >
+                          <DropdownMenuItem
+                            onClick={() => handleRemove(member.id)}
+                            className="flex items-center gap-2 cursor-pointer text-red-500 focus:text-red-500 focus:bg-red-500/10"
+                          >
+                            <UserMinus size={14} />
+                            <span>Eliminar Miembro</span>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     ) : (
                       <div className="h-8 w-8 flex items-center justify-center ml-auto text-muted-foreground/30">
                         <Shield size={14} />

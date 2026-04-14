@@ -24,11 +24,11 @@ vi.mock("@/shared/presentation/components/ui/dialog", () => ({
 }));
 
 vi.mock("@/shared/presentation/components/ui/input", () => ({
-  Input: (props: Record<string, unknown>) => <input {...props} />,
+  Input: ({ enableAI: _enableAI, ...props }: Record<string, unknown>) => <input {...props} />,
 }));
 
 vi.mock("@/shared/presentation/components/ui/textarea", () => ({
-  Textarea: (props: Record<string, unknown>) => <textarea {...props} />,
+  Textarea: ({ enableAI: _enableAI, ...props }: Record<string, unknown>) => <textarea {...props} />,
 }));
 
 vi.mock("@/shared/presentation/components/ui/label", () => ({
@@ -38,7 +38,22 @@ vi.mock("@/shared/presentation/components/ui/label", () => ({
 }));
 
 vi.mock("@/shared/presentation/components/ui/switch", () => ({
-  Switch: (props: Record<string, unknown>) => <input type="checkbox" {...props} />,
+  Switch: ({
+    checked,
+    onCheckedChange,
+    ...props
+  }: {
+    checked?: boolean;
+    onCheckedChange?: (checked: boolean) => void;
+    [key: string]: unknown;
+  }) => (
+    <input
+      type="checkbox"
+      checked={checked}
+      onChange={(event) => onCheckedChange?.(event.target.checked)}
+      {...props}
+    />
+  ),
 }));
 
 vi.mock("@/shared/presentation/components/ui/badge", () => ({

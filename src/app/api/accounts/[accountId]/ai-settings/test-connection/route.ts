@@ -70,6 +70,17 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       const decrypted = decryptSecret(encrypted);
       if (decrypted.ok) {
         finalApiKey = decrypted.value;
+      } else {
+        return NextResponse.json(
+          {
+            error: {
+              code: decrypted.error.code,
+              message:
+                "La API key almacenada no pudo descifrarse. Verifica AI_SETTINGS_MASTER_KEY o vuelve a guardar la key del proveedor.",
+            },
+          },
+          { status: 400 },
+        );
       }
     }
   }

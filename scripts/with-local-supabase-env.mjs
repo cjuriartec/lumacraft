@@ -2,6 +2,7 @@ import { execFileSync, spawn } from "node:child_process";
 import { createHmac } from "node:crypto";
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 function base64UrlEncode(value) {
   return Buffer.from(value)
@@ -174,12 +175,25 @@ function isPlaywrightCommand(command, args) {
   return command === "playwright" || (command === "npx" && args[0] === "playwright");
 }
 
+export function resolveCommand(command, args) {
+  if (command !== "playwright") {
+    return { command, args };
+  }
+
+  return {
+    command: process.platform === "win32" ? "npx.cmd" : "npx",
+    args: ["playwright", ...args],
+  };
+}
+
 function logSkip(message) {
   console.warn(`[with-local-supabase-env] ${message}`);
 }
 
 function runCommand(command, args, env) {
-  const child = spawn(command, args, {
+  const resolved = resolveCommand(command, args);
+
+  const child = spawn(resolved.command, resolved.args, {
     stdio: "inherit",
     env,
     shell: process.platform === "win32",
@@ -195,7 +209,7 @@ function runCommand(command, args, env) {
   });
 }
 
-async function main() {
+export async function main() {
   const { command, args, env } = getCommandAndArgs(process.argv.slice(2));
   const baseEnv = {
     ...process.env,
@@ -226,7 +240,11 @@ async function main() {
   }
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
-  process.exit(1);
-});
+const currentFilePath = fileURLToPath(import.meta.url);
+
+if (process.argv[1] && path.resolve(process.argv[1]) === currentFilePath) {
+  main().catch((error) => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exit(1);
+  });
+}
