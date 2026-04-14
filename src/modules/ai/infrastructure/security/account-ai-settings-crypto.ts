@@ -113,3 +113,10 @@ export function decryptSecret(
     );
   }
 }
+
+export function canDecryptSecret(
+  payload: AccountAIEncryptedSecretEnvelope,
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  return decryptSecret(payload, env).ok;
+}

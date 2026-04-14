@@ -61,10 +61,12 @@ function resolveEdgeFunctionKey(): string | null {
 function buildTemplateAISettingsHash(params: {
   settings: Record<string, unknown>;
   systemInstruction: string;
+  providerSecrets: Record<string, unknown>;
 }) {
   return hashStableValue({
     settings: params.settings,
     systemInstruction: params.systemInstruction,
+    providerSecrets: params.providerSecrets,
   });
 }
 
@@ -319,6 +321,7 @@ export async function createDocumentPreviewCompiler(params: {
       templatePreviewMaxAIBlocks: accountAISettings.templatePreviewMaxAIBlocks,
     },
     systemInstruction: aiSystemInstruction,
+    providerSecrets: accountAISettings.providerSecrets,
   });
   const compilationService = new TemplateCompilationService();
   const generatePreviewUseCase = new GenerateTemplatePreviewUseCase(

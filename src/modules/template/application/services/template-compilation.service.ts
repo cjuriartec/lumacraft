@@ -150,6 +150,7 @@ export class TemplateCompilationService {
           context: params.context,
           aiProviderFactory: params.aiProviderFactory,
           accountId: params.accountId,
+          aiSettingsHash: params.aiSettingsHash,
           aiSystemInstruction: params.aiSystemInstruction,
           assetUrlResolver: params.assetUrlResolver,
           aiBlockCache: params.aiBlockCache,

@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.9](https://github.com/cjuriartec/lumacraft/compare/v0.1.8...v0.1.9) (2026-04-13)
+
+
+### ♻️ Code Refactoring
+
+* improve relation field UI and add test coverage for clearing preselected records ([7efe6c3](https://github.com/cjuriartec/lumacraft/commit/7efe6c3dec656ef7a6b161e18f2085b9138d0fa3))
+
+
+### ✨ Features
+
+* implement record detail page with eager loading and bidirectional relationship management ([fac221c](https://github.com/cjuriartec/lumacraft/commit/fac221c050ca2cb37c52956a486c181fd99ff520))
+
+
+### ✅ Tests
+
+* mock useStorage hook in tests and update ReadOnlyFieldValue component styling ([3e0dcc1](https://github.com/cjuriartec/lumacraft/commit/3e0dcc1d3fd9d3618f80dbf586ecf2b7c368e486))
+
 ### [0.1.8](https://github.com/cjuriartec/lumacraft/compare/v0.1.7...v0.1.8) (2026-04-13)
 
 

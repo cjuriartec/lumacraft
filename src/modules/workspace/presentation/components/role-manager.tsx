@@ -1,6 +1,6 @@
 "use client";
 
-import { Edit2, Loader2, Plus, Shield, Trash2 } from "lucide-react";
+import { Edit2, Loader2, MoreHorizontal, Plus, Shield, Trash2 } from "lucide-react";
 import React, { useState } from "react";
 
 import { useGuidance } from "@/modules/guidance/presentation/hooks/use-guidance";
@@ -14,6 +14,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/shared/presentation/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/shared/presentation/components/ui/dropdown-menu";
 import { Input } from "@/shared/presentation/components/ui/input";
 import { Label } from "@/shared/presentation/components/ui/label";
 import {
@@ -153,24 +160,36 @@ export function RoleManager() {
                 </TableCell>
                 <TableCell className="py-4 text-right">
                   {!role.isSuperadmin && (
-                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-muted hover:text-foreground hover:bg-surface-hover"
-                        onClick={() => handleOpenEdit(role)}
-                      >
-                        <Edit2 size={14} />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-muted hover:text-red-500 hover:bg-red-500/10"
-                        onClick={() => handleDelete(role.id, role.name)}
-                      >
-                        <Trash2 size={14} />
-                      </Button>
-                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label={`Acciones para rol ${role.name}`}
+                          className="h-8 w-8 text-muted hover:text-foreground transition-all"
+                        >
+                          <MoreHorizontal size={14} />
+                          <span className="sr-only">Acciones para rol {role.name}</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48 bg-surface border-border/50">
+                        <DropdownMenuItem
+                          onClick={() => handleOpenEdit(role)}
+                          className="flex items-center gap-2 cursor-pointer"
+                        >
+                          <Edit2 size={14} className="text-muted" />
+                          <span>Editar Rol</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator className="bg-border/10" />
+                        <DropdownMenuItem
+                          onClick={() => handleDelete(role.id, role.name)}
+                          className="flex items-center gap-2 cursor-pointer text-red-500 focus:text-red-500 focus:bg-red-500/10"
+                        >
+                          <Trash2 size={14} />
+                          <span>Eliminar Rol</span>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   )}
                   {role.isSuperadmin && (
                     <div className="flex items-center justify-end pr-3 text-muted-foreground/30">

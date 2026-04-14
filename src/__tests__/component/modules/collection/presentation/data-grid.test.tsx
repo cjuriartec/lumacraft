@@ -190,6 +190,7 @@ describe("DataGrid", () => {
       data: { title: "Alpha" },
     });
 
+    vi.useRealTimers();
     render(
       <DataGrid
         collectionId={field.collectionId}
@@ -210,8 +211,16 @@ describe("DataGrid", () => {
       />,
     );
 
-    const viewLink = screen.getByRole("link", { name: /Ver registro record-1/i });
-    expect(viewLink).toHaveAttribute("href", `/collections/${field.collectionId}/records/record-1`);
+    const trigger = screen.getByRole("button", { name: /Acciones para registro record-1/i });
+    fireEvent.pointerDown(trigger);
+    fireEvent.pointerUp(trigger);
+    fireEvent.click(trigger);
+
+    const viewLink = await screen.findByText("Ver detalle");
+    expect(viewLink.closest("a")).toHaveAttribute(
+      "href",
+      `/collections/${field.collectionId}/records/record-1`,
+    );
   });
 
   it("keeps the document action opening the document selector", async () => {
@@ -223,6 +232,7 @@ describe("DataGrid", () => {
       data: { title: "Alpha" },
     });
 
+    vi.useRealTimers();
     render(
       <DataGrid
         collectionId={field.collectionId}
@@ -243,7 +253,13 @@ describe("DataGrid", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /Abrir documento del registro record-1/i }));
+    const trigger = screen.getByRole("button", { name: /Acciones para registro record-1/i });
+    fireEvent.pointerDown(trigger);
+    fireEvent.pointerUp(trigger);
+    fireEvent.click(trigger);
+
+    const documentItem = await screen.findByText("Documento");
+    fireEvent.click(documentItem);
 
     expect(screen.getByTestId("record-document-selector")).toHaveTextContent("record-1");
   });

@@ -1,11 +1,18 @@
 "use client";
 
-import { GripVertical, Plus, Settings2, Trash2 } from "lucide-react";
+import { GripVertical, MoreHorizontal, Plus, Settings2, Trash2 } from "lucide-react";
 
 import { useGuidance } from "@/modules/guidance/presentation/hooks/use-guidance";
 import { Result } from "@/shared/domain/result";
 import { Badge } from "@/shared/presentation/components/ui/badge";
 import { Button } from "@/shared/presentation/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/shared/presentation/components/ui/dropdown-menu";
 import {
   Table,
   TableBody,
@@ -163,31 +170,44 @@ export function FieldManager({
                     </div>
                   </TableCell>
                   <TableCell className="py-4 px-4 text-right">
-                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <FieldFormDialog
-                        field={field}
-                        availableCollections={relationCollections}
-                        onSubmit={(values) => updateField({ ...values, id: field.id })}
-                      >
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
                         <Button
                           variant="ghost"
                           size="icon"
-                          aria-label={`Editar campo ${field.displayName || field.name}`}
-                          className="h-8 w-8 text-muted hover:text-foreground hover:bg-surface-hover"
+                          aria-label={`Acciones para campo ${field.displayName || field.name}`}
+                          className="h-8 w-8 text-muted hover:text-foreground transition-all"
                         >
-                          <Settings2 size={14} />
+                          <MoreHorizontal size={14} />
+                          <span className="sr-only">
+                            Acciones para campo {field.displayName || field.name}
+                          </span>
                         </Button>
-                      </FieldFormDialog>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label={`Eliminar campo ${field.displayName || field.name}`}
-                        className="h-8 w-8 text-muted hover:text-red-500 hover:bg-red-500/10"
-                        onClick={() => deleteField(field.id)}
-                      >
-                        <Trash2 size={14} />
-                      </Button>
-                    </div>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48 bg-surface border-border/50">
+                        <FieldFormDialog
+                          field={field}
+                          availableCollections={relationCollections}
+                          onSubmit={(values) => updateField({ ...values, id: field.id })}
+                        >
+                          <DropdownMenuItem
+                            onSelect={(e) => e.preventDefault()}
+                            className="flex items-center gap-2 cursor-pointer"
+                          >
+                            <Settings2 size={14} className="text-muted" />
+                            <span>Configuración</span>
+                          </DropdownMenuItem>
+                        </FieldFormDialog>
+                        <DropdownMenuSeparator className="bg-border/10" />
+                        <DropdownMenuItem
+                          onClick={() => deleteField(field.id)}
+                          className="flex items-center gap-2 cursor-pointer text-red-500 focus:text-red-500 focus:bg-red-500/10"
+                        >
+                          <Trash2 size={14} />
+                          <span>Eliminar Campo</span>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))

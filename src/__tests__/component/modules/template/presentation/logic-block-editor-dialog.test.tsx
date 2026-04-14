@@ -43,7 +43,7 @@ vi.mock("@/shared/presentation/components/ui/dialog", () => ({
 }));
 
 vi.mock("@/shared/presentation/components/ui/input", () => ({
-  Input: (props: Record<string, unknown>) => <input {...props} />,
+  Input: ({ enableAI: _enableAI, ...props }: Record<string, unknown>) => <input {...props} />,
 }));
 
 vi.mock("@/shared/presentation/components/ui/label", () => ({
@@ -51,7 +51,7 @@ vi.mock("@/shared/presentation/components/ui/label", () => ({
 }));
 
 vi.mock("@/shared/presentation/components/ui/textarea", () => ({
-  Textarea: (props: Record<string, unknown>) => <textarea {...props} />,
+  Textarea: ({ enableAI: _enableAI, ...props }: Record<string, unknown>) => <textarea {...props} />,
 }));
 
 vi.mock("@/shared/presentation/components/ui/select", () => ({
