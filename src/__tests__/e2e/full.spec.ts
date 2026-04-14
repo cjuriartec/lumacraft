@@ -71,10 +71,9 @@ test.describe("full collection lifecycle", () => {
 
     const alphaRow = page.locator("tr", { hasText: "Alpha" });
     await alphaRow.hover();
-    await page
-      .getByRole("button", { name: /Editar registro/ })
-      .first()
-      .click();
+    await expect(alphaRow.getByTestId("actions-cell")).toBeVisible();
+    await alphaRow.getByTestId("row-actions").click({ force: true });
+    await page.getByRole("menuitem", { name: /Editar/i }).click();
     await page.getByLabel("Title").fill("Alpha Updated");
     await page.getByRole("button", { name: "Actualizar" }).click();
     await expect(page.getByRole("cell", { name: "Alpha Updated", exact: true })).toBeVisible();
