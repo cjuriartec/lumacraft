@@ -127,7 +127,7 @@ export default function RecordDocumentEditorPage({
   useBreadcrumbs([
     { label: "Colecciones", href: "/collections" },
     { label: collectionName, href: `/collections/${collectionId}` },
-    { label: recordLabel },
+    { label: recordLabel, href: `/collections/${collectionId}/records/${recordId}` },
     { label: templateName },
   ]);
 
