@@ -80,7 +80,9 @@ function getErrorCode(error: Error, fallback: string) {
   return "code" in error && typeof error.code === "string" ? error.code : fallback;
 }
 
-function buildRuntimeSecretSummaries(settings: AccountAISettings): AccountAIProviderSecretSummaries {
+function buildRuntimeSecretSummaries(
+  settings: AccountAISettings,
+): AccountAIProviderSecretSummaries {
   return AI_PROVIDER_IDS.reduce<AccountAIProviderSecretSummaries>(
     (accumulator, providerId) => {
       const secret = settings.providerSecrets[providerId];
@@ -88,8 +90,8 @@ function buildRuntimeSecretSummaries(settings: AccountAISettings): AccountAIProv
 
       accumulator[providerId] = {
         isConfigured: isReadable,
-        last4: isReadable ? secret?.last4 ?? null : null,
-        updatedAt: isReadable ? secret?.updatedAt ?? null : null,
+        last4: isReadable ? (secret?.last4 ?? null) : null,
+        updatedAt: isReadable ? (secret?.updatedAt ?? null) : null,
       };
 
       return accumulator;
