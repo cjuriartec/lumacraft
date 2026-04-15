@@ -82,4 +82,26 @@ describe("TemplateAIInlinePromptEditor", () => {
 
     expect(textarea.style.height).toBe("180px");
   });
+
+  it("applies the provided typography styles to the textarea", () => {
+    render(
+      <TemplateAIInlinePromptEditor
+        value="Prompt inicial"
+        onChange={() => {}}
+        textStyle={{
+          fontFamily: "Arial, Helvetica, sans-serif",
+          fontSize: "11pt",
+          lineHeight: 1,
+          textAlign: "left",
+        }}
+      />,
+    );
+
+    const textarea = screen.getByRole("textbox") as HTMLTextAreaElement;
+
+    expect(textarea.style.fontFamily).toBe("Arial, Helvetica, sans-serif");
+    expect(textarea.style.fontSize).toBe("11pt");
+    expect(textarea.style.lineHeight).toBe("1");
+    expect(textarea.style.textAlign).toBe("left");
+  });
 });
