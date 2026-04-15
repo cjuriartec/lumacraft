@@ -574,9 +574,9 @@ describe("compileTemplatePreviewBlocks", () => {
       JSON.stringify(block).includes("Condicional visible"),
     ) as { children?: Array<Record<string, unknown>> } | undefined;
     const switchBlock = compiled.find((block) => JSON.stringify(block).includes("Switch visible"));
-    const listBlock = compiled.find((block) =>
-      JSON.stringify(block).includes("Referencia 1"),
-    ) as { children?: Array<Record<string, unknown>> } | undefined;
+    const listBlock = compiled.find((block) => JSON.stringify(block).includes("Referencia 1")) as
+      | { children?: Array<Record<string, unknown>> }
+      | undefined;
 
     expect(conditionalBlock).toMatchObject({
       type: "p",
@@ -604,12 +604,13 @@ describe("compileTemplatePreviewBlocks", () => {
       italic: true,
       underline: true,
     });
-    expect((switchBlock as { children?: Array<Record<string, unknown>> } | undefined)?.children?.[0])
-      .toMatchObject({
-        bold: true,
-        italic: true,
-        underline: true,
-      });
+    expect(
+      (switchBlock as { children?: Array<Record<string, unknown>> } | undefined)?.children?.[0],
+    ).toMatchObject({
+      bold: true,
+      italic: true,
+      underline: true,
+    });
     expect(listBlock?.children?.[0]).toMatchObject({
       bold: true,
       italic: true,

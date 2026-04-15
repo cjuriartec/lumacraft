@@ -121,7 +121,7 @@ vi.mock("@/shared/presentation/components/ui/dialog", () => ({
 }));
 
 vi.mock("@/shared/presentation/components/ui/input", () => ({
-  Input: (props: Record<string, unknown>) => <input {...props} />,
+  Input: ({ enableAI: _enableAI, ...props }: Record<string, unknown>) => <input {...props} />,
 }));
 
 vi.mock("@/shared/presentation/components/ui/label", () => ({
@@ -143,7 +143,7 @@ vi.mock("@/shared/presentation/components/ui/switch", () => ({
 }));
 
 vi.mock("@/shared/presentation/components/ui/textarea", () => ({
-  Textarea: (props: Record<string, unknown>) => <textarea {...props} />,
+  Textarea: ({ enableAI: _enableAI, ...props }: Record<string, unknown>) => <textarea {...props} />,
 }));
 
 describe("RecordFormDialog", () => {
@@ -279,24 +279,29 @@ describe("RecordFormDialog", () => {
     const input = screen.getByDisplayValue("valor inicial");
     fireEvent.change(input, { target: { value: "texto en progreso" } });
 
-    expect(screen.getByDisplayValue("texto en progreso")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("texto en progreso")).toBeInTheDocument();
+    });
 
     rerender(
       <RecordFormDialog
         open={true}
         onOpenChange={vi.fn()}
         fields={[textField]}
-        record={{
+        record={makeRecord({
           id: initialRecord.id,
+          collectionId: initialRecord.collectionId,
           data: {
             notes: "valor inicial",
           },
-        }}
+        })}
         onSubmit={vi.fn().mockResolvedValue({ ok: true })}
       />,
     );
 
-    expect(screen.getByDisplayValue("texto en progreso")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("texto en progreso")).toBeInTheDocument();
+    });
   });
 
   it("shows quick create actions when relation config and create permission are available", async () => {

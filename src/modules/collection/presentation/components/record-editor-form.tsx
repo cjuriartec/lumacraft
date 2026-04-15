@@ -285,6 +285,7 @@ export function RecordEditorForm({
   const [previewTarget, setPreviewTarget] = useState<RelatedRecordSummary | null>(null);
   const relationTimers = useRef<Record<string, ReturnType<typeof setTimeout> | null>>({});
   const relationInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const previousRecordIdRef = useRef<string | undefined>(undefined);
   const rawRecordId = record?.id;
   const rawRecordData = useMemo(() => record?.data ?? {}, [record?.data]);
   const recordSnapshot = useMemo(
@@ -382,10 +383,14 @@ export function RecordEditorForm({
   });
 
   useEffect(() => {
-    form.reset(recordState.data);
+    const shouldPreserveDirtyValues =
+      previousRecordIdRef.current !== undefined && previousRecordIdRef.current === recordState.id;
+
+    form.reset(recordState.data, shouldPreserveDirtyValues ? { keepDirtyValues: true } : {});
+    previousRecordIdRef.current = recordState.id;
     setError(null);
     setPendingFiles({});
-  }, [recordSnapshot, form, recordState.data]);
+  }, [recordSnapshot, form, recordState.data, recordState.id]);
 
   useEffect(() => {
     fields.forEach((field) => {
