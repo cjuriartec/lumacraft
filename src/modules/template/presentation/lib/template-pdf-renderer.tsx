@@ -148,7 +148,30 @@ interface InheritedBlockTypography {
   lineHeight?: string | number;
 }
 
-type PdfRenderMode = "body" | "headerFooter";
+type PdfRenderMode = "body" | "headerFooter" | "tableCell";
+
+export function resolvePdfBlockSpacingForRenderMode(
+  blockType: unknown,
+  renderMode: PdfRenderMode = "body",
+) {
+  const baseSpacing = resolvePdfBlockSpacing(blockType);
+
+  if (renderMode === "headerFooter") {
+    return {
+      pdfMarginBottom: blockType === "p" ? 4 : Math.min(baseSpacing.pdfMarginBottom, 6),
+      pdfMarginTop: Math.min(baseSpacing.pdfMarginTop, 4),
+    };
+  }
+
+  if (renderMode === "tableCell") {
+    return {
+      pdfMarginBottom: blockType === "p" ? 0 : Math.min(baseSpacing.pdfMarginBottom, 3),
+      pdfMarginTop: blockType === "p" ? 0 : Math.min(baseSpacing.pdfMarginTop, 2),
+    };
+  }
+
+  return baseSpacing;
+}
 
 function isTextNode(node: unknown): node is PlateTextNode {
   return (
@@ -221,14 +244,7 @@ function resolveBlockTypography(
   inheritedTypography?: InheritedBlockTypography,
   renderMode: PdfRenderMode = "body",
 ): Style {
-  const baseSpacing = resolvePdfBlockSpacing(node.type);
-  const spacing =
-    renderMode === "headerFooter"
-      ? {
-          pdfMarginBottom: node.type === "p" ? 4 : Math.min(baseSpacing.pdfMarginBottom, 6),
-          pdfMarginTop: Math.min(baseSpacing.pdfMarginTop, 4),
-        }
-      : baseSpacing;
+  const spacing = resolvePdfBlockSpacingForRenderMode(node.type, renderMode);
   const fontFamily = resolvePdfFontFamily(
     typeof node.fontFamily === "string"
       ? node.fontFamily
@@ -547,11 +563,13 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   tableCell: {
-    padding: 6,
+    paddingHorizontal: 4,
+    paddingVertical: 3,
   },
   tableHeaderCell: {
     backgroundColor: "#f9fafb",
-    padding: 6,
+    paddingHorizontal: 4,
+    paddingVertical: 3,
   },
   tableRow: {
     flexDirection: "row",
@@ -571,13 +589,7 @@ function estimatePdfBlockHeight(
   inheritedTypography?: InheritedBlockTypography,
   renderMode: PdfRenderMode = "body",
 ): number {
-  const spacing =
-    renderMode === "headerFooter"
-      ? {
-          pdfMarginBottom: node.type === "p" ? 4 : 6,
-          pdfMarginTop: 4,
-        }
-      : resolvePdfBlockSpacing(node.type);
+  const spacing = resolvePdfBlockSpacingForRenderMode(node.type, renderMode);
   const verticalSpacing = spacing.pdfMarginTop + spacing.pdfMarginBottom;
 
   if (node.type === "img" || node.type === "image") {
@@ -804,7 +816,7 @@ function renderBlock(
                         `${key}-row-${rowIndex}-cell-${cellIndex}-block-${blockIndex}`,
                         blockChildren,
                         inheritedCellTypography,
-                        renderMode,
+                        "tableCell",
                       ),
                     )
                   ) : (
@@ -816,7 +828,7 @@ function renderBlock(
                             type: "p",
                           },
                           inheritedCellTypography,
-                          renderMode,
+                          "tableCell",
                         ),
                         { marginBottom: 0, marginTop: 0 },
                       ]}

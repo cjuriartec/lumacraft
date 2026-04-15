@@ -1083,7 +1083,7 @@ export function TableCellElement({
           style={{ "--cellBackground": element.background } as React.CSSProperties}
         />
       )}
-      <div className="relative z-20 box-border h-full px-3 py-2">{props.children}</div>
+      <div className="relative z-20 box-border h-full px-2.5 py-1.5">{props.children}</div>
       {!readOnly && !isSelectionAreaVisible && (
         <TableCellResizeControls colIndex={colIndex} rowIndex={rowIndex} />
       )}
