@@ -250,6 +250,55 @@ describe("RecordFormDialog", () => {
     expect(screen.queryByText("Sin vínculos inversos actualmente")).not.toBeInTheDocument();
   });
 
+  it("preserves typed values when the same record is re-rendered with a new object reference", async () => {
+    const textField = makeField({
+      id: "field-text-1",
+      collectionId: "collection-1",
+      name: "notes",
+      displayName: "Notas",
+      fieldType: "TEXT",
+    });
+    const initialRecord = makeRecord({
+      id: "record-preserve-1",
+      collectionId: "collection-1",
+      data: {
+        notes: "valor inicial",
+      },
+    });
+
+    const { rerender } = render(
+      <RecordFormDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        fields={[textField]}
+        record={initialRecord}
+        onSubmit={vi.fn().mockResolvedValue({ ok: true })}
+      />,
+    );
+
+    const input = screen.getByDisplayValue("valor inicial");
+    fireEvent.change(input, { target: { value: "texto en progreso" } });
+
+    expect(screen.getByDisplayValue("texto en progreso")).toBeInTheDocument();
+
+    rerender(
+      <RecordFormDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        fields={[textField]}
+        record={{
+          id: initialRecord.id,
+          data: {
+            notes: "valor inicial",
+          },
+        }}
+        onSubmit={vi.fn().mockResolvedValue({ ok: true })}
+      />,
+    );
+
+    expect(screen.getByDisplayValue("texto en progreso")).toBeInTheDocument();
+  });
+
   it("shows quick create actions when relation config and create permission are available", async () => {
     const relationField = makeField({
       id: "field-quick-1",
