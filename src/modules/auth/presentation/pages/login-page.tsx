@@ -1,12 +1,20 @@
 "use client";
 
 import { ArrowRight, Database, ShieldCheck, Zap } from "lucide-react";
-import React from "react";
+import { useRouter } from "next/navigation";
+import React, { useEffect } from "react";
 
 import { useAuth } from "../providers/auth-provider";
 
 export default function LoginPage() {
-  const { signInWithGoogle, loading } = useAuth();
+  const router = useRouter();
+  const { user, signInWithGoogle, loading } = useAuth();
+
+  useEffect(() => {
+    if (!loading && user) {
+      router.replace("/");
+    }
+  }, [loading, router, user]);
 
   return (
     <div className="min-h-screen flex bg-background overflow-hidden relative font-sans selection:bg-primary/20">
