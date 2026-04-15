@@ -6,12 +6,15 @@ import {
   AlignJustify,
   AlignLeft,
   AlignRight,
+  Bold,
   Braces,
   BrainCircuit,
   GitBranch,
+  Italic,
   ListTree,
   Sliders,
   Split,
+  Underline,
 } from "lucide-react";
 import { Descendant, TElement } from "platejs";
 import {
@@ -71,6 +74,9 @@ export interface LogicBlockTypographyOptions {
   indent?: number;
   fontSize?: string | number;
   fontFamily?: SupportedDocumentFontFamily;
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
 }
 
 export interface TemplateConditionalElementNode extends TElement, LogicBlockTypographyOptions {
@@ -248,6 +254,9 @@ function BlockShell({
   contentStyle,
   actions,
   variant = "default",
+  density = "regular",
+  containerRef,
+  onClick,
 }: {
   icon: ReactNode;
   title: string;
@@ -256,29 +265,56 @@ function BlockShell({
   contentStyle?: React.CSSProperties;
   actions?: ReactNode;
   variant?: "default" | "ai";
+  density?: "regular" | "compact" | "micro" | "nano";
+  containerRef?: React.Ref<HTMLDivElement>;
+  onClick?: () => void;
 }) {
   return (
     <div
+      ref={containerRef}
       contentEditable={false}
       className={cn(
-        "group my-4 rounded-xl border p-4 transition-all duration-200",
+        "group my-4 w-full min-w-0 max-w-full overflow-hidden rounded-xl border transition-all duration-200",
+        density === "nano"
+          ? "p-1.5"
+          : density === "micro"
+            ? "p-2"
+            : density === "compact"
+              ? "p-2.5"
+              : "p-3",
+        onClick && "cursor-pointer hover:border-primary/40",
         // Force light styles since background is always white
         variant === "ai"
           ? "bg-[#f5f3ff]/50 border-indigo-200/60 shadow-[0_2px_12px_-3px_rgba(99,102,241,0.1)]"
           : "bg-slate-50/50 border-slate-200/80 shadow-sm",
       )}
+      onClick={onClick}
       style={style}
     >
-      <div className="mb-3 flex items-center justify-between px-0.5 select-none">
+      <div
+        className={cn(
+          "flex min-w-0 justify-center gap-2 px-0.5 select-none align-middle",
+          density === "nano"
+            ? "mb-0 flex-wrap justify-between"
+            : density === "micro"
+              ? "mb-1.5 flex-nowrap justify-between"
+              : "mb-3 flex-wrap",
+        )}
+      >
         <div
           className={cn(
-            "flex items-center gap-2.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.2em]",
+            "flex min-w-0 items-center gap-2 font-bold uppercase",
+            density === "nano" || density === "micro"
+              ? "flex-none tracking-[0.12em]"
+              : "flex-1 text-[10px] tracking-[0.18em]",
             variant === "ai" ? "text-indigo-500/80" : "text-slate-500/60",
           )}
+          title={title}
         >
           <div
             className={cn(
-              "flex h-6 w-6 items-center justify-center rounded-lg shadow-sm ring-1",
+              "flex items-center justify-center rounded-lg shadow-sm ring-1",
+              density === "nano" || density === "micro" ? "h-5 w-5" : "h-6 w-6",
               variant === "ai"
                 ? "bg-white text-indigo-500 ring-indigo-100"
                 : "bg-white text-slate-400 ring-slate-100",
@@ -286,13 +322,33 @@ function BlockShell({
           >
             {icon}
           </div>
-          <span className="leading-none pt-0.5">{title}</span>
+          <span
+            className={cn(
+              "min-w-0 whitespace-normal wrap-break-word pt-0.5 leading-tight",
+              (density === "nano" || density === "micro") && "sr-only",
+            )}
+          >
+            {title}
+          </span>
         </div>
-        <div className="flex items-center gap-1.5">{actions}</div>
+        <div
+          className={cn(
+            "flex min-w-0 max-w-full items-center justify-end gap-1.5",
+            density === "nano" || density === "micro" ? "flex-none" : "flex-wrap",
+          )}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {actions}
+        </div>
       </div>
-      <div className="px-0.5 text-[#1a1a1a]" style={contentStyle}>
-        {children}
-      </div>
+      {density !== "nano" && (
+        <div
+          className="min-w-0 max-w-full wrap-break-word px-0.5 text-[#1a1a1a]"
+          style={contentStyle}
+        >
+          {children}
+        </div>
+      )}
     </div>
   );
 }
@@ -302,7 +358,11 @@ interface LogicBlockStylesPopoverProps {
   lineHeight: string | number;
   fontSize: string | number;
   fontFamily: string;
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
   onSave: (updates: Partial<LogicBlockTypographyOptions>) => void;
+  density?: "regular" | "compact" | "micro" | "nano";
 }
 
 function LogicBlockStylesPopover({
@@ -310,7 +370,11 @@ function LogicBlockStylesPopover({
   lineHeight,
   fontSize,
   fontFamily,
+  bold,
+  italic,
+  underline,
   onSave,
+  density = "regular",
 }: LogicBlockStylesPopoverProps) {
   const [sizeInput, setSizeInput] = React.useState(String(fontSize));
 
@@ -334,10 +398,19 @@ function LogicBlockStylesPopover({
         <Button
           variant="ghost"
           size="sm"
-          className="h-7 gap-1.5 rounded-md px-2 text-[10px] font-bold uppercase tracking-wider text-slate-500/80 hover:bg-slate-200/50 hover:text-slate-900 transition-colors"
+          title="Estilos"
+          aria-label="Estilos del bloque"
+          className={cn(
+            "rounded-md text-[10px] font-bold uppercase tracking-wider text-slate-500/80 hover:bg-slate-200/50 hover:text-slate-900 transition-colors",
+            density === "micro"
+              ? "h-7 w-7 p-0"
+              : density === "compact"
+                ? "h-7 gap-1 px-2 py-1.5"
+                : "h-auto max-w-full gap-1.5 px-2 py-1.5 whitespace-normal wrap-break-word",
+          )}
         >
           <Sliders size={12} />
-          Estilos
+          {density !== "micro" && density !== "nano" ? "Estilos" : null}
         </Button>
       </PopoverTrigger>
       <PopoverContent
@@ -373,6 +446,48 @@ function LogicBlockStylesPopover({
                 {opt.icon}
               </Button>
             ))}
+          </div>
+        </div>
+
+        {/* Formato (Bold, Italic, Underline) */}
+        <div className="space-y-2 border-t border-border/40 pt-3">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
+            Formato
+          </span>
+          <div className="grid grid-cols-3 gap-1">
+            <Button
+              size="icon"
+              variant={bold ? "secondary" : "ghost"}
+              className={cn(
+                "h-9 w-full rounded-md",
+                bold && "bg-primary/10 text-primary border border-primary/20 shadow-sm",
+              )}
+              onClick={() => onSave({ bold: !bold })}
+            >
+              <Bold size={16} />
+            </Button>
+            <Button
+              size="icon"
+              variant={italic ? "secondary" : "ghost"}
+              className={cn(
+                "h-9 w-full rounded-md",
+                italic && "bg-primary/10 text-primary border border-primary/20 shadow-sm",
+              )}
+              onClick={() => onSave({ italic: !italic })}
+            >
+              <Italic size={16} />
+            </Button>
+            <Button
+              size="icon"
+              variant={underline ? "secondary" : "ghost"}
+              className={cn(
+                "h-9 w-full rounded-md",
+                underline && "bg-primary/10 text-primary border border-primary/20 shadow-sm",
+              )}
+              onClick={() => onSave({ underline: !underline })}
+            >
+              <Underline size={16} />
+            </Button>
           </div>
         </div>
 
@@ -450,6 +565,42 @@ function autoResizeTextarea(textarea: HTMLTextAreaElement | null) {
 
   textarea.style.height = "0px";
   textarea.style.height = `${Math.max(textarea.scrollHeight, 96)}px`;
+}
+
+function useLogicBlockDensity() {
+  const ref = React.useRef<HTMLDivElement | null>(null);
+  const [density, setDensity] = React.useState<"regular" | "compact" | "micro" | "nano">("regular");
+
+  React.useLayoutEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+
+    const updateDensity = () => {
+      const width = element.getBoundingClientRect().width;
+      if (width <= 140) {
+        setDensity("nano");
+        return;
+      }
+      if (width <= 220) {
+        setDensity("micro");
+        return;
+      }
+      if (width <= 340) {
+        setDensity("compact");
+        return;
+      }
+      setDensity("regular");
+    };
+
+    updateDensity();
+
+    const observer = new ResizeObserver(updateDensity);
+    observer.observe(element);
+
+    return () => observer.disconnect();
+  }, []);
+
+  return { ref, density };
 }
 
 export function TemplateAIInlinePromptEditor({
@@ -551,6 +702,7 @@ export function TemplateConditionalElement(
     error: variableCatalogError,
   } = useTemplateVariableCatalog();
   const editor = useEditorRef();
+  const { ref: shellRef, density } = useLogicBlockDensity();
 
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const align = element.align ?? "left";
@@ -577,9 +729,16 @@ export function TemplateConditionalElement(
             lineHeight={lineHeight}
             fontSize={fontSize}
             fontFamily={fontFamily}
+            bold={element.bold}
+            italic={element.italic}
+            underline={element.underline}
+            density={density}
             onSave={(updates) => onSave(updates as Partial<TemplateConditionalElementNode>)}
           />
         }
+        containerRef={shellRef}
+        density={density}
+        onClick={density === "nano" ? () => setIsDialogOpen(true) : undefined}
         style={{
           marginLeft: indent ? `${indent * 24}px` : undefined,
         }}
@@ -588,21 +747,38 @@ export function TemplateConditionalElement(
           lineHeight,
           fontSize: `${fontSize}pt`,
           fontFamily: resolveDocumentFontFamily("web", fontFamily),
+          fontWeight: element.bold ? "bold" : "normal",
+          fontStyle: element.italic ? "italic" : "normal",
+          textDecoration: element.underline ? "underline" : "none",
         }}
       >
-        <p className="text-[12px] font-medium text-slate-500/80">
-          si <b className="text-slate-700">{element.fieldPath}</b>{" "}
-          <b className="text-slate-700">{element.operator}</b>{" "}
-          <b className="text-slate-700">{String(element.value ?? "")}</b>
+        <p
+          className={cn(
+            "font-medium text-slate-500/80 whitespace-normal wrap-break-word",
+            density === "micro" ? "text-[10px] leading-tight" : "text-[12px]",
+          )}
+        >
+          si <b className="text-slate-700 break-all">{element.fieldPath}</b>{" "}
+          <b className="text-slate-700 wrap-break-word">{element.operator}</b>{" "}
+          <b className="text-slate-700 break-all">{String(element.value ?? "")}</b>
         </p>
         <Button
           type="button"
           size="sm"
           variant="ghost"
-          className="mt-2.5 h-7 px-2 text-[11px] font-bold uppercase tracking-wider text-primary/70 hover:bg-primary/5 hover:text-primary transition-colors"
+          title="Configurar condición"
+          aria-label="Configurar condición"
+          className={cn(
+            "mt-2.5 font-bold uppercase tracking-wider text-primary/70 hover:bg-primary/5 hover:text-primary transition-colors",
+            density === "micro"
+              ? "h-7 w-7 p-0"
+              : density === "compact"
+                ? "h-7 w-full max-w-full px-2 py-1 text-[10px]"
+                : "h-auto w-full max-w-full px-2 py-1.5 text-[11px] whitespace-normal wrap-break-word",
+          )}
           onClick={() => setIsDialogOpen(true)}
         >
-          Configurar Condición
+          {density === "micro" ? <GitBranch size={13} /> : "Configurar Condición"}
         </Button>
       </BlockShell>
       <LogicBlockEditorDialog
@@ -627,6 +803,7 @@ export function TemplateListElement(props: PlateElementProps<TemplateListElement
     error: variableCatalogError,
   } = useTemplateVariableCatalog();
   const editor = useEditorRef();
+  const { ref: shellRef, density } = useLogicBlockDensity();
 
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const align = element.align ?? "left";
@@ -653,9 +830,16 @@ export function TemplateListElement(props: PlateElementProps<TemplateListElement
             lineHeight={lineHeight}
             fontSize={fontSize}
             fontFamily={fontFamily}
+            bold={element.bold}
+            italic={element.italic}
+            underline={element.underline}
+            density={density}
             onSave={(updates) => onSave(updates as Partial<TemplateListElementNode>)}
           />
         }
+        containerRef={shellRef}
+        density={density}
+        onClick={density === "nano" ? () => setIsDialogOpen(true) : undefined}
         style={{
           marginLeft: indent ? `${indent * 24}px` : undefined,
         }}
@@ -664,20 +848,37 @@ export function TemplateListElement(props: PlateElementProps<TemplateListElement
           lineHeight,
           fontSize: `${fontSize}pt`,
           fontFamily: resolveDocumentFontFamily("web", fontFamily),
+          fontWeight: element.bold ? "bold" : "normal",
+          fontStyle: element.italic ? "italic" : "normal",
+          textDecoration: element.underline ? "underline" : "none",
         }}
       >
-        <p className="text-[12px] font-medium text-slate-500/80">
-          origen: <b className="text-slate-700">{element.sourcePath}</b> como{" "}
-          <b className="text-slate-700">{element.itemAlias ?? "item"}</b>
+        <p
+          className={cn(
+            "font-medium text-slate-500/80 whitespace-normal wrap-break-word",
+            density === "micro" ? "text-[10px] leading-tight" : "text-[12px]",
+          )}
+        >
+          origen: <b className="text-slate-700 break-all">{element.sourcePath}</b> como{" "}
+          <b className="text-slate-700 break-all">{element.itemAlias ?? "item"}</b>
         </p>
         <Button
           type="button"
           size="sm"
           variant="ghost"
-          className="mt-2.5 h-7 px-2 text-[11px] font-bold uppercase tracking-wider text-primary/70 hover:bg-primary/5 hover:text-primary transition-colors"
+          title="Configurar bucle"
+          aria-label="Configurar bucle"
+          className={cn(
+            "mt-2.5 font-bold uppercase tracking-wider text-primary/70 hover:bg-primary/5 hover:text-primary transition-colors",
+            density === "micro"
+              ? "h-7 w-7 p-0"
+              : density === "compact"
+                ? "h-7 w-full max-w-full px-2 py-1 text-[10px]"
+                : "h-auto w-full max-w-full px-2 py-1.5 text-[11px] whitespace-normal wrap-break-word",
+          )}
           onClick={() => setIsDialogOpen(true)}
         >
-          Configurar Bucle
+          {density === "micro" ? <ListTree size={13} /> : "Configurar Bucle"}
         </Button>
       </BlockShell>
       <LogicBlockEditorDialog
@@ -702,6 +903,7 @@ export function TemplateSwitchElement(props: PlateElementProps<TemplateSwitchEle
     error: variableCatalogError,
   } = useTemplateVariableCatalog();
   const editor = useEditorRef();
+  const { ref: shellRef, density } = useLogicBlockDensity();
 
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const align = element.align ?? "left";
@@ -728,9 +930,16 @@ export function TemplateSwitchElement(props: PlateElementProps<TemplateSwitchEle
             lineHeight={lineHeight}
             fontSize={fontSize}
             fontFamily={fontFamily}
+            bold={element.bold}
+            italic={element.italic}
+            underline={element.underline}
+            density={density}
             onSave={(updates) => onSave(updates as Partial<TemplateSwitchElementNode>)}
           />
         }
+        containerRef={shellRef}
+        density={density}
+        onClick={density === "nano" ? () => setIsDialogOpen(true) : undefined}
         style={{
           marginLeft: indent ? `${indent * 24}px` : undefined,
         }}
@@ -739,20 +948,37 @@ export function TemplateSwitchElement(props: PlateElementProps<TemplateSwitchEle
           lineHeight,
           fontSize: `${fontSize}pt`,
           fontFamily: resolveDocumentFontFamily("web", fontFamily),
+          fontWeight: element.bold ? "bold" : "normal",
+          fontStyle: element.italic ? "italic" : "normal",
+          textDecoration: element.underline ? "underline" : "none",
         }}
       >
-        <p className="text-[12px] font-medium text-slate-500/80">
-          switch <b className="text-slate-700">{element.fieldPath}</b> ({element.cases?.length ?? 0}{" "}
-          casos)
+        <p
+          className={cn(
+            "font-medium text-slate-500/80 whitespace-normal wrap-break-word",
+            density === "micro" ? "text-[10px] leading-tight" : "text-[12px]",
+          )}
+        >
+          switch <b className="text-slate-700 break-all">{element.fieldPath}</b> (
+          {element.cases?.length ?? 0} casos)
         </p>
         <Button
           type="button"
           size="sm"
           variant="ghost"
-          className="mt-2.5 h-7 px-2 text-[11px] font-bold uppercase tracking-wider text-primary/70 hover:bg-primary/5 hover:text-primary transition-colors"
+          title="Configurar casos"
+          aria-label="Configurar casos"
+          className={cn(
+            "mt-2.5 font-bold uppercase tracking-wider text-primary/70 hover:bg-primary/5 hover:text-primary transition-colors",
+            density === "micro"
+              ? "h-7 w-7 p-0"
+              : density === "compact"
+                ? "h-7 w-full max-w-full px-2 py-1 text-[10px]"
+                : "h-auto w-full max-w-full px-2 py-1.5 text-[11px] whitespace-normal wrap-break-word",
+          )}
           onClick={() => setIsDialogOpen(true)}
         >
-          Configurar Casos
+          {density === "micro" ? <Split size={13} /> : "Configurar Casos"}
         </Button>
       </BlockShell>
       <LogicBlockEditorDialog
@@ -771,8 +997,14 @@ export function TemplateSwitchElement(props: PlateElementProps<TemplateSwitchEle
 
 export function TemplateAIElement(props: PlateElementProps<TemplateAIElementNode>) {
   const { attributes, children, element } = props;
-  const { nodes: variableCatalog, loading: variableCatalogLoading } = useTemplateVariableCatalog();
+  const {
+    nodes: variableCatalog,
+    loading: variableCatalogLoading,
+    error: variableCatalogError,
+  } = useTemplateVariableCatalog();
   const editor = useEditorRef();
+  const { ref: shellRef, density } = useLogicBlockDensity();
+  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
 
   const align = element.align ?? "left";
   const lineHeight = resolveDocumentLineHeight(element.lineHeight);
@@ -803,9 +1035,16 @@ export function TemplateAIElement(props: PlateElementProps<TemplateAIElementNode
             lineHeight={lineHeight}
             fontSize={fontSize}
             fontFamily={fontFamily}
+            bold={element.bold}
+            italic={element.italic}
+            underline={element.underline}
+            density={density}
             onSave={(updates) => onSave(updates as Partial<TemplateAIElementNode>)}
           />
         }
+        containerRef={shellRef}
+        density={density}
+        onClick={density === "nano" ? () => setIsDialogOpen(true) : undefined}
         style={{
           marginLeft: indent ? `${indent * 24}px` : undefined,
         }}
@@ -814,6 +1053,9 @@ export function TemplateAIElement(props: PlateElementProps<TemplateAIElementNode
           lineHeight,
           fontSize: `${fontSize}pt`,
           fontFamily: resolveDocumentFontFamily("web", fontFamily),
+          fontWeight: element.bold ? "bold" : "normal",
+          fontStyle: element.italic ? "italic" : "normal",
+          textDecoration: element.underline ? "underline" : "none",
         }}
       >
         <TemplateAIInlinePromptEditor
@@ -829,6 +1071,15 @@ export function TemplateAIElement(props: PlateElementProps<TemplateAIElementNode
           }}
         />
       </BlockShell>
+      <LogicBlockEditorDialog
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        element={element}
+        onSave={onSave}
+        catalogNodes={variableCatalog}
+        catalogLoading={variableCatalogLoading}
+        catalogError={variableCatalogError}
+      />
       {children}
     </PlateElement>
   );

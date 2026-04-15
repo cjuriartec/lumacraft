@@ -33,6 +33,7 @@ export default function WorkspaceProvider({
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [currentWorkspace, setCurrentWorkspace] = useState<Workspace | null>(null);
   const [loading, setLoading] = useState(true);
+  const userId = user?.id ?? null;
 
   const repository = useMemo(
     () => workspaceRepository ?? new SupabaseWorkspaceRepository(supabase),
@@ -53,7 +54,7 @@ export default function WorkspaceProvider({
         return;
       }
 
-      if (!user) {
+      if (!userId) {
         if (active) {
           setWorkspaces([]);
           setCurrentWorkspace(null);
@@ -64,7 +65,7 @@ export default function WorkspaceProvider({
 
       if (active) setLoading(true);
 
-      const res = await getWorkspacesUseCase.execute(user.id);
+      const res = await getWorkspacesUseCase.execute(userId);
       if (!active) return;
 
       if (res.ok) {
@@ -91,7 +92,7 @@ export default function WorkspaceProvider({
     return () => {
       active = false;
     };
-  }, [user, authLoading, getWorkspacesUseCase]);
+  }, [userId, authLoading, getWorkspacesUseCase]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;

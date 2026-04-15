@@ -1,6 +1,5 @@
 "use client";
 
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -31,18 +30,6 @@ vi.mock("@/modules/collection/application/collection-use-case.factory", () => ({
   },
 }));
 
-const reverseLookupState = vi.hoisted(() => ({
-  records: [] as Array<{
-    id: string;
-    name: string;
-    display_name: string | null;
-    config: Record<string, unknown>;
-  }>,
-  from: vi.fn(),
-  select: vi.fn(),
-  in: vi.fn(),
-}));
-
 function flattenNodes(nodes: TemplateVariableCatalogNode[]): TemplateVariableCatalogNode[] {
   return nodes.flatMap((node) => [node, ...(node.children ? flattenNodes(node.children) : [])]);
 }
@@ -69,11 +56,6 @@ describe("useVariableFields regression coverage", () => {
     collectionFactoryState.eagerLoadExecute.mockReset();
     collectionFactoryState.getCollectionExecute.mockReset();
 
-    reverseLookupState.records = [];
-    reverseLookupState.from.mockReset();
-    reverseLookupState.select.mockReset();
-    reverseLookupState.in.mockReset();
-
     collectionFactoryState.listFieldsExecute.mockImplementation(async (collectionId: string) => ({
       ok: true,
       value: collectionFactoryState.fieldsByCollectionId.get(collectionId) ?? [],
@@ -98,23 +80,11 @@ describe("useVariableFields regression coverage", () => {
         },
       };
     });
-
-    reverseLookupState.in.mockImplementation(async (_column: string, ids: string[]) => ({
-      data: reverseLookupState.records.filter((record) => ids.includes(record.id)),
-    }));
-    reverseLookupState.select.mockImplementation(() => ({
-      in: reverseLookupState.in,
-    }));
-    reverseLookupState.from.mockImplementation(() => ({
-      select: reverseLookupState.select,
-    }));
   });
 
-  it("keeps iterable reverse lookups visible and disambiguated across relation paths", async () => {
+  it("exposes only direct relations in the template catalog", async () => {
     const ordersCollectionId = "11111111-1111-4111-8111-111111111111";
     const contactsCollectionId = "22222222-2222-4222-8222-222222222222";
-    const customerRelationFieldId = "33333333-3333-4333-8333-333333333333";
-    const managerRelationFieldId = "44444444-4444-4444-8444-444444444444";
 
     const ordersCollection = makeCollection({
       id: ordersCollectionId,
@@ -166,7 +136,7 @@ describe("useVariableFields regression coverage", () => {
         fieldType: "REVERSE_LOOKUP",
         config: {
           targetCollectionId: ordersCollectionId,
-          targetFieldId: customerRelationFieldId,
+          targetFieldId: "33333333-3333-4333-8333-333333333333",
         },
       }),
       makeField({
@@ -177,32 +147,13 @@ describe("useVariableFields regression coverage", () => {
         fieldType: "REVERSE_LOOKUP",
         config: {
           targetCollectionId: ordersCollectionId,
-          targetFieldId: managerRelationFieldId,
+          targetFieldId: "44444444-4444-4444-8444-444444444444",
         },
       }),
     ]);
 
-    reverseLookupState.records = [
-      {
-        id: customerRelationFieldId,
-        name: "customer",
-        display_name: "Customer",
-        config: { relationType: "MANY_TO_ONE" },
-      },
-      {
-        id: managerRelationFieldId,
-        name: "manager",
-        display_name: "Manager",
-        config: { relationType: "ONE_TO_MANY" },
-      },
-    ];
-
-    const supabaseClient = {
-      from: reverseLookupState.from,
-    } as unknown as SupabaseClient;
-
     render(
-      <SupabaseProvider client={supabaseClient}>
+      <SupabaseProvider client={{} as never}>
         <VariableFieldsProbe collectionId={ordersCollectionId} />
       </SupabaseProvider>,
     );
@@ -213,34 +164,23 @@ describe("useVariableFields regression coverage", () => {
       ) as TemplateVariableCatalogNode[];
       const flattened = flattenNodes(nodes);
 
-      expect(flattened.some((node) => node.path === "billing_contact.orders")).toBe(true);
-      expect(flattened.some((node) => node.path === "shipping_contact.orders")).toBe(true);
+      expect(flattened.some((node) => node.path === "billing_contact")).toBe(true);
+      expect(flattened.some((node) => node.path === "shipping_contact")).toBe(true);
     });
 
     const nodes = JSON.parse(
       screen.getByTestId("nodes").textContent ?? "[]",
     ) as TemplateVariableCatalogNode[];
     const flattened = flattenNodes(nodes);
-    const billingOrders = flattened.find((node) => node.path === "billing_contact.orders");
-    const shippingOrders = flattened.find((node) => node.path === "shipping_contact.orders");
-    const billingManagers = flattened.find((node) => node.path === "billing_contact.managers");
+    const billingContact = flattened.find((node) => node.path === "billing_contact");
+    const shippingContact = flattened.find((node) => node.path === "shipping_contact");
 
-    expect(reverseLookupState.from).toHaveBeenCalledWith("fields");
-    expect(reverseLookupState.in).toHaveBeenCalledTimes(1);
-    expect(reverseLookupState.in).toHaveBeenCalledWith(
-      "id",
-      expect.arrayContaining([customerRelationFieldId, managerRelationFieldId]),
-    );
-
-    expect(billingOrders?.cardinality).toBe("ONE_TO_MANY");
-    expect(isIterableRelation(billingOrders?.cardinality)).toBe(true);
-    expect(shippingOrders?.cardinality).toBe("ONE_TO_MANY");
-    expect(billingManagers?.cardinality).toBe("MANY_TO_ONE");
-    expect(isIterableRelation(billingManagers?.cardinality)).toBe(false);
-
-    expect(billingOrders?.displayName).toBe("Orders (Customer) [Billing Contact]");
-    expect(shippingOrders?.displayName).toBe("Orders (Customer) [Shipping Contact]");
-    expect(billingOrders?.displayName).not.toBe(shippingOrders?.displayName);
+    expect(billingContact?.cardinality).toBe("MANY_TO_ONE");
+    expect(isIterableRelation(billingContact?.cardinality)).toBe(false);
+    expect(shippingContact?.cardinality).toBe("MANY_TO_ONE");
+    expect(flattened.some((node) => node.fieldType === "REVERSE_LOOKUP")).toBe(false);
+    expect(flattened.some((node) => node.path === "billing_contact.orders")).toBe(false);
+    expect(flattened.some((node) => node.path === "shipping_contact.orders")).toBe(false);
     expect(screen.getByTestId("error")).toHaveTextContent("");
   });
 });

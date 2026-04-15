@@ -67,7 +67,7 @@ vi.mock("@/shared/presentation/components/ui/select", () => ({
 }));
 
 describe("LogicBlockEditorDialog list source regression coverage", () => {
-  it("includes iterable relation and reverse-lookup nodes in the list source selector", () => {
+  it("includes only direct iterable relations in the list source selector", () => {
     const catalogNodes: TemplateVariableCatalogNode[] = [
       {
         path: "lineItems",
@@ -128,9 +128,10 @@ describe("LogicBlockEditorDialog list source regression coverage", () => {
     );
 
     expect(screen.getByRole("option", { name: "Line Items" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Billing Contact" })).not.toBeInTheDocument();
     expect(
-      screen.getByRole("option", { name: "Orders (Customer) [Billing Contact]" }),
-    ).toBeInTheDocument();
+      screen.queryByRole("option", { name: "Orders (Customer) [Billing Contact]" }),
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("option", { name: "Managers (Manager) [Billing Contact]" }),
     ).not.toBeInTheDocument();

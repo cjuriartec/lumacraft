@@ -72,6 +72,22 @@ type RelationFieldConfig = {
   relationType?: string;
 };
 
+function stableSerialize(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableSerialize(item)).join(",")}]`;
+  }
+
+  if (value && typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>).sort(([left], [right]) =>
+      left.localeCompare(right),
+    );
+
+    return `{${entries.map(([key, item]) => `${JSON.stringify(key)}:${stableSerialize(item)}`).join(",")}}`;
+  }
+
+  return JSON.stringify(value);
+}
+
 function isFileLikeFieldType(fieldType: Field["fieldType"]["value"]): boolean {
   return fieldType === "FILE" || fieldType === "IMAGE";
 }
@@ -269,6 +285,24 @@ export function RecordEditorForm({
   const [previewTarget, setPreviewTarget] = useState<RelatedRecordSummary | null>(null);
   const relationTimers = useRef<Record<string, ReturnType<typeof setTimeout> | null>>({});
   const relationInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const previousRecordIdRef = useRef<string | undefined>(undefined);
+  const rawRecordId = record?.id;
+  const rawRecordData = useMemo(() => record?.data ?? {}, [record?.data]);
+  const recordSnapshot = useMemo(
+    () =>
+      stableSerialize({
+        id: rawRecordId ?? null,
+        data: rawRecordData,
+      }),
+    [rawRecordId, rawRecordData],
+  );
+  const recordState = useMemo(
+    () => ({
+      id: rawRecordId,
+      data: rawRecordData,
+    }),
+    [rawRecordId, rawRecordData],
+  );
 
   const isReverseLookup = (field: Field) => field.fieldType.value === "REVERSE_LOOKUP";
 
@@ -345,19 +379,25 @@ export function RecordEditorForm({
 
   const form = useForm({
     resolver: zodResolver(getDynamicSchema()),
-    defaultValues: record?.data || {},
+    defaultValues: recordState.data,
   });
 
   useEffect(() => {
-    form.reset(record?.data || {});
+    const shouldPreserveDirtyValues =
+      previousRecordIdRef.current !== undefined && previousRecordIdRef.current === recordState.id;
+
+    form.reset(recordState.data, shouldPreserveDirtyValues ? { keepDirtyValues: true } : {});
+    previousRecordIdRef.current = recordState.id;
     setError(null);
     setPendingFiles({});
+  }, [recordSnapshot, form, recordState.data, recordState.id]);
 
+  useEffect(() => {
     fields.forEach((field) => {
       if (field.fieldType.value === "RELATION") {
         void searchRelations(field, "");
 
-        const val = record?.data?.[field.name];
+        const val = recordState.data[field.name];
         if (val) {
           const ids = Array.isArray(val)
             ? val.filter((v): v is string => typeof v === "string")
@@ -369,11 +409,18 @@ export function RecordEditorForm({
             void fetchOptionsByIds(field, ids);
           }
         }
-      } else if (field.fieldType.value === "REVERSE_LOOKUP" && record?.id) {
-        void findReverseRelations(field, record.id);
+      } else if (field.fieldType.value === "REVERSE_LOOKUP" && recordState.id) {
+        void findReverseRelations(field, recordState.id);
       }
     });
-  }, [record, form, fields, searchRelations, fetchOptionsByIds, findReverseRelations]);
+  }, [
+    recordSnapshot,
+    fields,
+    recordState,
+    searchRelations,
+    fetchOptionsByIds,
+    findReverseRelations,
+  ]);
 
   useEffect(() => {
     const timers = relationTimers.current;
@@ -551,6 +598,8 @@ export function RecordEditorForm({
               type="button"
               variant="outline"
               size="sm"
+              aria-label={`Nuevo en ${targetCollectionLabel}`}
+              title={`Nuevo en ${targetCollectionLabel}`}
               className="h-10 rounded-xl border-border/50 bg-background px-3 text-xs font-semibold text-foreground/75 hover:bg-surface-hover/40 hover:text-foreground"
               onClick={() =>
                 setQuickCreateOpen((prev) => ({

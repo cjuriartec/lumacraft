@@ -112,9 +112,8 @@ vi.mock("@/shared/presentation/components/ui/button", () => ({
 vi.mock("@/shared/presentation/components/ui/dialog", () => ({
   Dialog: ({ children, open }: { children: ReactNode; open: boolean }) =>
     open ? <div>{children}</div> : null,
-  DialogContent: ({ children }: { children: ReactNode }) => (
-    createPortal(<div data-testid="dialog-content">{children}</div>, document.body)
-  ),
+  DialogContent: ({ children }: { children: ReactNode }) =>
+    createPortal(<div data-testid="dialog-content">{children}</div>, document.body),
   DialogDescription: ({ children }: { children: ReactNode }) => <p>{children}</p>,
   DialogFooter: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   DialogHeader: ({ children }: { children: ReactNode }) => <div>{children}</div>,
@@ -122,7 +121,7 @@ vi.mock("@/shared/presentation/components/ui/dialog", () => ({
 }));
 
 vi.mock("@/shared/presentation/components/ui/input", () => ({
-  Input: (props: Record<string, unknown>) => <input {...props} />,
+  Input: ({ enableAI: _enableAI, ...props }: Record<string, unknown>) => <input {...props} />,
 }));
 
 vi.mock("@/shared/presentation/components/ui/label", () => ({
@@ -144,7 +143,7 @@ vi.mock("@/shared/presentation/components/ui/switch", () => ({
 }));
 
 vi.mock("@/shared/presentation/components/ui/textarea", () => ({
-  Textarea: (props: Record<string, unknown>) => <textarea {...props} />,
+  Textarea: ({ enableAI: _enableAI, ...props }: Record<string, unknown>) => <textarea {...props} />,
 }));
 
 describe("RecordFormDialog", () => {
@@ -249,6 +248,60 @@ describe("RecordFormDialog", () => {
 
     expect(screen.getByText("Pedido 001")).toBeInTheDocument();
     expect(screen.queryByText("Sin vínculos inversos actualmente")).not.toBeInTheDocument();
+  });
+
+  it("preserves typed values when the same record is re-rendered with a new object reference", async () => {
+    const textField = makeField({
+      id: "field-text-1",
+      collectionId: "collection-1",
+      name: "notes",
+      displayName: "Notas",
+      fieldType: "TEXT",
+    });
+    const initialRecord = makeRecord({
+      id: "record-preserve-1",
+      collectionId: "collection-1",
+      data: {
+        notes: "valor inicial",
+      },
+    });
+
+    const { rerender } = render(
+      <RecordFormDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        fields={[textField]}
+        record={initialRecord}
+        onSubmit={vi.fn().mockResolvedValue({ ok: true })}
+      />,
+    );
+
+    const input = screen.getByDisplayValue("valor inicial");
+    fireEvent.change(input, { target: { value: "texto en progreso" } });
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("texto en progreso")).toBeInTheDocument();
+    });
+
+    rerender(
+      <RecordFormDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        fields={[textField]}
+        record={makeRecord({
+          id: initialRecord.id,
+          collectionId: initialRecord.collectionId,
+          data: {
+            notes: "valor inicial",
+          },
+        })}
+        onSubmit={vi.fn().mockResolvedValue({ ok: true })}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("texto en progreso")).toBeInTheDocument();
+    });
   });
 
   it("shows quick create actions when relation config and create permission are available", async () => {
@@ -488,9 +541,7 @@ describe("RecordFormDialog", () => {
     relationRecordsState.fetchOptionsByIds.mockImplementation(async (_field, ids: string[]) => {
       relationRecordsState.options.tags = [
         { id: existingId, label: "Base" },
-        ...ids
-          .filter((id) => id === createdId)
-          .map((id) => ({ id, label: "Urgente" })),
+        ...ids.filter((id) => id === createdId).map((id) => ({ id, label: "Urgente" })),
       ];
     });
 
@@ -606,9 +657,7 @@ describe("RecordFormDialog", () => {
 
     await waitFor(() => {
       expect(createRecordExecute).toHaveBeenCalled();
-      expect(
-        quickCreateScope.getByText("No se pudo crear el relacionado"),
-      ).toBeInTheDocument();
+      expect(quickCreateScope.getByText("No se pudo crear el relacionado")).toBeInTheDocument();
     });
 
     expect(

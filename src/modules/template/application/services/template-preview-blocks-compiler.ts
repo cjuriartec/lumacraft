@@ -66,6 +66,20 @@ interface TemplateAiPresentationOptions {
   indent?: number;
   fontSize?: number;
   fontFamily?: string;
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+}
+
+interface TemplateLogicPresentationOptions {
+  align?: string;
+  lineHeight?: number;
+  indent?: number;
+  fontSize?: number;
+  fontFamily?: string;
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
 }
 
 interface CompileTemplatePreviewBlocksParams {
@@ -754,6 +768,9 @@ async function parseLineToBlock(
     indent?: number;
     fontSize?: number;
     fontFamily?: string;
+    bold?: boolean;
+    italic?: boolean;
+    underline?: boolean;
   },
 ): Promise<PlateElementNode> {
   const trimmed = line.trim();
@@ -765,11 +782,20 @@ async function parseLineToBlock(
   const typographyMarks: TemplateTextMarks = {
     ...(fontSize ? { fontSize } : {}),
     ...(fontFamily ? { fontFamily } : {}),
+    ...(options?.bold ? { bold: true } : {}),
+    ...(options?.italic ? { italic: true } : {}),
+    ...(options?.underline ? { underline: true } : {}),
   };
   const hasMarks = Object.keys(typographyMarks).length > 0;
 
   if (trimmed.length === 0)
-    return toParagraph("", { align, lineHeight, fontSize: options?.fontSize, fontFamily });
+    return toParagraph("", {
+      align,
+      lineHeight,
+      fontSize: options?.fontSize,
+      fontFamily,
+      marks: hasMarks ? typographyMarks : undefined,
+    });
 
   const headingMatch = /^(#{1,3})\s+(.+)$/.exec(trimmed);
   if (headingMatch) {
@@ -833,7 +859,13 @@ async function parseLineToBlock(
       align: align as "left" | "center" | "right" | "justify",
     });
   }
-  return toParagraph(trimmed, { align, lineHeight, fontSize: options?.fontSize, fontFamily });
+  return toParagraph(trimmed, {
+    align,
+    lineHeight,
+    fontSize: options?.fontSize,
+    fontFamily,
+    marks: hasMarks ? typographyMarks : undefined,
+  });
 }
 
 async function renderTemplateToBlocks(
@@ -847,6 +879,9 @@ async function renderTemplateToBlocks(
     indent?: number;
     fontSize?: number;
     fontFamily?: string;
+    bold?: boolean;
+    italic?: boolean;
+    underline?: boolean;
   },
 ): Promise<PlateElementNode[]> {
   const rendered = interpolateTemplateString(template, scope);
@@ -885,6 +920,9 @@ async function structuredBlockToPlate(
     indent?: number;
     fontSize?: number;
     fontFamily?: string;
+    bold?: boolean;
+    italic?: boolean;
+    underline?: boolean;
   },
 ): Promise<PlateElementNode[]> {
   const align = options?.align ?? "left";
@@ -895,6 +933,9 @@ async function structuredBlockToPlate(
   const typographyMarks: TemplateTextMarks = {
     ...(fontSize ? { fontSize } : {}),
     ...(fontFamily ? { fontFamily } : {}),
+    ...(options?.bold ? { bold: true } : {}),
+    ...(options?.italic ? { italic: true } : {}),
+    ...(options?.underline ? { underline: true } : {}),
   };
   const hasMarks = Object.keys(typographyMarks).length > 0;
 
@@ -906,6 +947,7 @@ async function structuredBlockToPlate(
           lineHeight,
           fontSize: options?.fontSize,
           fontFamily,
+          marks: hasMarks ? typographyMarks : undefined,
         }),
       ];
     case "heading":
@@ -986,6 +1028,9 @@ async function parseStructuredAIDocument(
     indent?: number;
     fontSize?: number;
     fontFamily?: string;
+    bold?: boolean;
+    italic?: boolean;
+    underline?: boolean;
   },
 ): Promise<PlateElementNode[] | null> {
   const candidate = extractJsonCandidate(raw);
@@ -1102,6 +1147,7 @@ async function compileStructuredSubtreeBlocks(
   compileContext: CompileContext,
   warnings: string[],
   blockMeta: TemplatePreviewBlockMeta,
+  fallbackPresentation?: TemplateLogicPresentationOptions,
 ): Promise<PlateElementNode[]> {
   const compiledGroups = await parallelMapLimit(
     blocks,
@@ -1111,7 +1157,13 @@ async function compileStructuredSubtreeBlocks(
         return [];
       }
 
-      return compileNode(block, scope, compileContext, warnings, blockMeta);
+      return compileNode(
+        applyPresentationFallbackToNode(block, fallbackPresentation),
+        scope,
+        compileContext,
+        warnings,
+        blockMeta,
+      );
     },
   );
 
@@ -1133,6 +1185,97 @@ function resolveTemplateAiPresentation(
         : typeof fallback?.fontFamily === "string"
           ? normalizeSupportedDocumentFontFamily(fallback.fontFamily)
           : DEFAULT_DOCUMENT_FONT_FAMILY,
+    bold: node.bold === true ? true : fallback?.bold,
+    italic: node.italic === true ? true : fallback?.italic,
+    underline: node.underline === true ? true : fallback?.underline,
+  };
+}
+
+function resolveTemplateLogicPresentation(
+  node: PlateElementNode,
+): TemplateLogicPresentationOptions {
+  return {
+    align: typeof node.align === "string" ? node.align : undefined,
+    lineHeight: typeof node.lineHeight === "number" ? node.lineHeight : undefined,
+    indent: typeof node.indent === "number" ? node.indent : undefined,
+    fontSize: typeof node.fontSize === "number" ? node.fontSize : undefined,
+    fontFamily:
+      typeof node.fontFamily === "string"
+        ? normalizeSupportedDocumentFontFamily(node.fontFamily)
+        : undefined,
+    bold: node.bold === true ? true : undefined,
+    italic: node.italic === true ? true : undefined,
+    underline: node.underline === true ? true : undefined,
+  };
+}
+
+function applyPresentationFallbackToTextNode(
+  node: PlateTextNode,
+  fallback?: TemplateLogicPresentationOptions,
+): PlateTextNode {
+  if (!fallback) {
+    return node;
+  }
+
+  return {
+    ...node,
+    ...(node.fontSize === undefined && fallback.fontSize !== undefined
+      ? { fontSize: resolveFontSizeWithUnit(fallback.fontSize, "p") }
+      : {}),
+    ...(node.fontFamily === undefined && fallback.fontFamily
+      ? { fontFamily: fallback.fontFamily }
+      : {}),
+    ...(node.bold === undefined && fallback.bold !== undefined ? { bold: fallback.bold } : {}),
+    ...(node.italic === undefined && fallback.italic !== undefined
+      ? { italic: fallback.italic }
+      : {}),
+    ...(node.underline === undefined && fallback.underline !== undefined
+      ? { underline: fallback.underline }
+      : {}),
+  };
+}
+
+function applyPresentationFallbackToNode(
+  node: PlateElementNode,
+  fallback?: TemplateLogicPresentationOptions,
+): PlateElementNode {
+  if (!fallback) {
+    return node;
+  }
+
+  return {
+    ...node,
+    ...(node.align === undefined && fallback.align ? { align: fallback.align } : {}),
+    ...(node.lineHeight === undefined && fallback.lineHeight !== undefined
+      ? { lineHeight: resolveDocumentLineHeight(fallback.lineHeight) }
+      : {}),
+    ...(node.indent === undefined && fallback.indent !== undefined
+      ? { indent: fallback.indent }
+      : {}),
+    ...(node.fontSize === undefined && fallback.fontSize !== undefined
+      ? { fontSize: resolveFontSizeWithUnit(fallback.fontSize, node.type) }
+      : {}),
+    ...(node.fontFamily === undefined && fallback.fontFamily
+      ? { fontFamily: fallback.fontFamily }
+      : {}),
+    ...(node.bold === undefined && fallback.bold !== undefined ? { bold: fallback.bold } : {}),
+    ...(node.italic === undefined && fallback.italic !== undefined
+      ? { italic: fallback.italic }
+      : {}),
+    ...(node.underline === undefined && fallback.underline !== undefined
+      ? { underline: fallback.underline }
+      : {}),
+    ...(Array.isArray(node.children)
+      ? {
+          children: node.children.map((child) =>
+            isElementNode(child)
+              ? applyPresentationFallbackToNode(child, fallback)
+              : isTextNode(child)
+                ? applyPresentationFallbackToTextNode(child, fallback)
+                : child,
+          ),
+        }
+      : {}),
   };
 }
 
@@ -1216,6 +1359,9 @@ async function compileTemplateAiNodeStreamed(
       indent: presentation.indent ?? "default",
       fontSize: presentation.fontSize ?? "default",
       fontFamily: presentation.fontFamily ?? "default",
+      bold: presentation.bold ?? "default",
+      italic: presentation.italic ?? "default",
+      underline: presentation.underline ?? "default",
     },
   });
 
@@ -1296,6 +1442,9 @@ async function compileTemplateAiNodeStreamed(
           indent: presentation.indent,
           fontSize: presentation.fontSize,
           fontFamily: presentation.fontFamily,
+          bold: presentation.bold,
+          italic: presentation.italic,
+          underline: presentation.underline,
         },
       );
 
@@ -1310,6 +1459,9 @@ async function compileTemplateAiNodeStreamed(
                   indent: presentation.indent,
                   fontSize: presentation.fontSize,
                   fontFamily: presentation.fontFamily,
+                  bold: presentation.bold,
+                  italic: presentation.italic,
+                  underline: presentation.underline,
                 }),
               ),
             );
@@ -1386,10 +1538,12 @@ async function compileParagraphNode(
     return [singleImage];
   }
 
+  const paragraphMarks = extractTextMarks(node);
   const compiledChildren: PlateDescendantNode[] = [];
   for (const child of node.children) {
     if (isTextNode(child)) {
       compiledChildren.push({
+        ...paragraphMarks,
         ...child,
         text: interpolateTemplateString(child.text, scope),
       });
@@ -1409,9 +1563,12 @@ async function compileParagraphNode(
 
       compiledChildren.push(
         toPlateText(transformedText, {
-          ...extractTextMarks(child, {
-            fallbackFontFamily: typeof node.fontFamily === "string" ? node.fontFamily : undefined,
-          }),
+          ...mergeTextMarks(
+            paragraphMarks,
+            extractTextMarks(child, {
+              fallbackFontFamily: typeof node.fontFamily === "string" ? node.fontFamily : undefined,
+            }),
+          ),
         }),
       );
       continue;
@@ -1530,6 +1687,7 @@ async function compileTemplateConditionalNode(
       compileContext,
       warnings,
       blockMeta,
+      resolveTemplateLogicPresentation(node),
     );
   }
 
@@ -1539,6 +1697,9 @@ async function compileTemplateConditionalNode(
     indent: typeof node.indent === "number" ? node.indent : undefined,
     fontSize: typeof node.fontSize === "number" ? node.fontSize : undefined,
     fontFamily: typeof node.fontFamily === "string" ? node.fontFamily : undefined,
+    bold: node.bold === true ? true : undefined,
+    italic: node.italic === true ? true : undefined,
+    underline: node.underline === true ? true : undefined,
   });
 }
 
@@ -1598,6 +1759,7 @@ async function compileTemplateSwitchNode(
       compileContext,
       warnings,
       blockMeta,
+      resolveTemplateLogicPresentation(node),
     );
   }
 
@@ -1607,6 +1769,9 @@ async function compileTemplateSwitchNode(
     indent: typeof node.indent === "number" ? node.indent : undefined,
     fontSize: typeof node.fontSize === "number" ? node.fontSize : undefined,
     fontFamily: typeof node.fontFamily === "string" ? node.fontFamily : undefined,
+    bold: node.bold === true ? true : undefined,
+    italic: node.italic === true ? true : undefined,
+    underline: node.underline === true ? true : undefined,
   });
 }
 
@@ -1649,6 +1814,7 @@ async function compileTemplateListNode(
   const itemTemplate = typeof node.itemTemplate === "string" ? node.itemTemplate : "{{item}}";
   const listStyle = typeof node.listStyle === "string" ? node.listStyle : "none";
   const structuredBlocks = asTemplateBlocks(node.blocks);
+  const presentation = resolveTemplateLogicPresentation(node);
 
   const compiledItems = await parallelMapLimit(
     sourceValue,
@@ -1670,20 +1836,25 @@ async function compileTemplateListNode(
               compileContext,
               warnings,
               blockMeta,
+              presentation,
             )
           : await renderTemplateToBlocks(itemTemplate, itemScope, compileContext, warnings, {
-              align: typeof node.align === "string" ? node.align : undefined,
-              lineHeight: typeof node.lineHeight === "number" ? node.lineHeight : undefined,
-              indent: typeof node.indent === "number" ? node.indent : undefined,
-              fontSize: typeof node.fontSize === "number" ? node.fontSize : undefined,
-              fontFamily: typeof node.fontFamily === "string" ? node.fontFamily : undefined,
+              align: presentation.align,
+              lineHeight: presentation.lineHeight,
+              indent: presentation.indent,
+              fontSize: presentation.fontSize,
+              fontFamily: presentation.fontFamily,
+              bold: presentation.bold,
+              italic: presentation.italic,
+              underline: presentation.underline,
             });
 
       if (listStyle === "bullet" || listStyle === "number") {
+        const baseIndent = presentation.indent ?? 0;
         itemBlocks.forEach((block, blockIndex) => {
           if (blockIndex === 0) {
             block.listStyleType = listStyle === "bullet" ? "disc" : "decimal";
-            block.indent = 1;
+            block.indent = baseIndent + 1;
           } else {
             block.indent = (typeof block.indent === "number" ? block.indent : 0) + 2;
           }
@@ -1777,10 +1948,12 @@ async function compileNode(
         return [{ ...node, children: [toPlateText("")] }];
       }
 
+      const parentMarks = extractTextMarks(node);
       const compiledChildren: PlateDescendantNode[] = [];
       for (const child of children) {
         if (isTextNode(child)) {
           compiledChildren.push({
+            ...parentMarks,
             ...child,
             text: interpolateTemplateString(child.text, scope),
           });
@@ -1801,10 +1974,13 @@ async function compileNode(
 
           compiledChildren.push(
             toPlateText(transformedText, {
-              ...extractTextMarks(child, {
-                fallbackFontFamily:
-                  typeof node.fontFamily === "string" ? node.fontFamily : undefined,
-              }),
+              ...mergeTextMarks(
+                parentMarks,
+                extractTextMarks(child, {
+                  fallbackFontFamily:
+                    typeof node.fontFamily === "string" ? node.fontFamily : undefined,
+                }),
+              ),
             }),
           );
           continue;
@@ -1823,6 +1999,9 @@ async function compileNode(
               indent: typeof node.indent === "number" ? node.indent : undefined,
               fontSize: typeof node.fontSize === "number" ? node.fontSize : undefined,
               fontFamily: typeof node.fontFamily === "string" ? node.fontFamily : undefined,
+              bold: node.bold === true ? true : undefined,
+              italic: node.italic === true ? true : undefined,
+              underline: node.underline === true ? true : undefined,
             },
           );
 
