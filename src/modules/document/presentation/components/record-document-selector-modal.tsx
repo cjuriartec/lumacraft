@@ -1,7 +1,6 @@
 "use client";
 
 import { Eye } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { useTemplates } from "@/modules/template/presentation/hooks/use-templates";
@@ -34,7 +33,6 @@ export function RecordDocumentSelectorModal({
   onOpenChange,
   recordId,
 }: RecordDocumentSelectorModalProps) {
-  const router = useRouter();
   const { templates, loading } = useTemplates();
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
 

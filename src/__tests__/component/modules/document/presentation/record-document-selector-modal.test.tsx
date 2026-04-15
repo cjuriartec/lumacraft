@@ -5,17 +5,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { makeTemplate, resetFactories } from "@/__tests__/factories/domain-factories";
 import { RecordDocumentSelectorModal } from "@/modules/document/presentation/components/record-document-selector-modal";
 
-const routerState = vi.hoisted(() => ({
-  push: vi.fn(),
-}));
-
 const templatesState = vi.hoisted(() => ({
   templates: [] as ReturnType<typeof makeTemplate>[],
   loading: false,
-}));
-
-vi.mock("next/navigation", () => ({
-  useRouter: () => routerState,
 }));
 
 vi.mock("@/modules/template/presentation/hooks/use-templates", () => ({
