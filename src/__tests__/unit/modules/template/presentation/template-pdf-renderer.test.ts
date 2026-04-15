@@ -13,7 +13,10 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
 import type { TemplateBlocks } from "@/modules/template/domain/types/template-blocks";
-import { renderTemplateToPdfBuffer } from "@/modules/template/presentation/lib/template-pdf-renderer";
+import {
+  renderTemplateToPdfBuffer,
+  resolvePdfBlockSpacingForRenderMode,
+} from "@/modules/template/presentation/lib/template-pdf-renderer";
 
 const PDF_MAGIC_BYTES = "%PDF";
 const TINY_PNG_DATA_URL =
@@ -170,6 +173,21 @@ describe("renderTemplateToPdfBuffer", () => {
     ];
     const result = await renderTemplateToPdfBuffer(blocks);
     expect(getPdfHeader(result)).toContain(PDF_MAGIC_BYTES);
+  });
+
+  it("uses tighter spacing for blocks rendered inside table cells", () => {
+    expect(resolvePdfBlockSpacingForRenderMode("p", "body")).toEqual({
+      pdfMarginBottom: 14,
+      pdfMarginTop: 0,
+    });
+    expect(resolvePdfBlockSpacingForRenderMode("p", "tableCell")).toEqual({
+      pdfMarginBottom: 0,
+      pdfMarginTop: 0,
+    });
+    expect(resolvePdfBlockSpacingForRenderMode("h2", "tableCell")).toEqual({
+      pdfMarginBottom: 3,
+      pdfMarginTop: 2,
+    });
   });
 
   it("skips image block if src is missing (no error thrown)", async () => {
