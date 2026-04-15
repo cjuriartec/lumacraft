@@ -443,6 +443,153 @@ describe("compileTemplatePreviewBlocks", () => {
     expect(numberedBlocks[0].indent).toBe(1);
   });
 
+  it("renders direct relation lists from eager-loaded template context paths", async () => {
+    const templateBlocks: TemplateBlocks = [
+      {
+        type: "template_list",
+        sourcePath: "referencias",
+        itemAlias: "item",
+        itemTemplate: "{{item.nombre}}",
+        emptyText: "Sin referencias",
+        children: [{ text: "" }],
+      },
+    ];
+
+    const context: TemplateRuntimeContext = {
+      recordId: "record-1",
+      collectionId: "collection-1",
+      collectionName: "Memorandos",
+      root: {
+        referencias: [
+          { nombre: "Memorando N° 0546-2026-MTC/29.01" },
+          { nombre: "Informe N° 0123-2026-MTC/29.01" },
+        ],
+      },
+    };
+
+    const result = await compileTemplatePreviewBlocks({
+      requestId: "req-direct-relations",
+      blocks: templateBlocks,
+      context,
+      aiProviderFactory: new StructuredAIProviderFactory(),
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const compiledText = JSON.stringify(result.value.blocks);
+    expect(compiledText).toContain("Memorando N° 0546-2026-MTC/29.01");
+    expect(compiledText).toContain("Informe N° 0123-2026-MTC/29.01");
+    expect(compiledText).not.toContain("Sin referencias");
+  });
+
+  it("inherits presentation styles for structured logic blocks", async () => {
+    const context: TemplateRuntimeContext = {
+      recordId: "record-1",
+      collectionId: "collection-1",
+      collectionName: "Memorandos",
+      root: {
+        mostrarReferencia: true,
+        estado: "activo",
+        referencias: [{ nombre: "Referencia 1" }],
+      },
+    };
+
+    const result = await compileTemplatePreviewBlocks({
+      requestId: "req-logic-presentation",
+      blocks: [
+        {
+          type: "template_conditional",
+          fieldPath: "mostrarReferencia",
+          operator: "equals",
+          value: true,
+          align: "center",
+          lineHeight: 1.5,
+          fontSize: 11,
+          fontFamily: "arial",
+          thenBlocks: [
+            {
+              type: "p",
+              children: [{ text: "Condicional visible" }],
+            },
+          ],
+          children: [{ text: "" }],
+        },
+        {
+          type: "template_switch",
+          fieldPath: "estado",
+          align: "right",
+          lineHeight: 1.2,
+          fontSize: 10,
+          fontFamily: "arial",
+          cases: [
+            {
+              equals: "activo",
+              blocks: [
+                {
+                  type: "p",
+                  children: [{ text: "Switch visible" }],
+                },
+              ],
+              template: "Switch visible",
+            },
+          ],
+          children: [{ text: "" }],
+        },
+        {
+          type: "template_list",
+          sourcePath: "referencias",
+          itemAlias: "item",
+          align: "justify",
+          lineHeight: 1.4,
+          fontSize: 11,
+          fontFamily: "arial",
+          blocks: [
+            {
+              type: "p",
+              children: [{ text: "{{item.nombre}}" }],
+            },
+          ],
+          children: [{ text: "" }],
+        },
+      ],
+      context,
+      aiProviderFactory: new StructuredAIProviderFactory(),
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const compiled = result.value.blocks as Array<Record<string, unknown>>;
+    const conditionalBlock = compiled.find((block) =>
+      JSON.stringify(block).includes("Condicional visible"),
+    );
+    const switchBlock = compiled.find((block) => JSON.stringify(block).includes("Switch visible"));
+    const listBlock = compiled.find((block) => JSON.stringify(block).includes("Referencia 1"));
+
+    expect(conditionalBlock).toMatchObject({
+      type: "p",
+      align: "center",
+      lineHeight: 1.5,
+      fontSize: "11pt",
+      fontFamily: "arial",
+    });
+    expect(switchBlock).toMatchObject({
+      type: "p",
+      align: "right",
+      lineHeight: 1.2,
+      fontSize: "10pt",
+      fontFamily: "arial",
+    });
+    expect(listBlock).toMatchObject({
+      type: "p",
+      align: "justify",
+      lineHeight: 1.4,
+      fontSize: "11pt",
+      fontFamily: "arial",
+    });
+  });
+
   it("uses signed URLs for image variables when resolver is available", async () => {
     const templateBlocks: TemplateBlocks = [
       {

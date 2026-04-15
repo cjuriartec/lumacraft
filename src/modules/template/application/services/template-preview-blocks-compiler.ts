@@ -68,6 +68,14 @@ interface TemplateAiPresentationOptions {
   fontFamily?: string;
 }
 
+interface TemplateLogicPresentationOptions {
+  align?: string;
+  lineHeight?: number;
+  indent?: number;
+  fontSize?: number;
+  fontFamily?: string;
+}
+
 interface CompileTemplatePreviewBlocksParams {
   requestId: string;
   blocks: TemplateBlocks;
@@ -1102,6 +1110,7 @@ async function compileStructuredSubtreeBlocks(
   compileContext: CompileContext,
   warnings: string[],
   blockMeta: TemplatePreviewBlockMeta,
+  fallbackPresentation?: TemplateLogicPresentationOptions,
 ): Promise<PlateElementNode[]> {
   const compiledGroups = await parallelMapLimit(
     blocks,
@@ -1111,7 +1120,13 @@ async function compileStructuredSubtreeBlocks(
         return [];
       }
 
-      return compileNode(block, scope, compileContext, warnings, blockMeta);
+      return compileNode(
+        applyPresentationFallbackToNode(block, fallbackPresentation),
+        scope,
+        compileContext,
+        warnings,
+        blockMeta,
+      );
     },
   );
 
@@ -1133,6 +1148,77 @@ function resolveTemplateAiPresentation(
         : typeof fallback?.fontFamily === "string"
           ? normalizeSupportedDocumentFontFamily(fallback.fontFamily)
           : DEFAULT_DOCUMENT_FONT_FAMILY,
+  };
+}
+
+function resolveTemplateLogicPresentation(
+  node: PlateElementNode,
+): TemplateLogicPresentationOptions {
+  return {
+    align: typeof node.align === "string" ? node.align : undefined,
+    lineHeight: typeof node.lineHeight === "number" ? node.lineHeight : undefined,
+    indent: typeof node.indent === "number" ? node.indent : undefined,
+    fontSize: typeof node.fontSize === "number" ? node.fontSize : undefined,
+    fontFamily:
+      typeof node.fontFamily === "string"
+        ? normalizeSupportedDocumentFontFamily(node.fontFamily)
+        : undefined,
+  };
+}
+
+function applyPresentationFallbackToTextNode(
+  node: PlateTextNode,
+  fallback?: TemplateLogicPresentationOptions,
+): PlateTextNode {
+  if (!fallback) {
+    return node;
+  }
+
+  return {
+    ...node,
+    ...(node.fontSize === undefined && fallback.fontSize !== undefined
+      ? { fontSize: resolveFontSizeWithUnit(fallback.fontSize, "p") }
+      : {}),
+    ...(node.fontFamily === undefined && fallback.fontFamily
+      ? { fontFamily: fallback.fontFamily }
+      : {}),
+  };
+}
+
+function applyPresentationFallbackToNode(
+  node: PlateElementNode,
+  fallback?: TemplateLogicPresentationOptions,
+): PlateElementNode {
+  if (!fallback) {
+    return node;
+  }
+
+  return {
+    ...node,
+    ...(node.align === undefined && fallback.align ? { align: fallback.align } : {}),
+    ...(node.lineHeight === undefined && fallback.lineHeight !== undefined
+      ? { lineHeight: resolveDocumentLineHeight(fallback.lineHeight) }
+      : {}),
+    ...(node.indent === undefined && fallback.indent !== undefined
+      ? { indent: fallback.indent }
+      : {}),
+    ...(node.fontSize === undefined && fallback.fontSize !== undefined
+      ? { fontSize: resolveFontSizeWithUnit(fallback.fontSize, node.type) }
+      : {}),
+    ...(node.fontFamily === undefined && fallback.fontFamily
+      ? { fontFamily: fallback.fontFamily }
+      : {}),
+    ...(Array.isArray(node.children)
+      ? {
+          children: node.children.map((child) =>
+            isElementNode(child)
+              ? applyPresentationFallbackToNode(child, fallback)
+              : isTextNode(child)
+                ? applyPresentationFallbackToTextNode(child, fallback)
+                : child,
+          ),
+        }
+      : {}),
   };
 }
 
@@ -1530,6 +1616,7 @@ async function compileTemplateConditionalNode(
       compileContext,
       warnings,
       blockMeta,
+      resolveTemplateLogicPresentation(node),
     );
   }
 
@@ -1598,6 +1685,7 @@ async function compileTemplateSwitchNode(
       compileContext,
       warnings,
       blockMeta,
+      resolveTemplateLogicPresentation(node),
     );
   }
 
@@ -1649,6 +1737,7 @@ async function compileTemplateListNode(
   const itemTemplate = typeof node.itemTemplate === "string" ? node.itemTemplate : "{{item}}";
   const listStyle = typeof node.listStyle === "string" ? node.listStyle : "none";
   const structuredBlocks = asTemplateBlocks(node.blocks);
+  const presentation = resolveTemplateLogicPresentation(node);
 
   const compiledItems = await parallelMapLimit(
     sourceValue,
@@ -1670,20 +1759,22 @@ async function compileTemplateListNode(
               compileContext,
               warnings,
               blockMeta,
+              presentation,
             )
           : await renderTemplateToBlocks(itemTemplate, itemScope, compileContext, warnings, {
-              align: typeof node.align === "string" ? node.align : undefined,
-              lineHeight: typeof node.lineHeight === "number" ? node.lineHeight : undefined,
-              indent: typeof node.indent === "number" ? node.indent : undefined,
-              fontSize: typeof node.fontSize === "number" ? node.fontSize : undefined,
-              fontFamily: typeof node.fontFamily === "string" ? node.fontFamily : undefined,
+              align: presentation.align,
+              lineHeight: presentation.lineHeight,
+              indent: presentation.indent,
+              fontSize: presentation.fontSize,
+              fontFamily: presentation.fontFamily,
             });
 
       if (listStyle === "bullet" || listStyle === "number") {
+        const baseIndent = presentation.indent ?? 0;
         itemBlocks.forEach((block, blockIndex) => {
           if (blockIndex === 0) {
             block.listStyleType = listStyle === "bullet" ? "disc" : "decimal";
-            block.indent = 1;
+            block.indent = baseIndent + 1;
           } else {
             block.indent = (typeof block.indent === "number" ? block.indent : 0) + 2;
           }

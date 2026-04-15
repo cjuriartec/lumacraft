@@ -290,7 +290,6 @@ function NodeItem({
       case "BOOLEAN":
         return <CheckCircle2 size={14} />;
       case "RELATION":
-      case "REVERSE_LOOKUP":
         return <Database size={14} />;
       case "IMAGE":
         return <ImageIcon size={14} />;
@@ -299,7 +298,7 @@ function NodeItem({
     }
   };
 
-  const isRelational = node.fieldType === "RELATION" || node.fieldType === "REVERSE_LOOKUP";
+  const isRelational = node.fieldType === "RELATION";
 
   return (
     <div>

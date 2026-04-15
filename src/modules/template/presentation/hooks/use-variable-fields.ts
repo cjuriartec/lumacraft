@@ -130,60 +130,9 @@ export function useVariableFields(value?: string | null | UseVariableFieldsOptio
 
       const typedFields = await listFields.execute(collectionId);
       if (typedFields.ok) {
-        const resolved = typedFields.value.map(fromDomainField);
-
-        const reverseLookups = typedFields.value.filter(
-          (f) => f.fieldType.value === "REVERSE_LOOKUP",
-        );
-        if (reverseLookups.length > 0) {
-          const targetFieldIds = reverseLookups
-            .map((f) => (f.config?.value as Record<string, unknown>)?.targetFieldId as string)
-            .filter(Boolean);
-
-          if (targetFieldIds.length > 0) {
-            const { data } = await supabase
-              .from("fields")
-              .select("id, name, display_name, config")
-              .in("id", targetFieldIds);
-
-            if (data) {
-              const configMap = new Map(
-                data.map((d) => [
-                  d.id,
-                  {
-                    config: d.config as Record<string, unknown>,
-                    name: d.name,
-                    displayName: d.display_name,
-                  },
-                ]),
-              );
-              for (const rField of resolved) {
-                if (rField.fieldType === "REVERSE_LOOKUP") {
-                  const originalField = typedFields.value.find((f) => f.name === rField.name);
-                  const targetFieldId = (originalField?.config?.value as Record<string, unknown>)
-                    ?.targetFieldId as string;
-
-                  if (targetFieldId && configMap.has(targetFieldId)) {
-                    const originalMeta = configMap.get(targetFieldId)!;
-                    const originalConfig = originalMeta.config;
-                    const originalRelationType = originalConfig?.relationType;
-
-                    const originalName = originalMeta.displayName || originalMeta.name;
-                    rField.displayName = `${rField.displayName} (${originalName})`;
-
-                    if (originalRelationType === "ONE_TO_ONE") rField.cardinality = "ONE_TO_ONE";
-                    else if (originalRelationType === "ONE_TO_MANY")
-                      rField.cardinality = "MANY_TO_ONE";
-                    else if (originalRelationType === "MANY_TO_ONE")
-                      rField.cardinality = "ONE_TO_MANY";
-                    else if (originalRelationType === "MANY_TO_MANY")
-                      rField.cardinality = "MANY_TO_MANY";
-                  }
-                }
-              }
-            }
-          }
-        }
+        const resolved = typedFields.value
+          .filter((field) => field.fieldType.value !== "REVERSE_LOOKUP")
+          .map(fromDomainField);
 
         metadataCache.set(collectionId, resolved);
         return resolved;
@@ -229,7 +178,6 @@ export function useVariableFields(value?: string | null | UseVariableFieldsOptio
       metadataCache: Map<string, ResolvedFieldMetadata[]>,
       collectionMetaCache: Map<string, { name: string; description?: string }>,
       discoveredErrors: string[],
-      fieldNamesPath: string[] = [],
     ): Promise<VariableNode[]> => {
       if (currentDepth >= 7) return [];
 
@@ -244,15 +192,10 @@ export function useVariableFields(value?: string | null | UseVariableFieldsOptio
 
       for (const field of fields) {
         const fieldPath = currentPath ? `${currentPath}.${field.name}` : field.name;
-        let finalDisplayName = field.displayName;
-        if (field.fieldType === "REVERSE_LOOKUP" && fieldNamesPath.length > 0) {
-          const joinedPath = fieldNamesPath.join(" → ");
-          finalDisplayName = `${field.displayName} [${joinedPath}]`;
-        }
 
         const node: VariableNode = {
           path: fieldPath,
-          displayName: finalDisplayName,
+          displayName: field.displayName,
           fieldType: field.fieldType,
           collectionId: targetCollectionId,
           collectionName: collectionMeta?.name,
@@ -262,12 +205,8 @@ export function useVariableFields(value?: string | null | UseVariableFieldsOptio
           sampleValue: readPath(sampleRoot, fieldPath),
         };
 
-        if (
-          (field.fieldType === "RELATION" || field.fieldType === "REVERSE_LOOKUP") &&
-          field.targetCollectionId
-        ) {
+        if (field.fieldType === "RELATION" && field.targetCollectionId) {
           if (currentDepth < 4) {
-            const nextFieldNamesPath = [...fieldNamesPath, field.displayName];
             const children = await resolveNodes(
               field.targetCollectionId,
               fieldPath,
@@ -276,7 +215,6 @@ export function useVariableFields(value?: string | null | UseVariableFieldsOptio
               metadataCache,
               collectionMetaCache,
               discoveredErrors,
-              nextFieldNamesPath,
             );
 
             if (children.length > 0) {
@@ -327,7 +265,6 @@ export function useVariableFields(value?: string | null | UseVariableFieldsOptio
         new Map<string, ResolvedFieldMetadata[]>(),
         new Map<string, { name: string; description?: string }>(),
         discoveredErrors,
-        [],
       );
 
       if (ignore) return;
@@ -349,7 +286,6 @@ export function useVariableFields(value?: string | null | UseVariableFieldsOptio
     options.collectionId,
     options.depth,
     options.recordId,
-    supabase,
   ]);
 
   return {

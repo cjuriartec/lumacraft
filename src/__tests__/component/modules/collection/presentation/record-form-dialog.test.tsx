@@ -112,9 +112,8 @@ vi.mock("@/shared/presentation/components/ui/button", () => ({
 vi.mock("@/shared/presentation/components/ui/dialog", () => ({
   Dialog: ({ children, open }: { children: ReactNode; open: boolean }) =>
     open ? <div>{children}</div> : null,
-  DialogContent: ({ children }: { children: ReactNode }) => (
-    createPortal(<div data-testid="dialog-content">{children}</div>, document.body)
-  ),
+  DialogContent: ({ children }: { children: ReactNode }) =>
+    createPortal(<div data-testid="dialog-content">{children}</div>, document.body),
   DialogDescription: ({ children }: { children: ReactNode }) => <p>{children}</p>,
   DialogFooter: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   DialogHeader: ({ children }: { children: ReactNode }) => <div>{children}</div>,
@@ -488,9 +487,7 @@ describe("RecordFormDialog", () => {
     relationRecordsState.fetchOptionsByIds.mockImplementation(async (_field, ids: string[]) => {
       relationRecordsState.options.tags = [
         { id: existingId, label: "Base" },
-        ...ids
-          .filter((id) => id === createdId)
-          .map((id) => ({ id, label: "Urgente" })),
+        ...ids.filter((id) => id === createdId).map((id) => ({ id, label: "Urgente" })),
       ];
     });
 
@@ -606,9 +603,7 @@ describe("RecordFormDialog", () => {
 
     await waitFor(() => {
       expect(createRecordExecute).toHaveBeenCalled();
-      expect(
-        quickCreateScope.getByText("No se pudo crear el relacionado"),
-      ).toBeInTheDocument();
+      expect(quickCreateScope.getByText("No se pudo crear el relacionado")).toBeInTheDocument();
     });
 
     expect(

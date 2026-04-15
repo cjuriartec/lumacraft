@@ -35,6 +35,28 @@ function isPlateDescendantNode(value: unknown): value is PlateDescendantNode {
   return isPlateTextNode(value) || isPlateElementNode(value);
 }
 
+function sanitizePlateDescendant(node: PlateDescendantNode): PlateDescendantNode {
+  if (isPlateTextNode(node)) {
+    return node;
+  }
+
+  const sanitizedChildren = node.children.map(sanitizePlateDescendant);
+
+  if (node.type === "tr") {
+    const { size: size, ...rest } = node as TElement & { size?: unknown };
+    console.log(size);
+    return {
+      ...rest,
+      children: sanitizedChildren,
+    };
+  }
+
+  return {
+    ...node,
+    children: sanitizedChildren,
+  };
+}
+
 function toTextNode(text: string): PlateTextNode {
   return { text };
 }
@@ -173,7 +195,7 @@ export function templateBlocksToPlateValue(blocks: TemplateBlocks | null | undef
   const value: TElement[] = [];
   for (const block of blocks) {
     if (isPlateElementNode(block)) {
-      value.push(block);
+      value.push(sanitizePlateDescendant(block) as TElement);
     }
   }
 
@@ -198,7 +220,8 @@ export function plateValueToTemplateBlocks(value: unknown): TemplateBlocks {
     return [];
   }
 
-  const serializable = JSON.parse(JSON.stringify(value)) as unknown;
+  const sanitized = value.map((block) => sanitizePlateDescendant(block));
+  const serializable = JSON.parse(JSON.stringify(sanitized)) as unknown;
   return isTemplateBlocks(serializable) ? serializable : [];
 }
 
