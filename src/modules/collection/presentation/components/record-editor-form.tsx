@@ -2,14 +2,23 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertCircle, Check, Eye, Loader2, Plus, Search, Trash2, Upload, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { useAuth } from "@/modules/auth/presentation/providers/auth-provider";
+import { usePermissions } from "@/modules/authorization/presentation/providers/permission-provider";
 import { useWorkspace } from "@/modules/workspace/presentation/providers/workspace-provider";
 import { cn } from "@/shared/lib/utils";
 import { Badge } from "@/shared/presentation/components/ui/badge";
 import { Button } from "@/shared/presentation/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/shared/presentation/components/ui/dialog";
 import { Input } from "@/shared/presentation/components/ui/input";
 import { Label } from "@/shared/presentation/components/ui/label";
 import {
@@ -21,9 +30,13 @@ import {
 } from "@/shared/presentation/components/ui/select";
 import { Switch } from "@/shared/presentation/components/ui/switch";
 import { Textarea } from "@/shared/presentation/components/ui/textarea";
+import { useSupabase } from "@/shared/presentation/providers/supabase-provider";
 
+import { CollectionUseCaseFactory } from "../../application/collection-use-case.factory";
 import { Field } from "../../domain/entities/field.entity";
 import { DataRecord } from "../../domain/entities/record.entity";
+import { useCollections } from "../hooks/use-collections";
+import { useFields } from "../hooks/use-fields";
 import { useRelationRecords } from "../hooks/use-relation-records";
 import { useStorage } from "../hooks/use-storage";
 import { RelatedRecordSummary } from "../lib/record-relations";
@@ -51,8 +64,181 @@ type FileMetadata = {
 
 const FILE_BUCKET = "record_files";
 
+type RecordSubmitResult = { ok: boolean; error?: { message: string } } | void;
+
+type RelationFieldConfig = {
+  targetCollectionId?: string;
+  displayField?: string;
+  relationType?: string;
+};
+
 function isFileLikeFieldType(fieldType: Field["fieldType"]["value"]): boolean {
   return fieldType === "FILE" || fieldType === "IMAGE";
+}
+
+function getRelationConfig(field: Field): RelationFieldConfig {
+  return (field.config?.value as RelationFieldConfig | undefined) ?? {};
+}
+
+function relationFieldAllowsMany(field: Field) {
+  const config = getRelationConfig(field);
+  return config.relationType === "ONE_TO_MANY" || config.relationType === "MANY_TO_MANY";
+}
+
+function isTextualQuickCreateField(field: Field) {
+  return field.fieldType.value === "TEXT";
+}
+
+function buildQuickCreateDefaults(
+  fields: Field[],
+  primaryFieldName: string | null | undefined,
+  initialQuery: string,
+) {
+  const trimmedQuery = initialQuery.trim();
+  if (!trimmedQuery || !primaryFieldName) return {};
+
+  const primaryField = fields.find((field) => field.name === primaryFieldName);
+  if (!primaryField || !isTextualQuickCreateField(primaryField)) return {};
+
+  return {
+    [primaryField.name]: trimmedQuery,
+  };
+}
+
+function orderQuickCreateFields(fields: Field[], primaryFieldName: string | null | undefined) {
+  return [...fields]
+    .filter((field) => field.fieldType.value !== "REVERSE_LOOKUP")
+    .sort((left, right) => {
+      const leftRank = left.name === primaryFieldName ? 0 : left.isRequired ? 1 : 2;
+      const rightRank = right.name === primaryFieldName ? 0 : right.isRequired ? 1 : 2;
+
+      if (leftRank !== rightRank) return leftRank - rightRank;
+      return left.sortOrder - right.sortOrder;
+    });
+}
+
+interface RelatedRecordQuickCreateDialogProps {
+  field: Field;
+  initialQuery: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onCreated: (record: DataRecord) => Promise<void> | void;
+}
+
+function RelatedRecordQuickCreateDialog({
+  field,
+  initialQuery,
+  open,
+  onOpenChange,
+  onCreated,
+}: RelatedRecordQuickCreateDialogProps) {
+  const { supabase } = useSupabase();
+  const { currentWorkspace } = useWorkspace();
+  const { user } = useAuth();
+  const { can } = usePermissions();
+  const { collections } = useCollections();
+  const config = getRelationConfig(field);
+  const targetCollectionId = config.targetCollectionId ?? "";
+  const { fields, loading: loadingFields } = useFields(targetCollectionId);
+  const collection = collections.find((item) => item.id === targetCollectionId);
+  const collectionLabel = collection?.displayName || collection?.name || "colección relacionada";
+  const canCreateRelated = Boolean(targetCollectionId) && can(targetCollectionId, "create");
+
+  const factory = useMemo(() => CollectionUseCaseFactory.create(supabase), [supabase]);
+  const createRecordUseCase = useMemo(() => factory.createRecord(), [factory]);
+
+  const orderedFields = useMemo(
+    () => orderQuickCreateFields(fields, collection?.primaryFieldName),
+    [collection?.primaryFieldName, fields],
+  );
+  const initialData = useMemo(
+    () => buildQuickCreateDefaults(orderedFields, collection?.primaryFieldName, initialQuery),
+    [collection?.primaryFieldName, initialQuery, orderedFields],
+  );
+
+  const handleSubmit = async (data: Record<string, unknown>): Promise<RecordSubmitResult> => {
+    if (!currentWorkspace) {
+      return { ok: false, error: { message: "No hay workspace activo." } };
+    }
+
+    if (!targetCollectionId || !canCreateRelated) {
+      return {
+        ok: false,
+        error: { message: "No tienes permisos para crear registros relacionados." },
+      };
+    }
+
+    const result = await createRecordUseCase.execute({
+      collectionId: targetCollectionId,
+      accountId: currentWorkspace.id,
+      data,
+      userId: user?.id,
+    });
+
+    if (!result.ok) {
+      return {
+        ok: false,
+        error: { message: result.error.message },
+      };
+    }
+
+    await onCreated(result.value);
+    onOpenChange(false);
+    return { ok: true };
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[90vh] overflow-x-hidden overflow-y-auto border-border bg-surface p-0 sm:max-w-[560px]">
+        <DialogHeader className="border-b border-border/20 px-6 pb-4 pt-6">
+          <DialogTitle className="text-[1.35rem] font-bold tracking-[-0.02em] text-foreground">
+            Nuevo en {collectionLabel}
+          </DialogTitle>
+          <DialogDescription className="text-sm text-foreground/65">
+            Crea el registro relacionado sin salir del formulario actual. Se vinculará
+            automáticamente al terminar.
+          </DialogDescription>
+        </DialogHeader>
+
+        {!targetCollectionId ? (
+          <div className="px-6 py-6">
+            <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-sm text-red-500">
+              Este campo no tiene una colección relacionada configurada.
+            </div>
+          </div>
+        ) : !canCreateRelated ? (
+          <div className="px-6 py-6">
+            <div className="rounded-xl border border-border/30 bg-background/40 p-4 text-sm text-muted-foreground">
+              No tienes permiso para crear registros en esta colección relacionada.
+            </div>
+          </div>
+        ) : loadingFields ? (
+          <div className="flex min-h-[220px] flex-col items-center justify-center gap-3 px-6 py-8">
+            <Loader2 size={20} className="animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">Preparando formulario relacionado...</p>
+          </div>
+        ) : orderedFields.length === 0 ? (
+          <div className="px-6 py-6">
+            <div className="rounded-xl border border-border/30 bg-background/40 p-4 text-sm text-muted-foreground">
+              La colección relacionada no tiene campos editables para crear un registro.
+            </div>
+          </div>
+        ) : (
+          <div className="px-6 py-6">
+            <RecordEditorForm
+              fields={orderedFields}
+              record={{ id: "quick-create", data: initialData }}
+              onSubmit={handleSubmit}
+              onCancel={() => onOpenChange(false)}
+              submitLabel="Crear y vincular"
+              cancelLabel="Cancelar"
+              layout="dialog"
+            />
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 export function RecordEditorForm({
@@ -65,6 +251,8 @@ export function RecordEditorForm({
   layout = "dialog",
 }: RecordEditorFormProps) {
   const { currentWorkspace } = useWorkspace();
+  const { can } = usePermissions();
+  const { collections } = useCollections();
   const {
     options: relationOptions,
     loading: relationLoading,
@@ -76,19 +264,11 @@ export function RecordEditorForm({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [relationQuery, setRelationQuery] = useState<Record<string, string>>({});
+  const [quickCreateOpen, setQuickCreateOpen] = useState<Record<string, boolean>>({});
   const [pendingFiles, setPendingFiles] = useState<Record<string, File | null>>({});
   const [previewTarget, setPreviewTarget] = useState<RelatedRecordSummary | null>(null);
   const relationTimers = useRef<Record<string, ReturnType<typeof setTimeout> | null>>({});
-
-  const getRelationConfig = (field: Field) =>
-    (field.config?.value as
-      | { targetCollectionId?: string; displayField?: string; relationType?: string }
-      | undefined) ?? {};
-
-  const relationFieldAllowsMany = (field: Field) => {
-    const config = getRelationConfig(field);
-    return config.relationType === "ONE_TO_MANY" || config.relationType === "MANY_TO_MANY";
-  };
+  const relationInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const isReverseLookup = (field: Field) => field.fieldType.value === "REVERSE_LOOKUP";
 
@@ -298,15 +478,43 @@ export function RecordEditorForm({
   };
 
   const renderRelationInput = (field: Field) => {
+    const config = getRelationConfig(field);
+    const targetCollectionId = config.targetCollectionId ?? "";
+    const targetCollection = collections.find((item) => item.id === targetCollectionId);
+    const targetCollectionLabel =
+      targetCollection?.displayName || targetCollection?.name || "colección relacionada";
+    const canCreateRelated =
+      Boolean(targetCollectionId && targetCollection) && can(targetCollectionId, "create");
     const selectedValue = form.watch(field.name);
     const options = relationOptions[field.name] || [];
     const isMany = relationFieldAllowsMany(field);
     const query = relationQuery[field.name] || "";
     const isLoading = relationLoading[field.name] ?? false;
+    const isQuickCreateOpen = quickCreateOpen[field.name] ?? false;
     const selectedIds = Array.isArray(selectedValue)
       ? selectedValue.filter((value): value is string => typeof value === "string")
       : [];
     const selectedSingleValue = typeof selectedValue === "string" ? selectedValue : undefined;
+
+    const handleRelatedRecordCreated = async (createdRecord: DataRecord) => {
+      await fetchOptionsByIds(field, [createdRecord.id]);
+
+      if (isMany) {
+        const next = selectedIds.includes(createdRecord.id)
+          ? selectedIds
+          : [...selectedIds, createdRecord.id];
+        form.setValue(field.name, next, { shouldDirty: true, shouldValidate: true });
+      } else {
+        form.setValue(field.name, createdRecord.id, { shouldDirty: true, shouldValidate: true });
+      }
+
+      setRelationQuery((prev) => ({ ...prev, [field.name]: "" }));
+      void searchRelations(field, "");
+
+      requestAnimationFrame(() => {
+        relationInputRefs.current[field.name]?.focus();
+      });
+    };
 
     return (
       <div className="space-y-3">
@@ -314,23 +522,45 @@ export function RecordEditorForm({
           {field.displayName || field.name}
         </Label>
 
-        <div className="relative group">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/40 transition-colors group-focus-within:text-primary/50" />
-          <Input
-            placeholder="Escribe para buscar registros..."
-            className="rounded-xl border-border/50 bg-background pl-9 text-sm text-foreground focus-visible:ring-primary/20"
-            value={query}
-            onFocus={() => {
-              if (query === "" && options.length === 0) {
-                queueRelationFetch(field, "");
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="relative group flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/40 transition-colors group-focus-within:text-primary/50" />
+            <Input
+              placeholder="Escribe para buscar registros..."
+              className="rounded-xl border-border/50 bg-background pl-9 text-sm text-foreground focus-visible:ring-primary/20"
+              value={query}
+              ref={(node) => {
+                relationInputRefs.current[field.name] = node;
+              }}
+              onFocus={() => {
+                if (query === "" && options.length === 0) {
+                  queueRelationFetch(field, "");
+                }
+              }}
+              onChange={(e) => queueRelationFetch(field, e.target.value)}
+            />
+            {isLoading && query !== "" && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                <Loader2 size={14} className="animate-spin text-primary" />
+              </div>
+            )}
+          </div>
+
+          {canCreateRelated && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-10 rounded-xl border-border/50 bg-background px-3 text-xs font-semibold text-foreground/75 hover:bg-surface-hover/40 hover:text-foreground"
+              onClick={() =>
+                setQuickCreateOpen((prev) => ({
+                  ...prev,
+                  [field.name]: true,
+                }))
               }
-            }}
-            onChange={(e) => queueRelationFetch(field, e.target.value)}
-          />
-          {isLoading && query !== "" && (
-            <div className="absolute right-3 top-1/2 -translate-y-1/2">
-              <Loader2 size={14} className="animate-spin text-primary" />
-            </div>
+            >
+              <Plus size={14} />
+            </Button>
           )}
         </div>
 
@@ -413,8 +643,29 @@ export function RecordEditorForm({
         )}
 
         {!isLoading && query !== "" && options.length === 0 && (
-          <div className="rounded-xl border border-dashed border-border/30 bg-foreground/1 py-6 text-center text-xs italic text-muted/40">
-            No se encontraron resultados vinculables.
+          <div className="space-y-3 rounded-xl border border-dashed border-border/30 bg-foreground/1 px-4 py-6 text-center">
+            <p className="text-xs italic text-muted/40">
+              No se encontraron resultados vinculables.
+            </p>
+            {canCreateRelated && (
+              <div className="flex justify-center">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 rounded-lg px-3 text-xs font-semibold text-primary hover:bg-primary/5 hover:text-primary"
+                  onClick={() =>
+                    setQuickCreateOpen((prev) => ({
+                      ...prev,
+                      [field.name]: true,
+                    }))
+                  }
+                >
+                  <Plus size={14} />
+                  Crear en {targetCollectionLabel}
+                </Button>
+              </div>
+            )}
           </div>
         )}
 
@@ -431,6 +682,21 @@ export function RecordEditorForm({
               Limpiar
             </button>
           </div>
+        )}
+
+        {canCreateRelated && (
+          <RelatedRecordQuickCreateDialog
+            field={field}
+            initialQuery={query}
+            open={isQuickCreateOpen}
+            onOpenChange={(open) =>
+              setQuickCreateOpen((prev) => ({
+                ...prev,
+                [field.name]: open,
+              }))
+            }
+            onCreated={handleRelatedRecordCreated}
+          />
         )}
       </div>
     );
