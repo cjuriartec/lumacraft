@@ -17,6 +17,7 @@ import * as React from "react";
 import {
   DEFAULT_DOCUMENT_FONT_FAMILY,
   DEFAULT_DOCUMENT_FONT_SIZE,
+  normalizeSupportedDocumentFontFamily,
   resolveDocumentFontFamily,
   resolveDocumentFontSize,
   resolveDocumentLineHeight,
@@ -89,8 +90,17 @@ function registerPdfFonts() {
 
 registerPdfFonts();
 
-function resolvePdfFontFamily(value: unknown): string {
-  const resolvedFontFamily = resolveDocumentFontFamily("pdf", value);
+export function resolvePdfFontFamily(value: unknown): string {
+  const normalizedFontFamily = normalizeSupportedDocumentFontFamily(value);
+
+  // Built-in Helvetica has shown encoding issues for accented characters in some
+  // PDF viewers/printers. When "Arial" is selected, prefer the embedded Unicode
+  // font so tildes and other Latin glyphs survive export/print reliably.
+  if (normalizedFontFamily === "arial" && pdfFontsRegistered) {
+    return "Roboto";
+  }
+
+  const resolvedFontFamily = resolveDocumentFontFamily("pdf", normalizedFontFamily);
 
   if (resolvedFontFamily === "Roboto" && !pdfFontsRegistered) {
     return resolveDocumentFontFamily("pdf", DEFAULT_DOCUMENT_FONT_FAMILY);
