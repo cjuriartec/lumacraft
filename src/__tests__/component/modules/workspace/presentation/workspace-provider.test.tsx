@@ -80,4 +80,30 @@ describe("WorkspaceProvider", () => {
       expect(storage.getItem("lumacraft.currentWorkspaceId")).toBe("workspace-2");
     }
   });
+
+  it("does not re-fetch workspaces when auth emits the same user again", async () => {
+    resetFactories();
+    const initialUser = makeUser({ id: "user-1" });
+    const authProvider = new FakeAuthProvider();
+    authProvider.currentUserResult = { ok: true, value: initialUser };
+
+    const first = makeWorkspace({ id: "workspace-1", ownerId: "user-1", name: "Personal" });
+    const second = makeWorkspace({ id: "workspace-2", ownerId: "user-1", name: "Team" });
+    const workspaceRepository = new InMemoryWorkspaceRepository([first, second]);
+
+    renderWithProviders(<WorkspaceProbe />, {
+      authService: authProvider,
+      workspaceRepository,
+    });
+
+    await screen.findByText("Personal");
+    expect(workspaceRepository.findByUserId).toHaveBeenCalledTimes(1);
+
+    authProvider.emitAuthState(makeUser({ id: "user-1" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Personal")).toBeInTheDocument();
+    });
+    expect(workspaceRepository.findByUserId).toHaveBeenCalledTimes(1);
+  });
 });
