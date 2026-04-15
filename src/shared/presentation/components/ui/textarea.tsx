@@ -6,22 +6,42 @@ import { AITextImprover } from "../ai/ai-text-improver";
 
 export interface TextareaProps extends React.ComponentProps<"textarea"> {
   enableAI?: boolean;
+  autoSize?: boolean;
 }
 
 const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
-  ({ className, value, onChange, enableAI, ...props }, ref) => {
+  ({ className, value, onChange, enableAI, autoSize, ...props }, ref) => {
     const showAI = enableAI === true && typeof value === "string" && onChange !== undefined;
+    const innerRef = React.useRef<HTMLTextAreaElement>(null);
+
+    // Merge refs: external ref (from forwardRef) and internal ref (for height adjustment)
+    React.useImperativeHandle(ref, () => innerRef.current!);
+
+    const adjustHeight = React.useCallback(() => {
+      if (!autoSize || !innerRef.current) return;
+      const element = innerRef.current;
+      element.style.height = "auto";
+      element.style.height = `${element.scrollHeight}px`;
+    }, [autoSize]);
+
+    React.useLayoutEffect(() => {
+      adjustHeight();
+    }, [value, adjustHeight]);
 
     const textarea = (
       <textarea
         className={cn(
           "flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
           showAI && "pr-10",
+          autoSize && "overflow-hidden resize-none",
           className,
         )}
         value={value}
-        onChange={onChange}
-        ref={ref}
+        onChange={(e) => {
+          onChange?.(e);
+          if (autoSize) adjustHeight();
+        }}
+        ref={innerRef}
         {...props}
       />
     );

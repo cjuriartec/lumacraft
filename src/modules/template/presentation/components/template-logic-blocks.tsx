@@ -26,6 +26,7 @@ import * as React from "react";
 
 import { TemplateBlocks } from "@/modules/template/domain/types/template-blocks";
 import {
+  DEFAULT_DOCUMENT_FONT_FAMILY,
   DOCUMENT_FONT_FAMILY_OPTIONS,
   resolveDocumentFontFamily,
   resolveDocumentFontSize,
@@ -134,6 +135,7 @@ export function createConditionalElement(): TemplateConditionalElementNode {
   return {
     type: TEMPLATE_CONDITIONAL_TYPE,
     children: baseChildren(),
+    fontFamily: DEFAULT_DOCUMENT_FONT_FAMILY,
     fieldPath: "estado",
     operator: "equals",
     value: "aprobado",
@@ -146,6 +148,7 @@ export function createListElement(): TemplateListElementNode {
   return {
     type: TEMPLATE_LIST_TYPE,
     children: baseChildren(),
+    fontFamily: DEFAULT_DOCUMENT_FONT_FAMILY,
     sourcePath: "items",
     itemAlias: "item",
     itemTemplate: "- {{item.nombre}}\n",
@@ -158,6 +161,7 @@ export function createSwitchElement(): TemplateSwitchElementNode {
   return {
     type: TEMPLATE_SWITCH_TYPE,
     children: baseChildren(),
+    fontFamily: DEFAULT_DOCUMENT_FONT_FAMILY,
     fieldPath: "estado",
     cases: [
       { equals: "aprobado", template: "Estado aprobado\n" },
@@ -171,6 +175,7 @@ export function createAIElement(): TemplateAIElementNode {
   return {
     type: TEMPLATE_AI_TYPE,
     children: baseChildren(),
+    fontFamily: DEFAULT_DOCUMENT_FONT_FAMILY,
     promptTemplate: DEFAULT_TEMPLATE_AI_PROMPT,
   };
 }
@@ -452,11 +457,13 @@ export function TemplateAIInlinePromptEditor({
   onChange,
   nodes = [],
   loading = false,
+  textStyle,
 }: {
   value: string;
   onChange: (nextPrompt: string) => void;
   nodes?: VariableNode[];
   loading?: boolean;
+  textStyle?: React.CSSProperties;
 }) {
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
   const [localValue, setLocalValue] = React.useState(value);
@@ -509,7 +516,8 @@ export function TemplateAIInlinePromptEditor({
         value={localValue}
         onChange={(event) => handleChange(event.target.value)}
         placeholder="Escribe tu prompt aquí..."
-        className="min-h-[96px] w-full resize-none border-none bg-transparent p-2 text-sm leading-6 text-slate-700 placeholder:text-slate-400 focus-visible:ring-0"
+        className="min-h-[96px] w-full resize-none border-none bg-transparent p-2 text-slate-700 placeholder:text-slate-400 focus-visible:ring-0"
+        style={textStyle}
       />
       <div className="absolute bottom-1 right-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
         <VariableSelector
@@ -771,6 +779,7 @@ export function TemplateAIElement(props: PlateElementProps<TemplateAIElementNode
   const indent = element.indent ?? 0;
   const fontSize = resolveDocumentFontSize(element.fontSize, TEMPLATE_AI_TYPE);
   const fontFamily = element.fontFamily ?? "arial";
+  const resolvedFontFamily = resolveDocumentFontFamily("web", fontFamily);
 
   const promptValue = element.promptTemplate?.trim().length
     ? element.promptTemplate
@@ -812,6 +821,12 @@ export function TemplateAIElement(props: PlateElementProps<TemplateAIElementNode
           nodes={variableCatalog}
           loading={variableCatalogLoading}
           onChange={(nextPrompt) => onSave({ promptTemplate: nextPrompt })}
+          textStyle={{
+            textAlign: align,
+            lineHeight,
+            fontSize: `${fontSize}pt`,
+            fontFamily: resolvedFontFamily,
+          }}
         />
       </BlockShell>
       {children}

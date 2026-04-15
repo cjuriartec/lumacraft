@@ -60,6 +60,10 @@ const collectionState = vi.hoisted(() => ({
   ],
 }));
 
+const breadcrumbState = vi.hoisted(() => ({
+  useBreadcrumbs: vi.fn(),
+}));
+
 const plateState = vi.hoisted(() => ({
   onChange: null as null | ((args: { value: unknown }) => void),
   triggerChange(value: unknown) {
@@ -80,7 +84,7 @@ vi.mock("@/modules/collection/presentation/hooks/use-collections", () => ({
 }));
 
 vi.mock("@/shared/presentation/providers/breadcrumb-provider", () => ({
-  useBreadcrumbs: vi.fn(),
+  useBreadcrumbs: breadcrumbState.useBreadcrumbs,
 }));
 
 vi.mock("next/link", () => ({
@@ -284,6 +288,38 @@ describe("RecordDocumentEditorPage", () => {
     documentState.regenerating = false;
     documentState.regenerate = vi.fn(async () => true);
     plateState.onChange = null;
+  });
+
+  it("registers a breadcrumb link back to the record detail page", () => {
+    render(
+      <RecordDocumentEditorPage
+        collectionId="collection-1"
+        recordId="record-1"
+        templateId="template-1"
+      />,
+    );
+
+    expect(breadcrumbState.useBreadcrumbs).toHaveBeenCalledWith([
+      { label: "Colecciones", href: "/collections" },
+      { label: "Clientes", href: "/collections/collection-1" },
+      { label: "Cliente Uno", href: "/collections/collection-1/records/record-1" },
+      { label: "Contrato Persistido" },
+    ]);
+  });
+
+  it("links the back button to the record detail page", () => {
+    render(
+      <RecordDocumentEditorPage
+        collectionId="collection-1"
+        recordId="record-1"
+        templateId="template-1"
+      />,
+    );
+
+    expect(screen.getAllByRole("link")[0]).toHaveAttribute(
+      "href",
+      "/collections/collection-1/records/record-1",
+    );
   });
 
   it("renders the persisted document header and pdf action", () => {

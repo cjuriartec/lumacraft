@@ -963,13 +963,14 @@ export function DataGrid({
                       {renderCellValue(record, field)}
                     </TableCell>
                   ))}
-                  <TableCell className="text-right py-3 px-4">
+                  <TableCell className="text-right py-3 px-4" data-testid="actions-cell">
                     {(canRead || canUpdate || canDelete) && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
                             variant="ghost"
                             size="icon"
+                            data-testid="row-actions"
                             aria-label={`Acciones para registro ${record.id}`}
                             className="h-8 w-8 text-muted hover:text-foreground hover:bg-surface-hover transition-all cursor-pointer"
                           >

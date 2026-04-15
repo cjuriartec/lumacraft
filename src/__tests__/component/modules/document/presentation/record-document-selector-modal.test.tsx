@@ -5,17 +5,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { makeTemplate, resetFactories } from "@/__tests__/factories/domain-factories";
 import { RecordDocumentSelectorModal } from "@/modules/document/presentation/components/record-document-selector-modal";
 
-const routerState = vi.hoisted(() => ({
-  push: vi.fn(),
-}));
-
 const templatesState = vi.hoisted(() => ({
   templates: [] as ReturnType<typeof makeTemplate>[],
   loading: false,
-}));
-
-vi.mock("next/navigation", () => ({
-  useRouter: () => routerState,
 }));
 
 vi.mock("@/modules/template/presentation/hooks/use-templates", () => ({
@@ -57,6 +49,7 @@ describe("RecordDocumentSelectorModal", () => {
   beforeEach(() => {
     resetFactories();
     vi.clearAllMocks();
+    vi.stubGlobal("window", { open: vi.fn() });
     templatesState.loading = false;
     templatesState.templates = [
       makeTemplate({
@@ -82,8 +75,9 @@ describe("RecordDocumentSelectorModal", () => {
     fireEvent.click(screen.getByRole("button", { name: "select-template" }));
     fireEvent.click(screen.getByRole("button", { name: /Abrir/i }));
 
-    expect(routerState.push).toHaveBeenCalledWith(
+    expect(window.open).toHaveBeenCalledWith(
       "/collections/collection-1/records/record-1/documents/template-1",
+      "_blank",
     );
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
