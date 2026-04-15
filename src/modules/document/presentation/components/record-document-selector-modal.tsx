@@ -58,7 +58,8 @@ export function RecordDocumentSelectorModal({
   const handleOpenDocument = () => {
     if (!recordId || !selectedTemplateId) return;
 
-    router.push(`/collections/${collectionId}/records/${recordId}/documents/${selectedTemplateId}`);
+    const url = `/collections/${collectionId}/records/${recordId}/documents/${selectedTemplateId}`;
+    window.open(url, "_blank");
     onOpenChange(false);
   };
 
