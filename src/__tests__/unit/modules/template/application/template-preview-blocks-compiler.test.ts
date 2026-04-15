@@ -783,6 +783,80 @@ describe("compileTemplatePreviewBlocks", () => {
     expect(generatedText.fontFamily).toBe("roboto");
   });
 
+  it("defaults ai content inside table cells to Arial when legacy blocks omit fontFamily", async () => {
+    const templateBlocks: TemplateBlocks = [
+      {
+        type: "table",
+        children: [
+          {
+            type: "tr",
+            children: [
+              {
+                type: "td",
+                children: [
+                  {
+                    type: "template_ai",
+                    promptTemplate: "Genera un asunto institucional para {{nombre}}",
+                    fontSize: 11,
+                    lineHeight: 1,
+                    children: [{ text: "" }],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ];
+
+    const context: TemplateRuntimeContext = {
+      recordId: "record-1",
+      collectionId: "collection-1",
+      collectionName: "Clientes",
+      root: {
+        nombre: "Coti1",
+      },
+    };
+
+    const result = await compileTemplatePreviewBlocks({
+      requestId: "req-table-ai-default-font-family",
+      blocks: templateBlocks,
+      context,
+      aiProviderFactory: new StructuredAIProviderFactory(),
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const table = (
+      result.value.blocks as Array<{
+        children: Array<{
+          children: Array<{
+            children: Array<Record<string, unknown>>;
+          }>;
+        }>;
+      }>
+    )[0];
+    const paragraph = table.children[0].children[0].children[0] as {
+      type: string;
+      fontFamily?: string;
+      fontSize?: string;
+      children: Array<Record<string, unknown>>;
+    };
+    const generatedText = paragraph.children[0] as {
+      text?: string;
+      fontFamily?: string;
+      fontSize?: string;
+    };
+
+    expect(paragraph.type).toBe("p");
+    expect(paragraph.fontSize).toBe("11pt");
+    expect(paragraph.fontFamily).toBe("arial");
+    expect(generatedText.text).toBe("Informe técnico generado");
+    expect(generatedText.fontSize).toBe("11pt");
+    expect(generatedText.fontFamily).toBe("arial");
+  });
+
   it("invalidates ai block cache when template ai presentation changes", async () => {
     const aiProviderFactory = new CountingStructuredAIProviderFactory();
     const aiBlockCache = new InMemoryTemplateAIBlockCache();

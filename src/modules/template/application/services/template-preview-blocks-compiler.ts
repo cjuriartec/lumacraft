@@ -6,6 +6,8 @@ import { TemplateAIBlockCachePort } from "@/modules/template/application/ports/t
 import { DomainError, fail, ok, Result } from "@/shared/domain/result";
 import { createAsyncLimiter, parallelMapLimit } from "@/shared/lib/async-limiter";
 import {
+  DEFAULT_DOCUMENT_FONT_FAMILY,
+  normalizeSupportedDocumentFontFamily,
   resolveDocumentFontSize,
   resolveDocumentLineHeight,
 } from "@/shared/lib/document-typography";
@@ -56,6 +58,14 @@ interface TemplateTextMarks {
   italic?: boolean;
   strikethrough?: boolean;
   underline?: boolean;
+}
+
+interface TemplateAiPresentationOptions {
+  align?: string;
+  lineHeight?: number;
+  indent?: number;
+  fontSize?: number;
+  fontFamily?: string;
 }
 
 interface CompileTemplatePreviewBlocksParams {
@@ -1108,12 +1118,31 @@ async function compileStructuredSubtreeBlocks(
   return compiledGroups.flat();
 }
 
+function resolveTemplateAiPresentation(
+  node: PlateElementNode,
+  fallback?: TemplateAiPresentationOptions,
+): TemplateAiPresentationOptions {
+  return {
+    align: typeof node.align === "string" ? node.align : fallback?.align,
+    lineHeight: typeof node.lineHeight === "number" ? node.lineHeight : fallback?.lineHeight,
+    indent: typeof node.indent === "number" ? node.indent : fallback?.indent,
+    fontSize: typeof node.fontSize === "number" ? node.fontSize : fallback?.fontSize,
+    fontFamily:
+      typeof node.fontFamily === "string"
+        ? normalizeSupportedDocumentFontFamily(node.fontFamily)
+        : typeof fallback?.fontFamily === "string"
+          ? normalizeSupportedDocumentFontFamily(fallback.fontFamily)
+          : DEFAULT_DOCUMENT_FONT_FAMILY,
+  };
+}
+
 async function compileTemplateAiNodeStreamed(
   node: PlateElementNode,
   scope: TemplateRuntimeScope,
   compileContext: CompileContext,
   warnings: string[],
   blockMeta: TemplatePreviewBlockMeta,
+  fallbackPresentation?: TemplateAiPresentationOptions,
 ): Promise<PlateElementNode[]> {
   const promptTemplate =
     typeof node.promptTemplate === "string"
@@ -1168,6 +1197,8 @@ async function compileTemplateAiNodeStreamed(
     },
   };
 
+  const presentation = resolveTemplateAiPresentation(node, fallbackPresentation);
+
   const aiCacheKey = hashStableValue({
     providerId: providerResult.value.id,
     requestedProvider,
@@ -1180,11 +1211,11 @@ async function compileTemplateAiNodeStreamed(
     responseFormat: request.responseFormat,
     aiSettingsHash: compileContext.aiSettingsHash ?? "default",
     presentation: {
-      align: typeof node.align === "string" ? node.align : "default",
-      lineHeight: typeof node.lineHeight === "number" ? node.lineHeight : "default",
-      indent: typeof node.indent === "number" ? node.indent : "default",
-      fontSize: typeof node.fontSize === "number" ? node.fontSize : "default",
-      fontFamily: typeof node.fontFamily === "string" ? node.fontFamily : "default",
+      align: presentation.align ?? "default",
+      lineHeight: presentation.lineHeight ?? "default",
+      indent: presentation.indent ?? "default",
+      fontSize: presentation.fontSize ?? "default",
+      fontFamily: presentation.fontFamily ?? "default",
     },
   });
 
@@ -1224,8 +1255,10 @@ async function compileTemplateAiNodeStreamed(
         aiWarnings.push(streamError.message);
         const fallbackBlocks = [
           toParagraph(`AI error: ${streamError.message}`, {
-            align: typeof node.align === "string" ? node.align : undefined,
-            lineHeight: typeof node.lineHeight === "number" ? node.lineHeight : undefined,
+            align: presentation.align,
+            lineHeight: presentation.lineHeight,
+            fontSize: presentation.fontSize,
+            fontFamily: presentation.fontFamily,
           }),
         ];
 
@@ -1258,11 +1291,11 @@ async function compileTemplateAiNodeStreamed(
         compileContext,
         parseWarnings,
         {
-          align: typeof node.align === "string" ? node.align : undefined,
-          lineHeight: typeof node.lineHeight === "number" ? node.lineHeight : undefined,
-          indent: typeof node.indent === "number" ? node.indent : undefined,
-          fontSize: typeof node.fontSize === "number" ? node.fontSize : undefined,
-          fontFamily: typeof node.fontFamily === "string" ? node.fontFamily : undefined,
+          align: presentation.align,
+          lineHeight: presentation.lineHeight,
+          indent: presentation.indent,
+          fontSize: presentation.fontSize,
+          fontFamily: presentation.fontFamily,
         },
       );
 
@@ -1272,11 +1305,11 @@ async function compileTemplateAiNodeStreamed(
           : await Promise.all(
               (aiText ? aiText.split("\n") : []).map((line) =>
                 parseLineToBlock(line, compileContext, parseWarnings, {
-                  align: typeof node.align === "string" ? node.align : undefined,
-                  lineHeight: typeof node.lineHeight === "number" ? node.lineHeight : undefined,
-                  indent: typeof node.indent === "number" ? node.indent : undefined,
-                  fontSize: typeof node.fontSize === "number" ? node.fontSize : undefined,
-                  fontFamily: typeof node.fontFamily === "string" ? node.fontFamily : undefined,
+                  align: presentation.align,
+                  lineHeight: presentation.lineHeight,
+                  indent: presentation.indent,
+                  fontSize: presentation.fontSize,
+                  fontFamily: presentation.fontFamily,
                 }),
               ),
             );
@@ -1286,8 +1319,10 @@ async function compileTemplateAiNodeStreamed(
           ? finalBlocks
           : [
               toParagraph("AI no devolvio contenido para este bloque.", {
-                align: typeof node.align === "string" ? node.align : undefined,
-                lineHeight: typeof node.lineHeight === "number" ? node.lineHeight : undefined,
+                align: presentation.align,
+                lineHeight: presentation.lineHeight,
+                fontSize: presentation.fontSize,
+                fontFamily: presentation.fontFamily,
               }),
             ];
 
@@ -1319,8 +1354,10 @@ async function compileTemplateAiNodeStreamed(
       warnings.push(compiledResult.error.message);
       return [
         toParagraph(`AI error: ${compiledResult.error.message}`, {
-          align: typeof node.align === "string" ? node.align : undefined,
-          lineHeight: typeof node.lineHeight === "number" ? node.lineHeight : undefined,
+          align: presentation.align,
+          lineHeight: presentation.lineHeight,
+          fontSize: presentation.fontSize,
+          fontFamily: presentation.fontFamily,
         }),
       ];
     }
@@ -1387,6 +1424,13 @@ async function compileParagraphNode(
         compileContext,
         warnings,
         blockMeta,
+        {
+          align: typeof node.align === "string" ? node.align : undefined,
+          lineHeight: typeof node.lineHeight === "number" ? node.lineHeight : undefined,
+          indent: typeof node.indent === "number" ? node.indent : undefined,
+          fontSize: typeof node.fontSize === "number" ? node.fontSize : undefined,
+          fontFamily: typeof node.fontFamily === "string" ? node.fontFamily : undefined,
+        },
       );
       const inlineAiChildren = flattenBlocksToInlineDescendants(
         aiBlocks,
@@ -1773,6 +1817,13 @@ async function compileNode(
             compileContext,
             warnings,
             blockMeta,
+            {
+              align: typeof node.align === "string" ? node.align : undefined,
+              lineHeight: typeof node.lineHeight === "number" ? node.lineHeight : undefined,
+              indent: typeof node.indent === "number" ? node.indent : undefined,
+              fontSize: typeof node.fontSize === "number" ? node.fontSize : undefined,
+              fontFamily: typeof node.fontFamily === "string" ? node.fontFamily : undefined,
+            },
           );
 
           if (node.type === "td" || node.type === "th") {

@@ -26,6 +26,7 @@ import * as React from "react";
 
 import { TemplateBlocks } from "@/modules/template/domain/types/template-blocks";
 import {
+  DEFAULT_DOCUMENT_FONT_FAMILY,
   DOCUMENT_FONT_FAMILY_OPTIONS,
   resolveDocumentFontFamily,
   resolveDocumentFontSize,
@@ -134,6 +135,7 @@ export function createConditionalElement(): TemplateConditionalElementNode {
   return {
     type: TEMPLATE_CONDITIONAL_TYPE,
     children: baseChildren(),
+    fontFamily: DEFAULT_DOCUMENT_FONT_FAMILY,
     fieldPath: "estado",
     operator: "equals",
     value: "aprobado",
@@ -146,6 +148,7 @@ export function createListElement(): TemplateListElementNode {
   return {
     type: TEMPLATE_LIST_TYPE,
     children: baseChildren(),
+    fontFamily: DEFAULT_DOCUMENT_FONT_FAMILY,
     sourcePath: "items",
     itemAlias: "item",
     itemTemplate: "- {{item.nombre}}\n",
@@ -158,6 +161,7 @@ export function createSwitchElement(): TemplateSwitchElementNode {
   return {
     type: TEMPLATE_SWITCH_TYPE,
     children: baseChildren(),
+    fontFamily: DEFAULT_DOCUMENT_FONT_FAMILY,
     fieldPath: "estado",
     cases: [
       { equals: "aprobado", template: "Estado aprobado\n" },
@@ -171,6 +175,7 @@ export function createAIElement(): TemplateAIElementNode {
   return {
     type: TEMPLATE_AI_TYPE,
     children: baseChildren(),
+    fontFamily: DEFAULT_DOCUMENT_FONT_FAMILY,
     promptTemplate: DEFAULT_TEMPLATE_AI_PROMPT,
   };
 }
