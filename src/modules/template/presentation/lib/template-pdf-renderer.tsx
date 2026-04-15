@@ -17,7 +17,6 @@ import * as React from "react";
 import {
   DEFAULT_DOCUMENT_FONT_FAMILY,
   DEFAULT_DOCUMENT_FONT_SIZE,
-  DEFAULT_DOCUMENT_LINE_HEIGHT,
   resolveDocumentFontFamily,
   resolveDocumentFontSize,
   resolveDocumentLineHeight,
@@ -37,7 +36,8 @@ let pdfFontsRegistered = false;
 
 const DEFAULT_PDF_IMAGE_ESTIMATE_HEIGHT = 36;
 const PDF_HEADER_FOOTER_FONT_SIZE = 10;
-const PDF_HEADER_FOOTER_LINE_HEIGHT = 1.625;
+const PDF_DEFAULT_LINE_HEIGHT = 1.15;
+const PDF_HEADER_FOOTER_LINE_HEIGHT = 1.15;
 const PDF_PAGE_BODY_PADDING_BOTTOM = 60;
 const PDF_PAGE_BODY_PADDING_TOP = 60;
 const PDF_PAGE_HORIZONTAL_PADDING = 72;
@@ -255,7 +255,7 @@ function resolveBlockTypography(
     node.type,
   );
   const lineHeight = resolveDocumentLineHeight(
-    node.lineHeight ?? inheritedTypography?.lineHeight ?? DEFAULT_DOCUMENT_LINE_HEIGHT,
+    node.lineHeight ?? inheritedTypography?.lineHeight ?? PDF_DEFAULT_LINE_HEIGHT,
   );
 
   return {
@@ -521,7 +521,7 @@ const styles = StyleSheet.create({
     color: "#1a1a1a",
     fontFamily: resolveDocumentFontFamily("pdf", DEFAULT_DOCUMENT_FONT_FAMILY),
     fontSize: DEFAULT_DOCUMENT_FONT_SIZE,
-    lineHeight: DEFAULT_DOCUMENT_LINE_HEIGHT,
+    lineHeight: PDF_DEFAULT_LINE_HEIGHT,
     paddingBottom: PDF_PAGE_BODY_PADDING_BOTTOM,
     paddingHorizontal: PDF_PAGE_HORIZONTAL_PADDING,
     paddingTop: PDF_PAGE_BODY_PADDING_TOP,
@@ -611,7 +611,7 @@ function estimatePdfBlockHeight(
     node.type,
   );
   const lineHeight = resolveDocumentLineHeight(
-    node.lineHeight ?? inheritedTypography?.lineHeight ?? DEFAULT_DOCUMENT_LINE_HEIGHT,
+    node.lineHeight ?? inheritedTypography?.lineHeight ?? PDF_DEFAULT_LINE_HEIGHT,
   );
   const textContent = collectNodeTextContent(node).trim();
   const charsPerLine = node.type.startsWith("h") ? 42 : 70;
