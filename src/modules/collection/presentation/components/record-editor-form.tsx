@@ -551,6 +551,8 @@ export function RecordEditorForm({
               type="button"
               variant="outline"
               size="sm"
+              aria-label={`Nuevo en ${targetCollectionLabel}`}
+              title={`Nuevo en ${targetCollectionLabel}`}
               className="h-10 rounded-xl border-border/50 bg-background px-3 text-xs font-semibold text-foreground/75 hover:bg-surface-hover/40 hover:text-foreground"
               onClick={() =>
                 setQuickCreateOpen((prev) => ({

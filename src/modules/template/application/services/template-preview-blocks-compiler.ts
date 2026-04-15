@@ -66,6 +66,9 @@ interface TemplateAiPresentationOptions {
   indent?: number;
   fontSize?: number;
   fontFamily?: string;
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
 }
 
 interface TemplateLogicPresentationOptions {
@@ -74,6 +77,9 @@ interface TemplateLogicPresentationOptions {
   indent?: number;
   fontSize?: number;
   fontFamily?: string;
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
 }
 
 interface CompileTemplatePreviewBlocksParams {
@@ -762,6 +768,9 @@ async function parseLineToBlock(
     indent?: number;
     fontSize?: number;
     fontFamily?: string;
+    bold?: boolean;
+    italic?: boolean;
+    underline?: boolean;
   },
 ): Promise<PlateElementNode> {
   const trimmed = line.trim();
@@ -773,11 +782,20 @@ async function parseLineToBlock(
   const typographyMarks: TemplateTextMarks = {
     ...(fontSize ? { fontSize } : {}),
     ...(fontFamily ? { fontFamily } : {}),
+    ...(options?.bold ? { bold: true } : {}),
+    ...(options?.italic ? { italic: true } : {}),
+    ...(options?.underline ? { underline: true } : {}),
   };
   const hasMarks = Object.keys(typographyMarks).length > 0;
 
   if (trimmed.length === 0)
-    return toParagraph("", { align, lineHeight, fontSize: options?.fontSize, fontFamily });
+    return toParagraph("", {
+      align,
+      lineHeight,
+      fontSize: options?.fontSize,
+      fontFamily,
+      marks: hasMarks ? typographyMarks : undefined,
+    });
 
   const headingMatch = /^(#{1,3})\s+(.+)$/.exec(trimmed);
   if (headingMatch) {
@@ -841,7 +859,13 @@ async function parseLineToBlock(
       align: align as "left" | "center" | "right" | "justify",
     });
   }
-  return toParagraph(trimmed, { align, lineHeight, fontSize: options?.fontSize, fontFamily });
+  return toParagraph(trimmed, {
+    align,
+    lineHeight,
+    fontSize: options?.fontSize,
+    fontFamily,
+    marks: hasMarks ? typographyMarks : undefined,
+  });
 }
 
 async function renderTemplateToBlocks(
@@ -855,6 +879,9 @@ async function renderTemplateToBlocks(
     indent?: number;
     fontSize?: number;
     fontFamily?: string;
+    bold?: boolean;
+    italic?: boolean;
+    underline?: boolean;
   },
 ): Promise<PlateElementNode[]> {
   const rendered = interpolateTemplateString(template, scope);
@@ -893,6 +920,9 @@ async function structuredBlockToPlate(
     indent?: number;
     fontSize?: number;
     fontFamily?: string;
+    bold?: boolean;
+    italic?: boolean;
+    underline?: boolean;
   },
 ): Promise<PlateElementNode[]> {
   const align = options?.align ?? "left";
@@ -903,6 +933,9 @@ async function structuredBlockToPlate(
   const typographyMarks: TemplateTextMarks = {
     ...(fontSize ? { fontSize } : {}),
     ...(fontFamily ? { fontFamily } : {}),
+    ...(options?.bold ? { bold: true } : {}),
+    ...(options?.italic ? { italic: true } : {}),
+    ...(options?.underline ? { underline: true } : {}),
   };
   const hasMarks = Object.keys(typographyMarks).length > 0;
 
@@ -914,6 +947,7 @@ async function structuredBlockToPlate(
           lineHeight,
           fontSize: options?.fontSize,
           fontFamily,
+          marks: hasMarks ? typographyMarks : undefined,
         }),
       ];
     case "heading":
@@ -994,6 +1028,9 @@ async function parseStructuredAIDocument(
     indent?: number;
     fontSize?: number;
     fontFamily?: string;
+    bold?: boolean;
+    italic?: boolean;
+    underline?: boolean;
   },
 ): Promise<PlateElementNode[] | null> {
   const candidate = extractJsonCandidate(raw);
@@ -1148,6 +1185,9 @@ function resolveTemplateAiPresentation(
         : typeof fallback?.fontFamily === "string"
           ? normalizeSupportedDocumentFontFamily(fallback.fontFamily)
           : DEFAULT_DOCUMENT_FONT_FAMILY,
+    bold: node.bold === true ? true : fallback?.bold,
+    italic: node.italic === true ? true : fallback?.italic,
+    underline: node.underline === true ? true : fallback?.underline,
   };
 }
 
@@ -1163,6 +1203,9 @@ function resolveTemplateLogicPresentation(
       typeof node.fontFamily === "string"
         ? normalizeSupportedDocumentFontFamily(node.fontFamily)
         : undefined,
+    bold: node.bold === true ? true : undefined,
+    italic: node.italic === true ? true : undefined,
+    underline: node.underline === true ? true : undefined,
   };
 }
 
@@ -1181,6 +1224,13 @@ function applyPresentationFallbackToTextNode(
       : {}),
     ...(node.fontFamily === undefined && fallback.fontFamily
       ? { fontFamily: fallback.fontFamily }
+      : {}),
+    ...(node.bold === undefined && fallback.bold !== undefined ? { bold: fallback.bold } : {}),
+    ...(node.italic === undefined && fallback.italic !== undefined
+      ? { italic: fallback.italic }
+      : {}),
+    ...(node.underline === undefined && fallback.underline !== undefined
+      ? { underline: fallback.underline }
       : {}),
   };
 }
@@ -1207,6 +1257,13 @@ function applyPresentationFallbackToNode(
       : {}),
     ...(node.fontFamily === undefined && fallback.fontFamily
       ? { fontFamily: fallback.fontFamily }
+      : {}),
+    ...(node.bold === undefined && fallback.bold !== undefined ? { bold: fallback.bold } : {}),
+    ...(node.italic === undefined && fallback.italic !== undefined
+      ? { italic: fallback.italic }
+      : {}),
+    ...(node.underline === undefined && fallback.underline !== undefined
+      ? { underline: fallback.underline }
       : {}),
     ...(Array.isArray(node.children)
       ? {
@@ -1302,6 +1359,9 @@ async function compileTemplateAiNodeStreamed(
       indent: presentation.indent ?? "default",
       fontSize: presentation.fontSize ?? "default",
       fontFamily: presentation.fontFamily ?? "default",
+      bold: presentation.bold ?? "default",
+      italic: presentation.italic ?? "default",
+      underline: presentation.underline ?? "default",
     },
   });
 
@@ -1382,6 +1442,9 @@ async function compileTemplateAiNodeStreamed(
           indent: presentation.indent,
           fontSize: presentation.fontSize,
           fontFamily: presentation.fontFamily,
+          bold: presentation.bold,
+          italic: presentation.italic,
+          underline: presentation.underline,
         },
       );
 
@@ -1396,6 +1459,9 @@ async function compileTemplateAiNodeStreamed(
                   indent: presentation.indent,
                   fontSize: presentation.fontSize,
                   fontFamily: presentation.fontFamily,
+                  bold: presentation.bold,
+                  italic: presentation.italic,
+                  underline: presentation.underline,
                 }),
               ),
             );
@@ -1472,10 +1538,12 @@ async function compileParagraphNode(
     return [singleImage];
   }
 
+  const paragraphMarks = extractTextMarks(node);
   const compiledChildren: PlateDescendantNode[] = [];
   for (const child of node.children) {
     if (isTextNode(child)) {
       compiledChildren.push({
+        ...paragraphMarks,
         ...child,
         text: interpolateTemplateString(child.text, scope),
       });
@@ -1495,9 +1563,12 @@ async function compileParagraphNode(
 
       compiledChildren.push(
         toPlateText(transformedText, {
-          ...extractTextMarks(child, {
-            fallbackFontFamily: typeof node.fontFamily === "string" ? node.fontFamily : undefined,
-          }),
+          ...mergeTextMarks(
+            paragraphMarks,
+            extractTextMarks(child, {
+              fallbackFontFamily: typeof node.fontFamily === "string" ? node.fontFamily : undefined,
+            }),
+          ),
         }),
       );
       continue;
@@ -1626,6 +1697,9 @@ async function compileTemplateConditionalNode(
     indent: typeof node.indent === "number" ? node.indent : undefined,
     fontSize: typeof node.fontSize === "number" ? node.fontSize : undefined,
     fontFamily: typeof node.fontFamily === "string" ? node.fontFamily : undefined,
+    bold: node.bold === true ? true : undefined,
+    italic: node.italic === true ? true : undefined,
+    underline: node.underline === true ? true : undefined,
   });
 }
 
@@ -1695,6 +1769,9 @@ async function compileTemplateSwitchNode(
     indent: typeof node.indent === "number" ? node.indent : undefined,
     fontSize: typeof node.fontSize === "number" ? node.fontSize : undefined,
     fontFamily: typeof node.fontFamily === "string" ? node.fontFamily : undefined,
+    bold: node.bold === true ? true : undefined,
+    italic: node.italic === true ? true : undefined,
+    underline: node.underline === true ? true : undefined,
   });
 }
 
@@ -1767,6 +1844,9 @@ async function compileTemplateListNode(
               indent: presentation.indent,
               fontSize: presentation.fontSize,
               fontFamily: presentation.fontFamily,
+              bold: presentation.bold,
+              italic: presentation.italic,
+              underline: presentation.underline,
             });
 
       if (listStyle === "bullet" || listStyle === "number") {
@@ -1868,10 +1948,12 @@ async function compileNode(
         return [{ ...node, children: [toPlateText("")] }];
       }
 
+      const parentMarks = extractTextMarks(node);
       const compiledChildren: PlateDescendantNode[] = [];
       for (const child of children) {
         if (isTextNode(child)) {
           compiledChildren.push({
+            ...parentMarks,
             ...child,
             text: interpolateTemplateString(child.text, scope),
           });
@@ -1892,10 +1974,13 @@ async function compileNode(
 
           compiledChildren.push(
             toPlateText(transformedText, {
-              ...extractTextMarks(child, {
-                fallbackFontFamily:
-                  typeof node.fontFamily === "string" ? node.fontFamily : undefined,
-              }),
+              ...mergeTextMarks(
+                parentMarks,
+                extractTextMarks(child, {
+                  fallbackFontFamily:
+                    typeof node.fontFamily === "string" ? node.fontFamily : undefined,
+                }),
+              ),
             }),
           );
           continue;
@@ -1914,6 +1999,9 @@ async function compileNode(
               indent: typeof node.indent === "number" ? node.indent : undefined,
               fontSize: typeof node.fontSize === "number" ? node.fontSize : undefined,
               fontFamily: typeof node.fontFamily === "string" ? node.fontFamily : undefined,
+              bold: node.bold === true ? true : undefined,
+              italic: node.italic === true ? true : undefined,
+              underline: node.underline === true ? true : undefined,
             },
           );
 

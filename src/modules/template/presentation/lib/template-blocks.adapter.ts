@@ -43,8 +43,7 @@ function sanitizePlateDescendant(node: PlateDescendantNode): PlateDescendantNode
   const sanitizedChildren = node.children.map(sanitizePlateDescendant);
 
   if (node.type === "tr") {
-    const { size: size, ...rest } = node as TElement & { size?: unknown };
-    console.log(size);
+    const { size: _size, ...rest } = node as TElement & { size?: unknown };
     return {
       ...rest,
       children: sanitizedChildren,

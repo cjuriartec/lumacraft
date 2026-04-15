@@ -504,6 +504,9 @@ describe("compileTemplatePreviewBlocks", () => {
           operator: "equals",
           value: true,
           align: "center",
+          bold: true,
+          italic: true,
+          underline: true,
           lineHeight: 1.5,
           fontSize: 11,
           fontFamily: "arial",
@@ -519,6 +522,9 @@ describe("compileTemplatePreviewBlocks", () => {
           type: "template_switch",
           fieldPath: "estado",
           align: "right",
+          bold: true,
+          italic: true,
+          underline: true,
           lineHeight: 1.2,
           fontSize: 10,
           fontFamily: "arial",
@@ -541,6 +547,9 @@ describe("compileTemplatePreviewBlocks", () => {
           sourcePath: "referencias",
           itemAlias: "item",
           align: "justify",
+          bold: true,
+          italic: true,
+          underline: true,
           lineHeight: 1.4,
           fontSize: 11,
           fontFamily: "arial",
@@ -563,9 +572,11 @@ describe("compileTemplatePreviewBlocks", () => {
     const compiled = result.value.blocks as Array<Record<string, unknown>>;
     const conditionalBlock = compiled.find((block) =>
       JSON.stringify(block).includes("Condicional visible"),
-    );
+    ) as { children?: Array<Record<string, unknown>> } | undefined;
     const switchBlock = compiled.find((block) => JSON.stringify(block).includes("Switch visible"));
-    const listBlock = compiled.find((block) => JSON.stringify(block).includes("Referencia 1"));
+    const listBlock = compiled.find((block) =>
+      JSON.stringify(block).includes("Referencia 1"),
+    ) as { children?: Array<Record<string, unknown>> } | undefined;
 
     expect(conditionalBlock).toMatchObject({
       type: "p",
@@ -587,6 +598,22 @@ describe("compileTemplatePreviewBlocks", () => {
       lineHeight: 1.4,
       fontSize: "11pt",
       fontFamily: "arial",
+    });
+    expect(conditionalBlock?.children?.[0]).toMatchObject({
+      bold: true,
+      italic: true,
+      underline: true,
+    });
+    expect((switchBlock as { children?: Array<Record<string, unknown>> } | undefined)?.children?.[0])
+      .toMatchObject({
+        bold: true,
+        italic: true,
+        underline: true,
+      });
+    expect(listBlock?.children?.[0]).toMatchObject({
+      bold: true,
+      italic: true,
+      underline: true,
     });
   });
 
@@ -736,6 +763,50 @@ describe("compileTemplatePreviewBlocks", () => {
     expect(generatedText).toBeDefined();
     expect(generatedText?.fontSize).toBe("11pt");
     expect(generatedText?.fontFamily).toBe("roboto");
+  });
+
+  it("preserves bold, italic and underline for generated ai blocks", async () => {
+    const templateBlocks: TemplateBlocks = [
+      {
+        type: "template_ai",
+        promptTemplate: "Genera un informe basado en {{nombre}}",
+        bold: true,
+        italic: true,
+        underline: true,
+        fontSize: 11,
+        fontFamily: "arial",
+        children: [{ text: "" }],
+      },
+    ];
+
+    const context: TemplateRuntimeContext = {
+      recordId: "record-1",
+      collectionId: "collection-1",
+      collectionName: "Clientes",
+      root: {
+        nombre: "Coti1",
+      },
+    };
+
+    const result = await compileTemplatePreviewBlocks({
+      requestId: "req-ai-inline-marks",
+      blocks: templateBlocks,
+      context,
+      aiProviderFactory: new StructuredAIProviderFactory(),
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const paragraph = result.value.blocks[0] as { children?: Array<Record<string, unknown>> };
+    expect(paragraph.children?.[0]).toMatchObject({
+      text: "Informe técnico generado",
+      bold: true,
+      italic: true,
+      underline: true,
+      fontSize: "11pt",
+      fontFamily: "arial",
+    });
   });
 
   it("renders inline hyperlinks returned by ai blocks", async () => {
