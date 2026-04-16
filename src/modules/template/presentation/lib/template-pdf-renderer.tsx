@@ -21,12 +21,13 @@ import {
   resolveDocumentFontFamily,
   resolveDocumentFontSize,
   resolveDocumentLineHeight,
+  resolveParagraphSpacingAfter,
+  resolveParagraphSpacingBefore,
   resolvePdfBlockSpacing,
 } from "@/shared/lib/document-typography";
 
 import { applyTextTransform } from "../../application/services/template-path-resolver";
 import type { PdfHeaderFooterSection, PdfPageConfig } from "../../domain/types/pdf-page-config";
-import { DEFAULT_FOOTER_HEIGHT, DEFAULT_HEADER_HEIGHT } from "../../domain/types/pdf-page-config";
 import type { TemplateBlocks } from "../../domain/types/template-blocks";
 import { resolvePdfImageLayout, resolvePdfImageSource } from "./template-pdf-image-utils";
 
@@ -36,14 +37,18 @@ const ROBOTO_BOLD_FONT_PATH = path.join(process.cwd(), "public/fonts/Roboto-Bold
 let pdfFontsRegistered = false;
 
 const DEFAULT_PDF_IMAGE_ESTIMATE_HEIGHT = 36;
+const PDF_DEFAULT_TEXT_COLOR = "#2f2f2f";
 const PDF_HEADER_FOOTER_FONT_SIZE = 10;
 const PDF_DEFAULT_LINE_HEIGHT = 1.15;
 const PDF_HEADER_FOOTER_LINE_HEIGHT = 1.15;
-const PDF_PAGE_BODY_PADDING_BOTTOM = 60;
-const PDF_PAGE_BODY_PADDING_TOP = 60;
+const PDF_PAGE_BODY_PADDING_BOTTOM = 36;
+const PDF_PAGE_BODY_PADDING_TOP = 36;
 const PDF_PAGE_HORIZONTAL_PADDING = 72;
 const PDF_SECTION_SAFE_INSET = 24;
 const PDF_SECTION_VERTICAL_PADDING = 4;
+const PDF_BODY_SECTION_GAP = 8;
+export const PDF_TABLE_CELL_PADDING_HORIZONTAL = 5;
+export const PDF_TABLE_CELL_PADDING_VERTICAL = 4;
 
 const PDF_HEADER_FOOTER_TYPOGRAPHY: InheritedBlockTypography = {
   fontSize: PDF_HEADER_FOOTER_FONT_SIZE,
@@ -135,6 +140,8 @@ type PlateElementNode = {
   imageWidthPercent?: number;
   indent?: number;
   lineHeight?: string | number;
+  spaceAfter?: number;
+  spaceBefore?: number;
   listStyleType?: "disc" | "decimal";
   path?: string;
   type: string;
@@ -269,12 +276,18 @@ function resolveBlockTypography(
   );
 
   return {
-    color: "#1a1a1a",
+    color: PDF_DEFAULT_TEXT_COLOR,
     fontFamily,
     fontSize,
     lineHeight,
-    marginBottom: spacing.pdfMarginBottom,
-    marginTop: spacing.pdfMarginTop,
+    marginBottom:
+      node.type === "p"
+        ? resolveParagraphSpacingAfter(node.spaceAfter)
+        : spacing.pdfMarginBottom,
+    marginTop:
+      node.type === "p"
+        ? resolveParagraphSpacingBefore(node.spaceBefore)
+        : spacing.pdfMarginTop,
     ...(resolveTextAlign(node.align) ? { textAlign: resolveTextAlign(node.align) } : {}),
   };
 }
@@ -303,6 +316,7 @@ function resolveBlockTextStyle(
     color: blockStyle.color,
     fontFamily: blockStyle.fontFamily,
     fontSize: blockStyle.fontSize,
+    fontWeight: 400,
     lineHeight: blockStyle.lineHeight,
     ...(options?.bold ? { fontWeight: 700 } : {}),
     ...(options?.minHeight ? { minHeight: options.minHeight } : {}),
@@ -331,6 +345,7 @@ function resolveInlineTextStyle(
 
   const style: Style = {
     ...(backgroundColor ? { backgroundColor } : {}),
+    fontWeight: 400,
     ...(node.bold ? { fontWeight: 700 } : {}),
     ...(color ? { color } : {}),
     ...(fontFamily ? { fontFamily } : {}),
@@ -528,7 +543,7 @@ function resolveSystemVariable(fieldPath: string, ctx: SystemVarContext): string
 const styles = StyleSheet.create({
   page: {
     backgroundColor: "#ffffff",
-    color: "#1a1a1a",
+    color: PDF_DEFAULT_TEXT_COLOR,
     fontFamily: resolveDocumentFontFamily("pdf", DEFAULT_DOCUMENT_FONT_FAMILY),
     fontSize: DEFAULT_DOCUMENT_FONT_SIZE,
     lineHeight: PDF_DEFAULT_LINE_HEIGHT,
@@ -573,13 +588,13 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   tableCell: {
-    paddingHorizontal: 4,
-    paddingVertical: 3,
+    paddingHorizontal: PDF_TABLE_CELL_PADDING_HORIZONTAL,
+    paddingVertical: PDF_TABLE_CELL_PADDING_VERTICAL,
   },
   tableHeaderCell: {
     backgroundColor: "#f9fafb",
-    paddingHorizontal: 4,
-    paddingVertical: 3,
+    paddingHorizontal: PDF_TABLE_CELL_PADDING_HORIZONTAL,
+    paddingVertical: PDF_TABLE_CELL_PADDING_VERTICAL,
   },
   tableRow: {
     flexDirection: "row",
@@ -630,23 +645,20 @@ function estimatePdfBlockHeight(
   return Math.ceil(fontSize * lineHeight * lineCount + verticalSpacing);
 }
 
-function resolvePdfSectionHeight(
-  section: PdfHeaderFooterSection | undefined,
-  fallbackHeight: number,
-): number {
+function resolvePdfSectionHeight(section: PdfHeaderFooterSection | undefined): number {
   if (!section?.enabled) {
     return 0;
   }
 
   if (typeof section.height === "number" && Number.isFinite(section.height) && section.height > 0) {
-    return Math.max(fallbackHeight, Math.round(section.height));
+    return Math.round(section.height);
   }
 
   const blocks: PlateElementNode[] = Array.isArray(section.blocks)
     ? (section.blocks as unknown[]).filter(isElementNode)
     : [];
   if (blocks.length === 0) {
-    return fallbackHeight;
+    return 0;
   }
 
   const estimatedContentHeight = blocks.reduce(
@@ -655,10 +667,7 @@ function resolvePdfSectionHeight(
     0,
   );
 
-  return Math.max(
-    fallbackHeight,
-    Math.ceil(estimatedContentHeight + PDF_SECTION_VERTICAL_PADDING * 2),
-  );
+  return Math.ceil(estimatedContentHeight + PDF_SECTION_VERTICAL_PADDING * 2);
 }
 
 function renderBlock(
@@ -980,11 +989,15 @@ function TemplateDocument({
     ? pageConfig.footer
     : undefined;
 
-  const headerHeight = resolvePdfSectionHeight(header, DEFAULT_HEADER_HEIGHT);
-  const footerHeight = resolvePdfSectionHeight(footer, DEFAULT_FOOTER_HEIGHT);
+  const headerHeight = resolvePdfSectionHeight(header);
+  const footerHeight = resolvePdfSectionHeight(footer);
 
-  const paddingTop = PDF_PAGE_BODY_PADDING_TOP + headerHeight;
-  const paddingBottom = PDF_PAGE_BODY_PADDING_BOTTOM + footerHeight;
+  const paddingTop = header
+    ? PDF_SECTION_SAFE_INSET + headerHeight + PDF_BODY_SECTION_GAP
+    : PDF_PAGE_BODY_PADDING_TOP;
+  const paddingBottom = footer
+    ? PDF_SECTION_SAFE_INSET + footerHeight + PDF_BODY_SECTION_GAP
+    : PDF_PAGE_BODY_PADDING_BOTTOM;
 
   const currentDate = new Date().toLocaleDateString("es-PE");
   const templateName = title ?? "";

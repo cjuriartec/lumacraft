@@ -18,6 +18,8 @@ interface DocumentSpacingDefinition {
 export const DEFAULT_DOCUMENT_FONT_FAMILY: SupportedDocumentFontFamily = "arial";
 export const DEFAULT_DOCUMENT_FONT_SIZE = 16;
 export const DEFAULT_DOCUMENT_LINE_HEIGHT = 1.5;
+export const DEFAULT_PARAGRAPH_SPACE_BEFORE = 0;
+export const DEFAULT_PARAGRAPH_SPACE_AFTER = 8;
 
 export const DOCUMENT_BLOCK_FONT_SIZES: Record<DocumentBlockType, number> = {
   p: 16,
@@ -58,8 +60,8 @@ const DOCUMENT_FONT_FAMILY_DEFINITIONS: Record<
 
 const DOCUMENT_BLOCK_SPACING: Record<DocumentBlockType, DocumentSpacingDefinition> = {
   p: {
-    pdfMarginBottom: 14,
-    pdfMarginTop: 0,
+    pdfMarginBottom: DEFAULT_PARAGRAPH_SPACE_AFTER,
+    pdfMarginTop: DEFAULT_PARAGRAPH_SPACE_BEFORE,
   },
   blockquote: {
     pdfMarginBottom: 8,
@@ -186,4 +188,20 @@ export function resolveDocumentLineHeight(value: unknown): number {
 
 export function resolvePdfBlockSpacing(blockType?: unknown): DocumentSpacingDefinition {
   return DOCUMENT_BLOCK_SPACING[resolveDocumentBlockType(blockType)];
+}
+
+export function resolveParagraphSpacingBefore(value: unknown): number {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.max(0, value);
+  }
+
+  return DEFAULT_PARAGRAPH_SPACE_BEFORE;
+}
+
+export function resolveParagraphSpacingAfter(value: unknown): number {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.max(0, value);
+  }
+
+  return DEFAULT_PARAGRAPH_SPACE_AFTER;
 }

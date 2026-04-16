@@ -14,6 +14,8 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 
 import type { TemplateBlocks } from "@/modules/template/domain/types/template-blocks";
 import {
+  PDF_TABLE_CELL_PADDING_HORIZONTAL,
+  PDF_TABLE_CELL_PADDING_VERTICAL,
   renderTemplateToPdfBuffer,
   resolvePdfBlockSpacingForRenderMode,
   resolvePdfFontFamily,
@@ -176,9 +178,14 @@ describe("renderTemplateToPdfBuffer", () => {
     expect(getPdfHeader(result)).toContain(PDF_MAGIC_BYTES);
   });
 
+  it("uses the updated compact padding values for PDF table cells", () => {
+    expect(PDF_TABLE_CELL_PADDING_HORIZONTAL).toBe(5);
+    expect(PDF_TABLE_CELL_PADDING_VERTICAL).toBe(4);
+  });
+
   it("uses tighter spacing for blocks rendered inside table cells", () => {
     expect(resolvePdfBlockSpacingForRenderMode("p", "body")).toEqual({
-      pdfMarginBottom: 14,
+      pdfMarginBottom: 8,
       pdfMarginTop: 0,
     });
     expect(resolvePdfBlockSpacingForRenderMode("p", "tableCell")).toEqual({
@@ -189,6 +196,20 @@ describe("renderTemplateToPdfBuffer", () => {
       pdfMarginBottom: 3,
       pdfMarginTop: 2,
     });
+  });
+
+  it("renders paragraph blocks with custom spaceBefore and spaceAfter", async () => {
+    const blocks: TemplateBlocks = [
+      {
+        type: "p",
+        spaceBefore: 8,
+        spaceAfter: 10,
+        children: [{ text: "Con espaciado personalizado" }],
+      },
+    ];
+
+    const result = await renderTemplateToPdfBuffer(blocks);
+    expect(getPdfHeader(result)).toContain(PDF_MAGIC_BYTES);
   });
 
   it("skips image block if src is missing (no error thrown)", async () => {

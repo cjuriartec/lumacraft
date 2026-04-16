@@ -216,6 +216,10 @@ vi.mock("@/shared/presentation/components/ui/line-height-toolbar-button", () => 
   LineHeightToolbarButton: () => <button type="button">line-height</button>,
 }));
 
+vi.mock("@/shared/presentation/components/ui/paragraph-spacing-toolbar-button", () => ({
+  ParagraphSpacingToolbarButton: () => <button type="button">paragraph-spacing</button>,
+}));
+
 vi.mock("@/shared/presentation/components/ui/link-toolbar-button", () => ({
   LinkToolbarButton: () => <button type="button">link</button>,
 }));
@@ -321,6 +325,7 @@ describe("TemplateEditorPage", () => {
     expect(screen.getByText("indent")).toBeInTheDocument();
     expect(screen.getByText("outdent")).toBeInTheDocument();
     expect(screen.getByText("font-family")).toBeInTheDocument();
+    expect(screen.getByText("paragraph-spacing")).toBeInTheDocument();
     expect(screen.getAllByText("font-color")).toHaveLength(2);
   });
 

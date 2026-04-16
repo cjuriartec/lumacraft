@@ -72,6 +72,7 @@ import {
   NumberedListToolbarButton,
 } from "@/shared/presentation/components/ui/list-toolbar-button";
 import { MarkToolbarButton } from "@/shared/presentation/components/ui/mark-toolbar-button";
+import { ParagraphSpacingToolbarButton } from "@/shared/presentation/components/ui/paragraph-spacing-toolbar-button";
 import { TableToolbarButton } from "@/shared/presentation/components/ui/table-toolbar-button";
 import { ToolbarGroup } from "@/shared/presentation/components/ui/toolbar";
 import { TooltipProvider } from "@/shared/presentation/components/ui/tooltip";
@@ -380,6 +381,7 @@ export default function RecordDocumentEditorPage({
                     <ToolbarGroup>
                       <AlignToolbarButton />
                       <LineHeightToolbarButton />
+                      <ParagraphSpacingToolbarButton />
                       <OutdentToolbarButton />
                       <IndentToolbarButton />
                     </ToolbarGroup>
