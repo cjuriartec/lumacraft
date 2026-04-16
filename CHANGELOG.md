@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.14](https://github.com/cjuriartec/lumacraft/compare/v0.1.13...v0.1.14) (2026-04-16)
+
+
+### ♻️ Code Refactoring
+
+* reduce table default column width to 56px and enforce a 36px minimum width ([95a0996](https://github.com/cjuriartec/lumacraft/commit/95a09964746fe5ab0612091dee24751deba2a279))
+
 ### [0.1.13](https://github.com/cjuriartec/lumacraft/compare/v0.1.12...v0.1.13) (2026-04-16)
 
 
