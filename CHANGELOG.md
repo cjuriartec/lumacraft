@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.11](https://github.com/cjuriartec/lumacraft/compare/v0.1.10...v0.1.11) (2026-04-16)
+
+
+### ✨ Features
+
+* implement paragraph spacing support with new toolbar controls and updated rendering logic ([9402f96](https://github.com/cjuriartec/lumacraft/commit/9402f963ba82717c01a9b7f63d38aa4ae2164b4b))
+
+
+### ♻️ Code Refactoring
+
+* format paragraph spacing components and renderer for improved readability ([3eaf007](https://github.com/cjuriartec/lumacraft/commit/3eaf007570d5c3aa33150593a10efaf6e2643e15))
+
 ### [0.1.10](https://github.com/cjuriartec/lumacraft/compare/v0.1.9...v0.1.10) (2026-04-16)
 
 
