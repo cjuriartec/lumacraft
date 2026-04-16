@@ -33,8 +33,12 @@ import { resolvePdfImageLayout, resolvePdfImageSource } from "./template-pdf-ima
 
 const ROBOTO_REGULAR_FONT_PATH = path.join(process.cwd(), "public/fonts/Roboto-Regular.ttf");
 const ROBOTO_BOLD_FONT_PATH = path.join(process.cwd(), "public/fonts/Roboto-Bold.ttf");
+const ARIAL_REGULAR_FONT_PATH = path.join(process.cwd(), "public/fonts/arial.ttf");
+const ARIAL_BOLD_FONT_PATH = path.join(process.cwd(), "public/fonts/G_ari_bd.TTF");
+const ARIAL_ITALIC_FONT_PATH = path.join(process.cwd(), "public/fonts/G_ari_i.TTF");
 
 let pdfFontsRegistered = false;
+let pdfArialRegistered = false;
 
 const DEFAULT_PDF_IMAGE_ESTIMATE_HEIGHT = 36;
 const PDF_DEFAULT_TEXT_COLOR = "#000000";
@@ -90,27 +94,51 @@ function registerPdfFonts() {
     ],
   });
 
+  if (
+    fs.existsSync(ARIAL_REGULAR_FONT_PATH) &&
+    fs.existsSync(ARIAL_BOLD_FONT_PATH) &&
+    fs.existsSync(ARIAL_ITALIC_FONT_PATH)
+  ) {
+    Font.register({
+      family: "Arial",
+      fonts: [
+        {
+          src: ARIAL_REGULAR_FONT_PATH,
+          fontStyle: "normal",
+          fontWeight: 400,
+        },
+        {
+          src: ARIAL_ITALIC_FONT_PATH,
+          fontStyle: "italic",
+          fontWeight: 400,
+        },
+        {
+          src: ARIAL_BOLD_FONT_PATH,
+          fontStyle: "normal",
+          fontWeight: 700,
+        },
+        {
+          src: ARIAL_BOLD_FONT_PATH,
+          fontStyle: "italic",
+          fontWeight: 700,
+        },
+      ],
+    });
+
+    pdfArialRegistered = true;
+  }
+
   pdfFontsRegistered = true;
 }
 
 registerPdfFonts();
 
-function requiresUnicodePdfFont(text: string | undefined): boolean {
-  if (!text) return false;
-
-  // Basic Latin renders fine with built-in Helvetica. Extended Latin characters
-  // like accented vowels and n-tilde require the embedded Unicode font.
-  return /[^\u0000-\u00ff]|[À-ÿ]/.test(text);
-}
-
-export function resolvePdfFontFamily(value: unknown, sampleText?: string): string {
+export function resolvePdfFontFamily(value: unknown): string {
   const normalizedFontFamily = normalizeSupportedDocumentFontFamily(value);
 
-  // Preserve the Arial/Helvetica look when possible, but switch to the embedded
-  // Unicode font only when the content needs accented/extended Latin glyphs.
   if (normalizedFontFamily === "arial") {
-    if (pdfFontsRegistered && requiresUnicodePdfFont(sampleText)) {
-      return "Roboto";
+    if (pdfArialRegistered) {
+      return "Arial";
     }
 
     return resolveDocumentFontFamily("pdf", "arial");
@@ -277,7 +305,6 @@ function resolveBlockTypography(
     typeof node.fontFamily === "string"
       ? node.fontFamily
       : (inheritedTypography?.fontFamily ?? DEFAULT_DOCUMENT_FONT_FAMILY),
-    collectNodeTextContent(node),
   );
   const fontSize = resolveDocumentFontSize(
     node.fontSize ?? inheritedTypography?.fontSize,
@@ -340,9 +367,7 @@ function resolveInlineTextStyle(
   const backgroundColor =
     resolveColor(node.backgroundColor) ?? (node.highlight ? "#FFF176" : undefined);
   const fontFamily =
-    typeof node.fontFamily === "string"
-      ? resolvePdfFontFamily(node.fontFamily, node.text)
-      : undefined;
+    typeof node.fontFamily === "string" ? resolvePdfFontFamily(node.fontFamily) : undefined;
   const fontSize =
     typeof node.fontSize === "string" || typeof node.fontSize === "number"
       ? resolveDocumentFontSize(node.fontSize, context.blockType)
@@ -418,7 +443,7 @@ function renderVariableNode(
       color: typeof node.color === "string" ? node.color : undefined,
       fontFamily:
         typeof node.fontFamily === "string"
-          ? resolvePdfFontFamily(node.fontFamily, text)
+          ? resolvePdfFontFamily(node.fontFamily)
           : context.fontFamily,
       fontSize:
         typeof node.fontSize === "string" || typeof node.fontSize === "number"

@@ -74,6 +74,8 @@ export function useRecordDocument(params: {
   const isSavingRef = useRef(false);
   const queuedBlocksRef = useRef<TemplateBlocks | null>(null);
   const isMountedRef = useRef(true);
+  const latestEditedBlocksRef = useRef<TemplateBlocks | null>(null);
+  const savePromiseRef = useRef<Promise<boolean> | null>(null);
 
   useEffect(() => {
     payloadRef.current = payload;
@@ -144,9 +146,9 @@ export function useRecordDocument(params: {
   }, [load]);
 
   const saveDocument = useCallback(
-    async function saveDocument(editedBlocks: TemplateBlocks) {
+    async function saveDocument(editedBlocks: TemplateBlocks): Promise<boolean> {
       const currentPayload = payloadRef.current;
-      if (!currentPayload?.permissions.canUpdate) return;
+      if (!currentPayload?.permissions.canUpdate) return true;
       const expectedVersion = documentVersionRef.current ?? currentPayload.document.version;
       const optimisticNextVersion = expectedVersion + 1;
 
@@ -173,7 +175,7 @@ export function useRecordDocument(params: {
 
       if (!isMountedRef.current) {
         isSavingRef.current = false;
-        return;
+        return false;
       }
 
       if (!saveResult.ok) {
@@ -185,12 +187,12 @@ export function useRecordDocument(params: {
           await load();
           setSaveStatus("error");
           setError("El documento cambió mientras editabas. Se recargó la última versión.");
-          return;
+          return false;
         }
 
         setSaveStatus("error");
         setError(saveResult.error ?? "No fue posible guardar el documento");
-        return;
+        return false;
       }
 
       const nextPayload = saveResult.payload;
@@ -210,8 +212,7 @@ export function useRecordDocument(params: {
         nextPayload &&
         !areTemplateBlocksEqual(pendingBlocks, nextPayload.document.editedBlocks)
       ) {
-        void saveDocument(pendingBlocks);
-        return;
+        return saveDocument(pendingBlocks);
       }
 
       setSaveStatus("saved");
@@ -225,13 +226,30 @@ export function useRecordDocument(params: {
           setSaveStatus("idle");
         }
       }, 2000);
+
+      return true;
     },
     [applyPayload, endpointBase, load],
+  );
+
+  const startSave = useCallback(
+    (editedBlocks: TemplateBlocks) => {
+      const savePromise = saveDocument(editedBlocks).finally(() => {
+        if (savePromiseRef.current === savePromise) {
+          savePromiseRef.current = null;
+        }
+      });
+
+      savePromiseRef.current = savePromise;
+      return savePromise;
+    },
+    [saveDocument],
   );
 
   const handleBlocksChange = useCallback(
     (editedBlocks: TemplateBlocks) => {
       if (!payloadRef.current?.permissions.canUpdate) return;
+      latestEditedBlocksRef.current = editedBlocks;
 
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
@@ -249,11 +267,38 @@ export function useRecordDocument(params: {
           return;
         }
 
-        void saveDocument(editedBlocks);
+        void startSave(editedBlocks);
       }, 1200);
     },
-    [saveDocument],
+    [startSave],
   );
+
+  const flushPendingSave = useCallback(async () => {
+    if (!payloadRef.current?.permissions.canUpdate) {
+      return true;
+    }
+
+    const latestEditedBlocks = latestEditedBlocksRef.current;
+
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+
+      if (latestEditedBlocks) {
+        if (isSavingRef.current) {
+          queuedBlocksRef.current = latestEditedBlocks;
+        } else {
+          return startSave(latestEditedBlocks);
+        }
+      }
+    }
+
+    if (savePromiseRef.current) {
+      return savePromiseRef.current;
+    }
+
+    return true;
+  }, [startSave]);
 
   const regenerate = useCallback(async () => {
     if (!payloadRef.current?.permissions.canUpdate) return false;
@@ -294,6 +339,7 @@ export function useRecordDocument(params: {
     regenerating,
     editorRevision,
     handleBlocksChange,
+    flushPendingSave,
     regenerate,
     reload: load,
     pdfUrl: `${endpointBase}/pdf`,

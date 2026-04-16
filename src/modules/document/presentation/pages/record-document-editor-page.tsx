@@ -104,6 +104,7 @@ export default function RecordDocumentEditorPage({
     regenerating,
     editorRevision,
     handleBlocksChange,
+    flushPendingSave,
     regenerate,
     reload,
     pdfUrl,
@@ -164,6 +165,30 @@ export default function RecordDocumentEditorPage({
       setIsRegenerateDialogOpen(false);
     }
   }, [regenerate, trackMilestone]);
+
+  const handleDownloadPdf = React.useCallback(async () => {
+    let popup: Window | null = null;
+
+    if (canUpdate) {
+      popup = window.open("", "_blank");
+      if (popup) {
+        popup.opener = null;
+      }
+
+      const didSaveSucceed = await flushPendingSave();
+      if (!didSaveSucceed) {
+        popup?.close();
+        return;
+      }
+
+      if (popup) {
+        popup.location.href = pdfUrl;
+        return;
+      }
+    }
+
+    window.open(pdfUrl, "_blank", "noopener");
+  }, [canUpdate, flushPendingSave, pdfUrl]);
 
   if (loading) {
     return (
@@ -291,7 +316,8 @@ export default function RecordDocumentEditorPage({
                   variant="ghost"
                   size="sm"
                   className="h-9 gap-2 cursor-pointer"
-                  onClick={() => window.open(pdfUrl, "_blank", "noopener")}
+                  disabled={canUpdate && saveStatus === "saving"}
+                  onClick={() => void handleDownloadPdf()}
                   aria-label="Descargar PDF"
                 >
                   <Download size={14} />

@@ -45,6 +45,7 @@ const documentState = vi.hoisted(() => ({
   regenerating: false,
   editorRevision: 1,
   handleBlocksChange: vi.fn(),
+  flushPendingSave: vi.fn(async () => true),
   regenerate: vi.fn(async () => true),
   reload: vi.fn(),
   pdfUrl: "/api/documents/doc-1/pdf",
@@ -291,6 +292,7 @@ describe("RecordDocumentEditorPage", () => {
     documentState.error = null;
     documentState.regenerating = false;
     documentState.regenerate = vi.fn(async () => true);
+    documentState.flushPendingSave = vi.fn(async () => true);
     plateState.onChange = null;
   });
 
@@ -340,6 +342,32 @@ describe("RecordDocumentEditorPage", () => {
     expect(screen.getByRole("button", { name: /Descargar PDF/i })).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /Regenerar/i })[0]).toBeInTheDocument();
     expect(screen.getByText("paragraph-spacing")).toBeInTheDocument();
+  });
+
+  it("waits for pending saves before opening the PDF", async () => {
+    const openedWindow = {
+      close: vi.fn(),
+      location: { href: "" },
+      opener: null,
+    } as unknown as Window;
+    const openSpy = vi.spyOn(window, "open").mockReturnValue(openedWindow);
+
+    render(
+      <RecordDocumentEditorPage
+        collectionId="collection-1"
+        recordId="record-1"
+        templateId="template-1"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Descargar PDF/i }));
+
+    await waitFor(() => {
+      expect(documentState.flushPendingSave).toHaveBeenCalled();
+    });
+
+    expect(openSpy).toHaveBeenCalledWith("", "_blank");
+    expect(openedWindow.location.href).toBe("/api/documents/doc-1/pdf");
   });
 
   it("confirms regeneration from the editor", async () => {

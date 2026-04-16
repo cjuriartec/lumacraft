@@ -22,7 +22,9 @@ describe("document-typography", () => {
   });
 
   it("maps each supported family to web, pdf equivalents", () => {
-    expect(resolveDocumentFontFamily("web", "arial")).toBe("Arial, Helvetica, sans-serif");
+    expect(resolveDocumentFontFamily("web", "arial")).toBe(
+      '"Luma Arial", Arial, Helvetica, sans-serif',
+    );
     expect(resolveDocumentFontFamily("pdf", "arial")).toBe("Helvetica");
 
     expect(resolveDocumentFontFamily("web", "roboto")).toBe(

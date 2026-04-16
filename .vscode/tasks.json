@@ -1,0 +1,47 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Lumacraft: Validación Completa",
+      "type": "shell",
+      "command": "npm run validate",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "new",
+        "focus": true,
+        "clear": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Lumacraft: Lint & Fix",
+      "type": "shell",
+      "command": "npm run lint:fix",
+      "problemMatcher": []
+    },
+    {
+      "label": "Lumacraft: Type Check",
+      "type": "shell",
+      "command": "npx tsc --noEmit",
+      "problemMatcher": [
+        "$tsc"
+      ]
+    },
+    {
+      "label": "Lumacraft: Run Tests",
+      "type": "shell",
+      "command": "npm run test:all",
+      "problemMatcher": []
+    },
+    {
+      "label": "Lumacraft: Production Build",
+      "type": "shell",
+      "command": "npm run build",
+      "problemMatcher": []
+    }
+  ]
+}

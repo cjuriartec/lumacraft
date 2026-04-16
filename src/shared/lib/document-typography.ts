@@ -39,7 +39,7 @@ const DOCUMENT_FONT_FAMILY_DEFINITIONS: Record<
   arial: {
     label: "Arial",
     pdf: "Helvetica",
-    web: "Arial, Helvetica, sans-serif",
+    web: '"Luma Arial", Arial, Helvetica, sans-serif',
   },
   roboto: {
     label: "Roboto",
