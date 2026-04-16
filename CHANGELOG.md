@@ -2,6 +2,52 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.10](https://github.com/cjuriartec/lumacraft/compare/v0.1.9...v0.1.10) (2026-04-16)
+
+
+### 💄 Styling
+
+* apply 0.6 opacity to PDF section headers, footers, and editor text ([05848e1](https://github.com/cjuriartec/lumacraft/commit/05848e11051650b80ebab4d42fbcd9846aec7dfb))
+
+
+### ✨ Features
+
+* add bold, italic, and underline text formatting support to template compiler and logic blocks ([e066124](https://github.com/cjuriartec/lumacraft/commit/e0661245f9f4df522673a62e488660f8d4529758))
+* add integrate document selector into record details, and update navigation links ([744cd6e](https://github.com/cjuriartec/lumacraft/commit/744cd6e8e839d1d0743ff08665d5d65e0f7a0256))
+* add textStyle prop to TemplateAIInlinePromptEditor to support dynamic typography rendering ([c609a68](https://github.com/cjuriartec/lumacraft/commit/c609a68f8f079ac605979489f9fb4729f47b6d04))
+* enable AI block hyperlink rendering with security validation ([f40e55b](https://github.com/cjuriartec/lumacraft/commit/f40e55b8ff37c48afe65598d83c443291fd90636))
+* implement inline record editing and transition row actions to a dropdown menu ([69ee76f](https://github.com/cjuriartec/lumacraft/commit/69ee76f20791bcba8e35ed22aaeb3b14c26d05b7))
+* implement optimized block spacing for table cells and refine PDF renderer layout logic ([c4312a4](https://github.com/cjuriartec/lumacraft/commit/c4312a4375b1a0c5bb0a3a9a06ef45447e8540ed))
+* implement PDF document renderer and image utility helpers for template generation ([067096e](https://github.com/cjuriartec/lumacraft/commit/067096e2ff0e501d3ef90decf6c769cc253fb31e))
+* implement PDF page configuration support with editor components and database persistence ([9b23401](https://github.com/cjuriartec/lumacraft/commit/9b23401e5c150fcaaee4befd5804b4a85467a2ed))
+* implement quick-create functionality for related records within the record editor form ([44bd259](https://github.com/cjuriartec/lumacraft/commit/44bd259a1abb1e012397861e343f6332c66a3831))
+* implement template PDF rendering engine with block compilation and unit tests ([d7913a8](https://github.com/cjuriartec/lumacraft/commit/d7913a825b98ab9585bd6d2af1ad00000bd9b519))
+* open document links in a new tab using window.open instead of router.push ([e2b3542](https://github.com/cjuriartec/lumacraft/commit/e2b3542aec5f3793e2cb5d7292dae3814b1f948e))
+* redirect authenticated users from login page to home via middleware and client-side effect ([635e794](https://github.com/cjuriartec/lumacraft/commit/635e794b5596d5c4f60becdb7e84dd8dcc2ef0b8))
+* standardize default font family to Arial for new and legacy template AI blocks ([6d83ec8](https://github.com/cjuriartec/lumacraft/commit/6d83ec8c22cc580e1e5dc9546db317e435e3c774))
+* support structured block styles and restrict list source relations to direct fields ([4d70118](https://github.com/cjuriartec/lumacraft/commit/4d701182653b9ea408a2b9259315a551f43ad506))
+
+
+### ♻️ Code Refactoring
+
+* improve readability of secret summary mapping and formatting in ai-settings route ([e72e37b](https://github.com/cjuriartec/lumacraft/commit/e72e37b23d73e8e2c14c35033a9b5c5a53678555))
+* optimize eager record loading with stable hook options and improved abort handling ([8157997](https://github.com/cjuriartec/lumacraft/commit/8157997f527e5ae1ee0662c0fc66d7f9c2b6cb1a))
+* remove unused useRouter hook from RecordDocumentSelectorModal and its test suite ([7c714aa](https://github.com/cjuriartec/lumacraft/commit/7c714aab40c7f1bfcfcaec5dde3c4f2edf712b41))
+* replace inline action buttons with dropdown menus in template and member management lists ([fc96851](https://github.com/cjuriartec/lumacraft/commit/fc968515b3f44202010495e7eaf88f573dba3eb1))
+* standardize PDF line height constants and update default values to 1.15 ([8e78d4f](https://github.com/cjuriartec/lumacraft/commit/8e78d4ff9b2c80ecaf3207596343580aceba9d04))
+* update Supabase auth service to use getSession and centralize user mapping logic ([04ed186](https://github.com/cjuriartec/lumacraft/commit/04ed1867ae63988e477fbf6e140982b31f8e1b76))
+
+
+### 🐛 Bug Fixes
+
+* improve PDF text rendering by handling empty strings and adjusting paragraph spacing ([507c051](https://github.com/cjuriartec/lumacraft/commit/507c05113b9af29f6c35599427aaa036b7c131f2))
+* map Arial to Roboto in PDF renderer to ensure correct encoding of accented characters ([f391d44](https://github.com/cjuriartec/lumacraft/commit/f391d44e45a8a567bd340050415bf9a473cbe2a4))
+* preserve dirty form values during record updates and improve test formatting ([6c10859](https://github.com/cjuriartec/lumacraft/commit/6c10859a8358ee7502e0a7d052afde684da413fb))
+* prevent form reset on stable record reference updates by implementing deep snapshot memoization ([ed2485a](https://github.com/cjuriartec/lumacraft/commit/ed2485ac681a38ee29d419100a4aa152fc2aa648))
+* prevent redundant workspace re-fetching by memoizing user ID dependency in workspace provider ([68ecdcb](https://github.com/cjuriartec/lumacraft/commit/68ecdcb42b22d76395a79a182bcddf496e7e0933))
+* resolve merge conflicts in data-grid and full.spec.ts ([f1056f4](https://github.com/cjuriartec/lumacraft/commit/f1056f417f2444de10da57e9b0b34c5ec0c0da58))
+* update select component and record form labels to support multiline text wrapping ([b0a16f3](https://github.com/cjuriartec/lumacraft/commit/b0a16f3af705113f5cc1b04e8e18f48b4167fe46))
+
 ### [0.1.9](https://github.com/cjuriartec/lumacraft/compare/v0.1.8...v0.1.9) (2026-04-13)
 
 
