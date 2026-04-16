@@ -369,9 +369,9 @@ describe("renderTemplateToPdfBuffer", () => {
     expect(getPdfHeader(result)).toContain(PDF_MAGIC_BYTES);
   });
 
-  it("keeps Arial close to Helvetica unless accented glyphs require the embedded PDF font", () => {
-    expect(resolvePdfFontFamily("arial", "Texto simple")).toBe("Helvetica");
-    expect(resolvePdfFontFamily("Arial", "Comunicación")).toBe("Roboto");
+  it("uses the registered Arial PDF font when Arial is selected", () => {
+    expect(resolvePdfFontFamily("arial")).toBe("Arial");
+    expect(resolvePdfFontFamily("Arial")).toBe("Arial");
   });
 
   it("respects persisted width and height fields for PDF images", async () => {

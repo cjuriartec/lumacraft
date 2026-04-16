@@ -33,7 +33,8 @@
     "release:minor": "standard-version --release-as minor",
     "release:major": "standard-version --release-as major",
     "release:pre": "standard-version --prerelease alpha",
-    "prepare": "husky"
+    "prepare": "husky",
+    "validate": "bash scripts/validate.sh"
   },
   "dependencies": {
     "@ariakit/react": "^0.4.24",
