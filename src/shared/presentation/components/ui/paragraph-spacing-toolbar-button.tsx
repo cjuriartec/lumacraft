@@ -122,7 +122,9 @@ export function ParagraphSpacingToolbarButton() {
               : "hover:bg-accent hover:text-accent-foreground",
           )}
         >
-          <span>{spacingState.hasSpaceBefore ? "Quitar espacio antes" : "Agregar espacio antes"}</span>
+          <span>
+            {spacingState.hasSpaceBefore ? "Quitar espacio antes" : "Agregar espacio antes"}
+          </span>
         </button>
 
         <button
@@ -136,7 +138,9 @@ export function ParagraphSpacingToolbarButton() {
               : "hover:bg-accent hover:text-accent-foreground",
           )}
         >
-          <span>{spacingState.hasSpaceAfter ? "Quitar espacio después" : "Agregar espacio después"}</span>
+          <span>
+            {spacingState.hasSpaceAfter ? "Quitar espacio después" : "Agregar espacio después"}
+          </span>
         </button>
       </PopoverContent>
     </Popover>

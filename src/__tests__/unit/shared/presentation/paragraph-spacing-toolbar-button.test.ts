@@ -39,11 +39,13 @@ describe("paragraph-spacing-toolbar-button helpers", () => {
       effectiveValue: 8,
       isEnabled: true,
     });
-    expect(resolveParagraphSpacingToggleState({ type: "p" } as never, "spaceBefore")).toMatchObject({
-      defaultValue: 0,
-      effectiveValue: 0,
-      isEnabled: false,
-    });
+    expect(resolveParagraphSpacingToggleState({ type: "p" } as never, "spaceBefore")).toMatchObject(
+      {
+        defaultValue: 0,
+        effectiveValue: 0,
+        isEnabled: false,
+      },
+    );
   });
 
   it("adds spacing before when the paragraph starts without it", () => {
@@ -51,7 +53,10 @@ describe("paragraph-spacing-toolbar-button helpers", () => {
 
     toggleParagraphSpacing(editor as never, "spaceBefore");
 
-    expect(setNodes).toHaveBeenCalledWith({ spaceBefore: DEFAULT_PARAGRAPH_SPACE_AFTER }, { at: [0] });
+    expect(setNodes).toHaveBeenCalledWith(
+      { spaceBefore: DEFAULT_PARAGRAPH_SPACE_AFTER },
+      { at: [0] },
+    );
     expect(unsetNodes).not.toHaveBeenCalled();
   });
 

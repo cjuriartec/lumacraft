@@ -281,13 +281,9 @@ function resolveBlockTypography(
     fontSize,
     lineHeight,
     marginBottom:
-      node.type === "p"
-        ? resolveParagraphSpacingAfter(node.spaceAfter)
-        : spacing.pdfMarginBottom,
+      node.type === "p" ? resolveParagraphSpacingAfter(node.spaceAfter) : spacing.pdfMarginBottom,
     marginTop:
-      node.type === "p"
-        ? resolveParagraphSpacingBefore(node.spaceBefore)
-        : spacing.pdfMarginTop,
+      node.type === "p" ? resolveParagraphSpacingBefore(node.spaceBefore) : spacing.pdfMarginTop,
     ...(resolveTextAlign(node.align) ? { textAlign: resolveTextAlign(node.align) } : {}),
   };
 }
