@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.13](https://github.com/cjuriartec/lumacraft/compare/v0.1.12...v0.1.13) (2026-04-16)
+
+
+### ✨ Features
+
+* implement custom Arial font registration for PDF rendering and web display ([20fadda](https://github.com/cjuriartec/lumacraft/commit/20fadda5c27ae29448b1a8374e303c51af6a317b))
+
 ### [0.1.12](https://github.com/cjuriartec/lumacraft/compare/v0.1.11...v0.1.12) (2026-04-16)
 
 
