@@ -248,6 +248,10 @@ vi.mock("@/shared/presentation/components/ui/line-height-toolbar-button", () => 
   LineHeightToolbarButton: () => <button type="button">line-height</button>,
 }));
 
+vi.mock("@/shared/presentation/components/ui/paragraph-spacing-toolbar-button", () => ({
+  ParagraphSpacingToolbarButton: () => <button type="button">paragraph-spacing</button>,
+}));
+
 vi.mock("@/shared/presentation/components/ui/link-toolbar-button", () => ({
   LinkToolbarButton: () => <button type="button">link</button>,
 }));
@@ -335,6 +339,7 @@ describe("RecordDocumentEditorPage", () => {
     expect(screen.getByText("Cliente Uno")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Descargar PDF/i })).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /Regenerar/i })[0]).toBeInTheDocument();
+    expect(screen.getByText("paragraph-spacing")).toBeInTheDocument();
   });
 
   it("confirms regeneration from the editor", async () => {

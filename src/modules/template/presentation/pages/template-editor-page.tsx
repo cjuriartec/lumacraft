@@ -74,6 +74,7 @@ import {
 } from "@/shared/presentation/components/ui/list-toolbar-button";
 import { MarkToolbarButton } from "@/shared/presentation/components/ui/mark-toolbar-button";
 import { MediaToolbarButton } from "@/shared/presentation/components/ui/media-toolbar-button";
+import { ParagraphSpacingToolbarButton } from "@/shared/presentation/components/ui/paragraph-spacing-toolbar-button";
 import {
   Select,
   SelectContent,
@@ -501,6 +502,7 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
                     <ToolbarGroup>
                       <AlignToolbarButton />
                       <LineHeightToolbarButton />
+                      <ParagraphSpacingToolbarButton />
                       <OutdentToolbarButton />
                       <IndentToolbarButton />
                     </ToolbarGroup>

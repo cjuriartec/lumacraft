@@ -66,6 +66,8 @@ interface TemplateAiPresentationOptions {
   indent?: number;
   fontSize?: number;
   fontFamily?: string;
+  spaceBefore?: number;
+  spaceAfter?: number;
   bold?: boolean;
   italic?: boolean;
   underline?: boolean;
@@ -77,6 +79,8 @@ interface TemplateLogicPresentationOptions {
   indent?: number;
   fontSize?: number;
   fontFamily?: string;
+  spaceBefore?: number;
+  spaceAfter?: number;
   bold?: boolean;
   italic?: boolean;
   underline?: boolean;
@@ -263,6 +267,8 @@ function toParagraph(
     fontSize?: string | number;
     fontFamily?: string;
     indent?: number;
+    spaceBefore?: number;
+    spaceAfter?: number;
     marks?: TemplateTextMarks;
   },
 ): PlateElementNode {
@@ -280,6 +286,8 @@ function toParagraph(
     ...(options?.align ? { align: options.align } : {}),
     ...(resolvedLineHeight !== undefined ? { lineHeight: resolvedLineHeight } : {}),
     ...(options?.indent ? { indent: options.indent } : {}),
+    ...(typeof options?.spaceBefore === "number" ? { spaceBefore: options.spaceBefore } : {}),
+    ...(typeof options?.spaceAfter === "number" ? { spaceAfter: options.spaceAfter } : {}),
     ...(resolvedFontSize ? { fontSize: resolvedFontSize } : {}),
     ...(options?.fontFamily ? { fontFamily: options.fontFamily } : {}),
     children: parseInlineRichText(
@@ -768,6 +776,8 @@ async function parseLineToBlock(
     indent?: number;
     fontSize?: number;
     fontFamily?: string;
+    spaceBefore?: number;
+    spaceAfter?: number;
     bold?: boolean;
     italic?: boolean;
     underline?: boolean;
@@ -794,6 +804,8 @@ async function parseLineToBlock(
       lineHeight,
       fontSize: options?.fontSize,
       fontFamily,
+      spaceBefore: options?.spaceBefore,
+      spaceAfter: options?.spaceAfter,
       marks: hasMarks ? typographyMarks : undefined,
     });
 
@@ -816,6 +828,8 @@ async function parseLineToBlock(
       type: "p",
       align,
       ...(lineHeight ? { lineHeight } : {}),
+      ...(typeof options?.spaceBefore === "number" ? { spaceBefore: options.spaceBefore } : {}),
+      ...(typeof options?.spaceAfter === "number" ? { spaceAfter: options.spaceAfter } : {}),
       ...(fontSize ? { fontSize } : {}),
       ...(fontFamily ? { fontFamily } : {}),
       listStyleType: "disc",
@@ -829,6 +843,8 @@ async function parseLineToBlock(
       type: "p",
       align,
       ...(lineHeight ? { lineHeight } : {}),
+      ...(typeof options?.spaceBefore === "number" ? { spaceBefore: options.spaceBefore } : {}),
+      ...(typeof options?.spaceAfter === "number" ? { spaceAfter: options.spaceAfter } : {}),
       ...(fontSize ? { fontSize } : {}),
       ...(fontFamily ? { fontFamily } : {}),
       listStyleType: "decimal",
@@ -864,6 +880,8 @@ async function parseLineToBlock(
     lineHeight,
     fontSize: options?.fontSize,
     fontFamily,
+    spaceBefore: options?.spaceBefore,
+    spaceAfter: options?.spaceAfter,
     marks: hasMarks ? typographyMarks : undefined,
   });
 }
@@ -879,6 +897,8 @@ async function renderTemplateToBlocks(
     indent?: number;
     fontSize?: number;
     fontFamily?: string;
+    spaceBefore?: number;
+    spaceAfter?: number;
     bold?: boolean;
     italic?: boolean;
     underline?: boolean;
@@ -920,6 +940,8 @@ async function structuredBlockToPlate(
     indent?: number;
     fontSize?: number;
     fontFamily?: string;
+    spaceBefore?: number;
+    spaceAfter?: number;
     bold?: boolean;
     italic?: boolean;
     underline?: boolean;
@@ -947,6 +969,8 @@ async function structuredBlockToPlate(
           lineHeight,
           fontSize: options?.fontSize,
           fontFamily,
+          spaceBefore: options?.spaceBefore,
+          spaceAfter: options?.spaceAfter,
           marks: hasMarks ? typographyMarks : undefined,
         }),
       ];
@@ -979,6 +1003,8 @@ async function structuredBlockToPlate(
         type: "p",
         align,
         ...(lineHeight ? { lineHeight } : {}),
+        ...(typeof options?.spaceBefore === "number" ? { spaceBefore: options.spaceBefore } : {}),
+        ...(typeof options?.spaceAfter === "number" ? { spaceAfter: options.spaceAfter } : {}),
         ...(fontSize ? { fontSize } : {}),
         ...(fontFamily ? { fontFamily } : {}),
         listStyleType: "disc",
@@ -990,6 +1016,8 @@ async function structuredBlockToPlate(
         type: "p",
         align,
         ...(lineHeight ? { lineHeight } : {}),
+        ...(typeof options?.spaceBefore === "number" ? { spaceBefore: options.spaceBefore } : {}),
+        ...(typeof options?.spaceAfter === "number" ? { spaceAfter: options.spaceAfter } : {}),
         ...(fontSize ? { fontSize } : {}),
         ...(fontFamily ? { fontFamily } : {}),
         listStyleType: "decimal",
@@ -1028,6 +1056,8 @@ async function parseStructuredAIDocument(
     indent?: number;
     fontSize?: number;
     fontFamily?: string;
+    spaceBefore?: number;
+    spaceAfter?: number;
     bold?: boolean;
     italic?: boolean;
     underline?: boolean;
@@ -1179,6 +1209,8 @@ function resolveTemplateAiPresentation(
     lineHeight: typeof node.lineHeight === "number" ? node.lineHeight : fallback?.lineHeight,
     indent: typeof node.indent === "number" ? node.indent : fallback?.indent,
     fontSize: typeof node.fontSize === "number" ? node.fontSize : fallback?.fontSize,
+    spaceBefore: typeof node.spaceBefore === "number" ? node.spaceBefore : fallback?.spaceBefore,
+    spaceAfter: typeof node.spaceAfter === "number" ? node.spaceAfter : fallback?.spaceAfter,
     fontFamily:
       typeof node.fontFamily === "string"
         ? normalizeSupportedDocumentFontFamily(node.fontFamily)
@@ -1199,6 +1231,8 @@ function resolveTemplateLogicPresentation(
     lineHeight: typeof node.lineHeight === "number" ? node.lineHeight : undefined,
     indent: typeof node.indent === "number" ? node.indent : undefined,
     fontSize: typeof node.fontSize === "number" ? node.fontSize : undefined,
+    spaceBefore: typeof node.spaceBefore === "number" ? node.spaceBefore : undefined,
+    spaceAfter: typeof node.spaceAfter === "number" ? node.spaceAfter : undefined,
     fontFamily:
       typeof node.fontFamily === "string"
         ? normalizeSupportedDocumentFontFamily(node.fontFamily)
@@ -1251,6 +1285,12 @@ function applyPresentationFallbackToNode(
       : {}),
     ...(node.indent === undefined && fallback.indent !== undefined
       ? { indent: fallback.indent }
+      : {}),
+    ...(node.spaceBefore === undefined && fallback.spaceBefore !== undefined
+      ? { spaceBefore: fallback.spaceBefore }
+      : {}),
+    ...(node.spaceAfter === undefined && fallback.spaceAfter !== undefined
+      ? { spaceAfter: fallback.spaceAfter }
       : {}),
     ...(node.fontSize === undefined && fallback.fontSize !== undefined
       ? { fontSize: resolveFontSizeWithUnit(fallback.fontSize, node.type) }
@@ -1310,7 +1350,17 @@ async function compileTemplateAiNodeStreamed(
   const providerResult = compileContext.aiProviderFactory.create(requestedProvider);
   if (!providerResult.ok) {
     warnings.push(providerResult.error.message);
-    return [toParagraph(`AI no disponible: ${providerResult.error.message}`, { align: "justify" })];
+    return [
+      toParagraph(`AI no disponible: ${providerResult.error.message}`, {
+        align: "justify",
+        spaceBefore:
+          typeof node.spaceBefore === "number"
+            ? node.spaceBefore
+            : fallbackPresentation?.spaceBefore,
+        spaceAfter:
+          typeof node.spaceAfter === "number" ? node.spaceAfter : fallbackPresentation?.spaceAfter,
+      }),
+    ];
   }
 
   const collectionContext = resolveCollectionContext(compileContext, node.collectionContext);
@@ -1359,6 +1409,8 @@ async function compileTemplateAiNodeStreamed(
       indent: presentation.indent ?? "default",
       fontSize: presentation.fontSize ?? "default",
       fontFamily: presentation.fontFamily ?? "default",
+      spaceBefore: presentation.spaceBefore ?? "default",
+      spaceAfter: presentation.spaceAfter ?? "default",
       bold: presentation.bold ?? "default",
       italic: presentation.italic ?? "default",
       underline: presentation.underline ?? "default",
@@ -1405,6 +1457,8 @@ async function compileTemplateAiNodeStreamed(
             lineHeight: presentation.lineHeight,
             fontSize: presentation.fontSize,
             fontFamily: presentation.fontFamily,
+            spaceBefore: presentation.spaceBefore,
+            spaceAfter: presentation.spaceAfter,
           }),
         ];
 
@@ -1442,6 +1496,8 @@ async function compileTemplateAiNodeStreamed(
           indent: presentation.indent,
           fontSize: presentation.fontSize,
           fontFamily: presentation.fontFamily,
+          spaceBefore: presentation.spaceBefore,
+          spaceAfter: presentation.spaceAfter,
           bold: presentation.bold,
           italic: presentation.italic,
           underline: presentation.underline,
@@ -1459,6 +1515,8 @@ async function compileTemplateAiNodeStreamed(
                   indent: presentation.indent,
                   fontSize: presentation.fontSize,
                   fontFamily: presentation.fontFamily,
+                  spaceBefore: presentation.spaceBefore,
+                  spaceAfter: presentation.spaceAfter,
                   bold: presentation.bold,
                   italic: presentation.italic,
                   underline: presentation.underline,
@@ -1475,6 +1533,8 @@ async function compileTemplateAiNodeStreamed(
                 lineHeight: presentation.lineHeight,
                 fontSize: presentation.fontSize,
                 fontFamily: presentation.fontFamily,
+                spaceBefore: presentation.spaceBefore,
+                spaceAfter: presentation.spaceAfter,
               }),
             ];
 
@@ -1510,6 +1570,8 @@ async function compileTemplateAiNodeStreamed(
           lineHeight: presentation.lineHeight,
           fontSize: presentation.fontSize,
           fontFamily: presentation.fontFamily,
+          spaceBefore: presentation.spaceBefore,
+          spaceAfter: presentation.spaceAfter,
         }),
       ];
     }
@@ -1587,6 +1649,8 @@ async function compileParagraphNode(
           indent: typeof node.indent === "number" ? node.indent : undefined,
           fontSize: typeof node.fontSize === "number" ? node.fontSize : undefined,
           fontFamily: typeof node.fontFamily === "string" ? node.fontFamily : undefined,
+          spaceBefore: typeof node.spaceBefore === "number" ? node.spaceBefore : undefined,
+          spaceAfter: typeof node.spaceAfter === "number" ? node.spaceAfter : undefined,
         },
       );
       const inlineAiChildren = flattenBlocksToInlineDescendants(
@@ -1938,6 +2002,8 @@ async function compileNode(
           align: typeof node.align === "string" ? node.align : "justify",
           lineHeight: typeof node.lineHeight === "number" ? node.lineHeight : undefined,
           indent: typeof node.indent === "number" ? node.indent : undefined,
+          spaceBefore: typeof node.spaceBefore === "number" ? node.spaceBefore : undefined,
+          spaceAfter: typeof node.spaceAfter === "number" ? node.spaceAfter : undefined,
           marks: extractTextMarks(node),
         }),
       ];
