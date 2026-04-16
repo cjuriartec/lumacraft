@@ -64,6 +64,9 @@ export const ExtendedNodesKit = [
     node: {
       component: TableElement,
     },
+    options: {
+      minColumnWidth: 36,
+    },
   }),
   TableRowPlugin.withComponent(TableRowElement),
   TableCellPlugin.withComponent(TableCellElement),

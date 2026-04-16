@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 
 import { ExtendedNodesKit } from "@/shared/presentation/components/editor/plugins/extended-nodes-kit";
 import { Editor, EditorContainer } from "@/shared/presentation/components/ui/editor";
+import { TABLE_DEFAULT_COLUMN_WIDTH } from "@/shared/presentation/components/ui/table-node";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function TestEditor({ value }: { value: any[] }) {
@@ -31,6 +32,10 @@ function getFontSizedAncestor(text: string) {
 }
 
 describe("table font size rendering", () => {
+  it("uses a narrower default column width for compact tables", () => {
+    expect(TABLE_DEFAULT_COLUMN_WIDTH).toBe(56);
+  });
+
   it("keeps 11pt text both outside and inside table cells", () => {
     render(
       <TestEditor

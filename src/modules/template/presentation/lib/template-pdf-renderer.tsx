@@ -53,6 +53,7 @@ const PDF_SECTION_VERTICAL_PADDING = 4;
 const PDF_BODY_SECTION_GAP = 8;
 export const PDF_TABLE_CELL_PADDING_HORIZONTAL = 5;
 export const PDF_TABLE_CELL_PADDING_VERTICAL = 4;
+const PDF_TABLE_DEFAULT_COLUMN_WIDTH = 56;
 
 const PDF_HEADER_FOOTER_TYPOGRAPHY: InheritedBlockTypography = {
   fontSize: PDF_HEADER_FOOTER_FONT_SIZE,
@@ -788,7 +789,7 @@ function renderBlock(
     const lastRowIndex = rows.length - 1;
     const firstRowCells = rows[0]?.children.filter(isElementNode) ?? [];
     const rawColSizes = Array.isArray(node.colSizes) ? node.colSizes : [];
-    const defaultColWidth = 120;
+    const defaultColWidth = PDF_TABLE_DEFAULT_COLUMN_WIDTH;
     const effectiveColSizes = Array.from({ length: firstRowCells.length || 1 }, (_, index) => {
       const current = rawColSizes[index];
       return typeof current === "number" && current > 0 ? current : defaultColWidth;
