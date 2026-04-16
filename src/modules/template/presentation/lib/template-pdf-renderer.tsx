@@ -17,7 +17,7 @@ import * as React from "react";
 import {
   DEFAULT_DOCUMENT_FONT_FAMILY,
   DEFAULT_DOCUMENT_FONT_SIZE,
-  DEFAULT_DOCUMENT_LINE_HEIGHT,
+  normalizeSupportedDocumentFontFamily,
   resolveDocumentFontFamily,
   resolveDocumentFontSize,
   resolveDocumentLineHeight,
@@ -37,7 +37,8 @@ let pdfFontsRegistered = false;
 
 const DEFAULT_PDF_IMAGE_ESTIMATE_HEIGHT = 36;
 const PDF_HEADER_FOOTER_FONT_SIZE = 10;
-const PDF_HEADER_FOOTER_LINE_HEIGHT = 1.625;
+const PDF_DEFAULT_LINE_HEIGHT = 1.15;
+const PDF_HEADER_FOOTER_LINE_HEIGHT = 1.15;
 const PDF_PAGE_BODY_PADDING_BOTTOM = 60;
 const PDF_PAGE_BODY_PADDING_TOP = 60;
 const PDF_PAGE_HORIZONTAL_PADDING = 72;
@@ -89,8 +90,17 @@ function registerPdfFonts() {
 
 registerPdfFonts();
 
-function resolvePdfFontFamily(value: unknown): string {
-  const resolvedFontFamily = resolveDocumentFontFamily("pdf", value);
+export function resolvePdfFontFamily(value: unknown): string {
+  const normalizedFontFamily = normalizeSupportedDocumentFontFamily(value);
+
+  // Built-in Helvetica has shown encoding issues for accented characters in some
+  // PDF viewers/printers. When "Arial" is selected, prefer the embedded Unicode
+  // font so tildes and other Latin glyphs survive export/print reliably.
+  if (normalizedFontFamily === "arial" && pdfFontsRegistered) {
+    return "Roboto";
+  }
+
+  const resolvedFontFamily = resolveDocumentFontFamily("pdf", normalizedFontFamily);
 
   if (resolvedFontFamily === "Roboto" && !pdfFontsRegistered) {
     return resolveDocumentFontFamily("pdf", DEFAULT_DOCUMENT_FONT_FAMILY);
@@ -255,7 +265,7 @@ function resolveBlockTypography(
     node.type,
   );
   const lineHeight = resolveDocumentLineHeight(
-    node.lineHeight ?? inheritedTypography?.lineHeight ?? DEFAULT_DOCUMENT_LINE_HEIGHT,
+    node.lineHeight ?? inheritedTypography?.lineHeight ?? PDF_DEFAULT_LINE_HEIGHT,
   );
 
   return {
@@ -521,7 +531,7 @@ const styles = StyleSheet.create({
     color: "#1a1a1a",
     fontFamily: resolveDocumentFontFamily("pdf", DEFAULT_DOCUMENT_FONT_FAMILY),
     fontSize: DEFAULT_DOCUMENT_FONT_SIZE,
-    lineHeight: DEFAULT_DOCUMENT_LINE_HEIGHT,
+    lineHeight: PDF_DEFAULT_LINE_HEIGHT,
     paddingBottom: PDF_PAGE_BODY_PADDING_BOTTOM,
     paddingHorizontal: PDF_PAGE_HORIZONTAL_PADDING,
     paddingTop: PDF_PAGE_BODY_PADDING_TOP,
@@ -611,7 +621,7 @@ function estimatePdfBlockHeight(
     node.type,
   );
   const lineHeight = resolveDocumentLineHeight(
-    node.lineHeight ?? inheritedTypography?.lineHeight ?? DEFAULT_DOCUMENT_LINE_HEIGHT,
+    node.lineHeight ?? inheritedTypography?.lineHeight ?? PDF_DEFAULT_LINE_HEIGHT,
   );
   const textContent = collectNodeTextContent(node).trim();
   const charsPerLine = node.type.startsWith("h") ? 42 : 70;

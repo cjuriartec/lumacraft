@@ -16,6 +16,7 @@ import type { TemplateBlocks } from "@/modules/template/domain/types/template-bl
 import {
   renderTemplateToPdfBuffer,
   resolvePdfBlockSpacingForRenderMode,
+  resolvePdfFontFamily,
 } from "@/modules/template/presentation/lib/template-pdf-renderer";
 
 const PDF_MAGIC_BYTES = "%PDF";
@@ -345,6 +346,11 @@ describe("renderTemplateToPdfBuffer", () => {
 
     const result = await renderTemplateToPdfBuffer(blocks);
     expect(getPdfHeader(result)).toContain(PDF_MAGIC_BYTES);
+  });
+
+  it("maps Arial to the embedded PDF font so accented characters survive export", () => {
+    expect(resolvePdfFontFamily("arial")).toBe("Roboto");
+    expect(resolvePdfFontFamily("Arial")).toBe("Roboto");
   });
 
   it("respects persisted width and height fields for PDF images", async () => {
