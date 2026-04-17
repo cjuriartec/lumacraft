@@ -13,6 +13,7 @@ describe("Collection Entity", () => {
       displayName: "Test Collection",
       description: "A collection for testing purposes",
       icon: "database",
+      settings: { hideIdColumn: true },
     });
 
     expect(result.ok).toBe(true);
@@ -24,6 +25,7 @@ describe("Collection Entity", () => {
       expect(collection.displayName).toBe("Test Collection");
       expect(collection.description).toBe("A collection for testing purposes");
       expect(collection.icon).toBe("database");
+      expect(collection.settings.hideIdColumn).toBe(true);
     }
   });
 
@@ -35,6 +37,7 @@ describe("Collection Entity", () => {
       displayName: "Test",
       description: "Desc",
       icon: "icon",
+      settings: { hideIdColumn: false },
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -46,6 +49,7 @@ describe("Collection Entity", () => {
       expect(json.id).toBe(props.id);
       expect(json.name).toBe(props.name);
       expect(json.accountId).toBe(props.accountId);
+      expect(json.settings).toEqual({ hideIdColumn: false });
     }
   });
 });

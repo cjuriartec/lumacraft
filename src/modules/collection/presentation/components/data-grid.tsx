@@ -3,6 +3,7 @@
 import {
   ChevronDown,
   ChevronUp,
+  Columns3,
   Download,
   Edit2,
   Eye,
@@ -41,6 +42,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/presentation/components/ui/select";
+import { Switch } from "@/shared/presentation/components/ui/switch";
 import {
   Table,
   TableBody,
@@ -51,6 +53,7 @@ import {
 } from "@/shared/presentation/components/ui/table";
 
 import { Field } from "../../domain/entities/field.entity";
+import { formatShortRecordId } from "../../domain/services/record-label.service";
 import { DataRecord } from "../../domain/entities/record.entity";
 import { ColumnFilter } from "../../domain/types/pagination.types";
 import { RecordQuickViewDialog } from "../components/record-quick-view-dialog";
@@ -79,6 +82,10 @@ interface DataGridProps {
   onAddRecord?: () => void;
   reverseLookupResults?: ReverseLookupResults;
   initialFilterValues?: Record<string, string>;
+  hideIdColumn?: boolean;
+  canConfigureColumns?: boolean;
+  onToggleIdColumn?: (hidden: boolean) => Promise<void> | void;
+  onToggleFieldVisibility?: (field: Field, hidden: boolean) => Promise<void> | void;
   canCreate?: boolean;
   canRead?: boolean;
   canUpdate?: boolean;
@@ -99,6 +106,10 @@ type EditingCell = {
 };
 
 const BASIC_INLINE_TYPES = new Set(["TEXT", "NUMBER", "BOOLEAN", "DATE", "ENUM"]);
+
+function isFieldHidden(field: Field) {
+  return Boolean((field.config?.value as { hidden?: boolean } | undefined)?.hidden);
+}
 
 const RelationCell = React.memo(
   ({
@@ -327,6 +338,10 @@ export function DataGrid({
   onAddRecord,
   reverseLookupResults = {},
   initialFilterValues,
+  hideIdColumn = false,
+  canConfigureColumns = false,
+  onToggleIdColumn,
+  onToggleFieldVisibility,
   canCreate = true,
   canRead = true,
   canUpdate = true,
@@ -343,9 +358,7 @@ export function DataGrid({
 
   // Sync initial filter values if they change or the grid mounts
   useEffect(() => {
-    if (initialFilterValues && Object.keys(initialFilterValues).length > 0) {
-      setFilterValues(initialFilterValues);
-    }
+    setFilterValues(initialFilterValues || {});
   }, [initialFilterValues]);
 
   // Relation resolution
@@ -357,6 +370,7 @@ export function DataGrid({
   const { downloadFile } = useStorage();
 
   const totalPages = Math.ceil(total / pageSize);
+  const visibleFields = useMemo(() => fields.filter((field) => !isFieldHidden(field)), [fields]);
 
   // Debounced effect for multiple filters
   useEffect(() => {
@@ -364,7 +378,7 @@ export function DataGrid({
       const updated = Object.entries(filterValues)
         .filter(([, v]) => v.trim() !== "")
         .map(([name, val]) => {
-          const f = fields.find((i) => i.name === name);
+          const f = visibleFields.find((i) => i.name === name);
           const type = f?.fieldType.value;
 
           let operator: ColumnFilter["operator"] = "contains";
@@ -390,12 +404,12 @@ export function DataGrid({
     }, 600); // 600ms debounce
 
     return () => clearTimeout(timer);
-  }, [filterValues, fields, onFiltersChange]);
+  }, [filterValues, visibleFields, onFiltersChange]);
 
   const activeFilters = useMemo(() => {
     const nextFilters: ColumnFilter[] = [];
 
-    for (const field of fields) {
+    for (const field of visibleFields) {
       const rawValue = filterValues[field.name];
       if (!rawValue || rawValue.trim() === "") continue;
 
@@ -421,7 +435,7 @@ export function DataGrid({
     }
 
     return nextFilters;
-  }, [fields, filterValues]);
+  }, [visibleFields, filterValues]);
 
   const handleSort = (fieldName: string) => {
     if (sortField === fieldName) {
@@ -474,11 +488,15 @@ export function DataGrid({
   const handleExport = () => {
     if (records.length === 0) return;
 
-    const headers = fields.map((f) => f.displayName || f.name).join(",");
+    const headers = [
+      ...(!hideIdColumn ? ["ID"] : []),
+      ...visibleFields.map((field) => field.displayName || field.name),
+    ].join(",");
     const rows = records
       .map((record) => {
-        return fields
-          .map((field) => {
+        return [
+          ...(!hideIdColumn ? [`"${formatShortRecordId(record.id)}"`] : []),
+          ...visibleFields.map((field) => {
             const rawValue = record.data[field.name];
             let cellValue = "";
 
@@ -491,8 +509,8 @@ export function DataGrid({
             }
 
             return `"${cellValue.replace(/"/g, '""')}"`;
-          })
-          .join(",");
+          }),
+        ].join(",");
       })
       .join("\n");
 
@@ -782,7 +800,7 @@ export function DataGrid({
                   )}
                 </div>
                 <div className="max-h-[400px] overflow-y-auto p-2 space-y-1">
-                  {fields.map((field) => {
+                  {visibleFields.map((field) => {
                     const isActive = filterValues[field.name] !== undefined;
                     return (
                       <div
@@ -813,7 +831,7 @@ export function DataGrid({
                                 setFilterValues(next);
                                 // Update logic
                                 const updated = Object.entries(next).map(([name, val]) => {
-                                  const f = fields.find((i) => i.name === name);
+                                  const f = visibleFields.find((i) => i.name === name);
                                   const operator =
                                     f?.fieldType.value === "NUMBER" ||
                                     f?.fieldType.value === "BOOLEAN" ||
@@ -883,6 +901,64 @@ export function DataGrid({
               </PopoverContent>
             </Popover>
 
+            {canConfigureColumns && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-10 px-4 border-border/20 bg-background/50 text-xs font-medium transition-all hover:bg-surface-hover/30"
+                  >
+                    <Columns3 size={14} className="mr-2" />
+                    Columnas
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent
+                  className="w-[320px] p-0 overflow-hidden bg-surface border-border/50 shadow-2xl"
+                  align="end"
+                >
+                  <div className="px-4 py-3 border-b border-border/20 bg-surface-hover/10">
+                    <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted">
+                      Columnas visibles
+                    </h3>
+                  </div>
+                  <div className="max-h-[360px] overflow-y-auto p-2 space-y-1">
+                    <div className="flex items-center justify-between rounded-lg px-3 py-2 hover:bg-surface-hover/10">
+                      <div>
+                        <p className="text-sm font-medium text-foreground">ID</p>
+                        <p className="text-[11px] text-muted">Identificador corto del registro</p>
+                      </div>
+                      <Switch
+                        aria-label="Mostrar columna ID"
+                        checked={!hideIdColumn}
+                        onCheckedChange={(checked) => void onToggleIdColumn?.(!checked)}
+                      />
+                    </div>
+                    {fields.map((field) => (
+                      <div
+                        key={field.id}
+                        className="flex items-center justify-between rounded-lg px-3 py-2 hover:bg-surface-hover/10"
+                      >
+                        <div>
+                          <p className="text-sm font-medium text-foreground">
+                            {field.displayName || field.name}
+                          </p>
+                          <p className="text-[11px] text-muted">{field.fieldType.value}</p>
+                        </div>
+                        <Switch
+                          aria-label={`Mostrar columna ${field.displayName || field.name}`}
+                          checked={!isFieldHidden(field)}
+                          onCheckedChange={(checked) =>
+                            void onToggleFieldVisibility?.(field, !checked)
+                          }
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            )}
+
             <Button
               data-guidance-anchor="records-export"
               variant="outline"
@@ -916,7 +992,18 @@ export function DataGrid({
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              {fields.map((field) => (
+              {!hideIdColumn && (
+                <TableHead
+                  className="cursor-pointer select-none py-4 px-4 text-[11px] font-semibold uppercase tracking-wider text-muted hover:text-foreground transition-colors"
+                  onClick={() => handleSort("id")}
+                >
+                  <div className="flex items-center gap-2">
+                    ID
+                    {getSortIcon("id")}
+                  </div>
+                </TableHead>
+              )}
+              {visibleFields.map((field) => (
                 <TableHead
                   key={field.id}
                   className="cursor-pointer select-none py-4 px-4 text-[11px] font-semibold uppercase tracking-wider text-muted hover:text-foreground transition-colors"
@@ -940,7 +1027,7 @@ export function DataGrid({
             {records.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={fields.length + 1}
+                  colSpan={visibleFields.length + (!hideIdColumn ? 2 : 1)}
                   className="h-48 text-center text-muted font-light italic"
                 >
                   No hay registros en esta colección.
@@ -952,7 +1039,12 @@ export function DataGrid({
                   key={record.id}
                   className="group border-b border-border/5 hover:bg-surface-hover/30 transition-colors"
                 >
-                  {fields.map((field) => (
+                  {!hideIdColumn && (
+                    <TableCell className="py-4 px-4 font-mono text-xs text-foreground/70">
+                      {formatShortRecordId(record.id)}
+                    </TableCell>
+                  )}
+                  {visibleFields.map((field) => (
                     <TableCell
                       key={field.id}
                       className={`py-4 px-4 font-normal text-sm ${

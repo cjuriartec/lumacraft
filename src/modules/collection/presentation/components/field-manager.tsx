@@ -1,6 +1,8 @@
 "use client";
 
+import { Reorder } from "framer-motion";
 import { GripVertical, MoreHorizontal, Plus, Settings2, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import { useGuidance } from "@/modules/guidance/presentation/hooks/use-guidance";
 import { Result } from "@/shared/domain/result";
@@ -15,7 +17,6 @@ import {
 } from "@/shared/presentation/components/ui/dropdown-menu";
 import {
   Table,
-  TableBody,
   TableCell,
   TableHead,
   TableHeader,
@@ -35,7 +36,7 @@ interface FieldManagerProps {
   createField: (params: Omit<CreateFieldRequest, "collectionId">) => Promise<Result<Field>>;
   updateField: (params: Omit<UpdateFieldRequest, "collectionId">) => Promise<Result<Field>>;
   deleteField: (id: string) => Promise<Result<void>>;
-  reorderFields?: (fieldIds: string[]) => Promise<Result<void>>;
+  reorderFields: (fieldIds: string[]) => Promise<Result<void>>;
 }
 
 export function FieldManager({
@@ -45,10 +46,16 @@ export function FieldManager({
   createField,
   updateField,
   deleteField,
+  reorderFields,
 }: FieldManagerProps) {
   const { collections } = useCollections();
   const { trackMilestone } = useGuidance();
+  const [orderedFields, setOrderedFields] = useState(fields);
   const relationCollections = collections.filter((collection) => collection.id !== collectionId);
+
+  useEffect(() => {
+    setOrderedFields(fields);
+  }, [fields]);
 
   const handleCreateField = async (params: Omit<CreateFieldRequest, "collectionId">) => {
     const result = await createField(params);
@@ -56,6 +63,20 @@ export function FieldManager({
       void trackMilestone("field_created");
     }
     return result;
+  };
+
+  const persistFieldOrder = async () => {
+    const nextIds = orderedFields.map((field) => field.id);
+    const currentIds = fields.map((field) => field.id);
+
+    if (nextIds.length !== currentIds.length) return;
+    if (nextIds.every((id, index) => id === currentIds[index])) return;
+
+    const result = await reorderFields(nextIds);
+
+    if (!result.ok) {
+      setOrderedFields(fields);
+    }
   };
 
   if (loading) {
@@ -114,17 +135,20 @@ export function FieldManager({
               </TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody>
-            {fields.length === 0 ? (
+          <Reorder.Group as="tbody" axis="y" values={orderedFields} onReorder={setOrderedFields}>
+            {orderedFields.length === 0 ? (
               <TableRow className="hover:bg-transparent border-0">
                 <TableCell colSpan={7} className="h-32 text-center text-muted font-light italic">
                   Aún no has definido campos para esta colección.
                 </TableCell>
               </TableRow>
             ) : (
-              fields.map((field) => (
-                <TableRow
+              orderedFields.map((field) => (
+                <Reorder.Item
+                  as="tr"
                   key={field.id}
+                  value={field}
+                  onDragEnd={() => void persistFieldOrder()}
                   className="group border-b border-border/5 hover:bg-surface-hover/30 transition-colors"
                 >
                   <TableCell className="py-4 px-4 text-muted/40">
@@ -209,10 +233,10 @@ export function FieldManager({
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
-                </TableRow>
+                </Reorder.Item>
               ))
             )}
-          </TableBody>
+          </Reorder.Group>
         </Table>
       </div>
     </div>

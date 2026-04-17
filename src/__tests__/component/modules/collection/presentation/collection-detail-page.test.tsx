@@ -12,6 +12,7 @@ const fieldsState = vi.hoisted(() => ({
   createField: vi.fn(),
   updateField: vi.fn(),
   deleteField: vi.fn(),
+  reorderFields: vi.fn(),
 }));
 
 const recordsState = vi.hoisted(() => ({
@@ -66,6 +67,10 @@ const navigationState = vi.hoisted(() => ({
   searchParams: new URLSearchParams(),
 }));
 
+const dataGridState = vi.hoisted(() => ({
+  lastProps: null as Record<string, unknown> | null,
+}));
+
 vi.mock("@/modules/collection/presentation/hooks/use-fields", () => ({
   useFields: () => fieldsState,
 }));
@@ -106,14 +111,54 @@ vi.mock("@/modules/collection/presentation/components/data-grid", () => ({
     onAddRecord,
     onEdit,
     onDelete,
+    hideIdColumn,
+    canConfigureColumns,
+    onToggleIdColumn,
+    onToggleFieldVisibility,
   }: {
     records: DataRecord[];
     onAddRecord: () => void;
     onEdit: (r: DataRecord) => void;
     onDelete: (id: string) => void;
+    hideIdColumn?: boolean;
+    canConfigureColumns?: boolean;
+    onToggleIdColumn?: (hidden: boolean) => void;
+    onToggleFieldVisibility?: (field: Field, hidden: boolean) => void;
   }) => (
     <div data-testid="data-grid">
+      {(() => {
+        dataGridState.lastProps = {
+          hideIdColumn,
+          canConfigureColumns,
+        };
+        return null;
+      })()}
       <span>data-grid</span>
+      <span>{hideIdColumn ? "id-hidden" : "id-visible"}</span>
+      <span>{canConfigureColumns ? "columns-admin" : "columns-readonly"}</span>
+      {records[0] ? (
+        <>
+          <button type="button" onClick={() => onToggleIdColumn?.(true)}>
+            hide-id
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              onToggleFieldVisibility?.(
+                makeField({
+                  id: "field-1",
+                  collectionId: "collection-1",
+                  name: "title",
+                  fieldType: "TEXT",
+                }),
+                true,
+              )
+            }
+          >
+            hide-field
+          </button>
+        </>
+      ) : null}
       {onAddRecord ? (
         <button type="button" onClick={onAddRecord}>
           add-record
@@ -166,6 +211,8 @@ describe("CollectionDetailPage", () => {
       makeField({ id: "field-1", collectionId: "collection-1", name: "title", fieldType: "TEXT" }),
     ];
     fieldsState.loading = false;
+    fieldsState.reorderFields.mockReset().mockResolvedValue({ ok: true });
+    fieldsState.updateField.mockReset().mockResolvedValue({ ok: true });
     recordsState.records = [
       makeRecord({ id: "record-1", collectionId: "collection-1", data: { title: "Alpha" } }),
     ];
@@ -175,11 +222,25 @@ describe("CollectionDetailPage", () => {
     recordsState.updateRecord.mockReset().mockResolvedValue({ ok: true });
     recordsState.deleteRecord.mockReset().mockResolvedValue({ ok: true });
     collectionsState.collections = [
-      { id: "collection-1", name: "Projects", toJSON: () => ({ id: "collection-1" }) },
+      {
+        id: "collection-1",
+        name: "Projects",
+        settings: {},
+        primaryFieldName: null,
+        toJSON: () => ({
+          id: "collection-1",
+          name: "Projects",
+          settings: {},
+          primaryFieldName: null,
+        }),
+      },
     ];
+    collectionsState.updateCollection.mockReset().mockResolvedValue({ ok: true });
     gridPersistenceState.loadStoredFilters.mockResolvedValue(null);
     navigationState.replace.mockReset();
     navigationState.searchParams = new URLSearchParams();
+    permissionsState.isOwner = true;
+    permissionsState.isSuperAdmin = false;
   });
 
   it("renders the loading state while fields are syncing", async () => {
@@ -237,6 +298,47 @@ describe("CollectionDetailPage", () => {
     fireEvent.click(screen.getByText("delete-record"));
     await waitFor(() => {
       expect(recordsState.deleteRecord).toHaveBeenCalledWith("record-1");
+    });
+  });
+
+  it("passes schema admin controls and persists shared layout changes", async () => {
+    render(<CollectionDetailPage collectionId="collection-1" collectionName="Projects" />);
+
+    await waitFor(() => {
+      expect(screen.getByText("columns-admin")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText("hide-id"));
+
+    await waitFor(() => {
+      expect(collectionsState.updateCollection).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: "collection-1",
+          settings: { hideIdColumn: true },
+        }),
+      );
+    });
+
+    fireEvent.click(screen.getByText("hide-field"));
+
+    await waitFor(() => {
+      expect(fieldsState.updateField).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: "field-1",
+          config: expect.objectContaining({ hidden: true }),
+        }),
+      );
+    });
+  });
+
+  it("keeps column configuration read-only for non schema managers", async () => {
+    permissionsState.isOwner = false;
+    permissionsState.isSuperAdmin = false;
+
+    render(<CollectionDetailPage collectionId="collection-1" collectionName="Projects" />);
+
+    await waitFor(() => {
+      expect(screen.getByText("columns-readonly")).toBeInTheDocument();
     });
   });
 });
