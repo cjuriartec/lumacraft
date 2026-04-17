@@ -63,7 +63,7 @@ export const TEMPLATE_LIST_TYPE = "template_list";
 export const TEMPLATE_SWITCH_TYPE = "template_switch";
 export const TEMPLATE_AI_TYPE = "template_ai";
 export const DEFAULT_TEMPLATE_AI_PROMPT =
-  "Resume el registro actual. Destaca datos clave y no inventes informacion.";
+  "Construye un bloque de contenido listo para insertarse en el documento usando el registro actual. Elige la mejor estructura compatible para la necesidad, incluye links inline validos si ayudan, prioriza claridad y no inventes informacion.";
 
 type LogicNodeChildren = Descendant[];
 

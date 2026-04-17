@@ -14,4 +14,12 @@ describe("template logic block defaults", () => {
     expect(createSwitchElement().fontFamily).toBe("arial");
     expect(createAIElement().fontFamily).toBe("arial");
   });
+
+  it("seeds ai blocks with a general compatible prompt", () => {
+    const aiElement = createAIElement();
+
+    expect(aiElement.promptTemplate).toContain("estructura compatible");
+    expect(aiElement.promptTemplate).toContain("links inline");
+    expect(aiElement.promptTemplate).toContain("no inventes informacion");
+  });
 });
