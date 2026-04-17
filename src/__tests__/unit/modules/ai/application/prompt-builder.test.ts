@@ -3,6 +3,18 @@ import { describe, expect, it } from "vitest";
 import { buildGroundedPrompt } from "@/modules/ai/application/services/prompt-builder";
 
 describe("buildGroundedPrompt", () => {
+  it("uses the internal document builder system prompt by default", () => {
+    const result = buildGroundedPrompt({
+      promptTemplate: "Redacta una salida util.",
+      context: {
+        cliente: { nombre: "Ana" },
+      },
+    });
+
+    expect(result.prompt).toContain("# System");
+    expect(result.prompt).toContain("constructor de bloques de documento");
+  });
+
   it("includes only referenced variable context and metadata", () => {
     const result = buildGroundedPrompt({
       promptTemplate: "Resume a {{cliente.nombre}} con estado {{cliente.estado}}",

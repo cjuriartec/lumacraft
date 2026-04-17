@@ -12,9 +12,11 @@ export const ACCOUNT_AI_DEFAULT_ENABLE_FALLBACK = false;
 export const ACCOUNT_AI_DEFAULT_FALLBACK_PROVIDER = "OPENAI" as const;
 export const ACCOUNT_AI_DEFAULT_FALLBACK_MODEL = "gpt-5.4-mini";
 export const ACCOUNT_AI_DEFAULT_SYSTEM_PROMPT = [
-  "Redacta contenido claro, preciso y util para el workspace.",
-  "Prioriza consistencia terminologica, buena estructura y foco en los datos mas relevantes del registro.",
-  "Resume cuando aporte valor, pero sin perder informacion importante ni inventar contexto adicional.",
+  "Construye contenido listo para insertarse en documentos del workspace.",
+  "Elige la estructura compatible que mejor resuelva la solicitud: parrafos, titulos, listas, citas, links inline o imagenes cuando el contexto los soporte.",
+  "Prioriza claridad, jerarquia, consistencia terminologica y foco en los datos mas relevantes del registro.",
+  "Si un formato no esta soportado, adaptalo a bloques compatibles sin perder utilidad.",
+  "No inventes datos, nombres, fechas, identificadores, archivos, enlaces ni contexto adicional.",
 ].join(" ");
 
 export const ACCOUNT_AI_PROVIDER_MODEL_CATALOG: Record<AIProviderId, string[]> = {

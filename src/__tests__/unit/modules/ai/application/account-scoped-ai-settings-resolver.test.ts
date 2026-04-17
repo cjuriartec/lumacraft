@@ -94,8 +94,11 @@ describe("AccountScopedAISettingsResolver", () => {
     });
 
     expect(prompt).toContain("Lumacraft");
+    expect(prompt).toContain("constructor de bloques de documento");
     expect(prompt).toContain("compliance del workspace");
     expect(prompt).toContain("contrato JSON");
+    expect(prompt).toContain("paragraph, heading, bullet_list, ordered_list, quote o image");
+    expect(prompt).toContain("enlaces markdown inline validos");
   });
 
   it("creates defaults with a prefilled editable system prompt", async () => {
