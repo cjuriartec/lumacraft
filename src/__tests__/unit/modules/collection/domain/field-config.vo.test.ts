@@ -51,9 +51,25 @@ describe("FieldConfig value object", () => {
       targetCollectionId: "4f83f5eb-48ad-4c8f-aebb-f8030d7d32f9",
       relationType: "MANY_TO_MANY",
       displayField: "title",
+      hidden: true,
     });
 
     expect(result.ok).toBe(true);
+  });
+
+  it("accepts hidden visibility flags for simple and reverse lookup fields", () => {
+    const textResult = FieldConfig.create("TEXT", {
+      hidden: true,
+      placeholder: "Notas",
+    });
+    const reverseLookupResult = FieldConfig.create("REVERSE_LOOKUP", {
+      targetCollectionId: "4f83f5eb-48ad-4c8f-aebb-f8030d7d32f9",
+      targetFieldId: "7f83f5eb-48ad-4c8f-aebb-f8030d7d32f9",
+      hidden: true,
+    });
+
+    expect(textResult.ok).toBe(true);
+    expect(reverseLookupResult.ok).toBe(true);
   });
 
   it("fails relation config when displayField is missing", () => {

@@ -2,7 +2,7 @@
 
 import { FileText, LayoutGrid, ListFilter } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { usePermissions } from "@/modules/authorization/presentation/providers/permission-provider";
 import { useGuidance } from "@/modules/guidance/presentation/hooks/use-guidance";
@@ -35,11 +35,16 @@ interface CollectionDetailPageProps {
 }
 
 type CollectionTab = "data" | "fields" | "templates";
+const SEARCHABLE_FIELD_TYPES = new Set(["TEXT", "NUMBER", "ENUM", "URL", "EMAIL", "PHONE"]);
 
 function resolveTab(raw: string | null, canManageSchema: boolean): CollectionTab {
   if (raw === "templates") return "templates";
   if (raw === "fields" && canManageSchema) return "fields";
   return "data";
+}
+
+function isFieldHidden(field: Field) {
+  return Boolean((field.config?.value as { hidden?: boolean } | undefined)?.hidden);
 }
 
 export function CollectionDetailPage({ collectionId, collectionName }: CollectionDetailPageProps) {
@@ -60,6 +65,7 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
     createField,
     updateField,
     deleteField,
+    reorderFields,
   } = useFields(collectionId);
   const {
     records,
@@ -90,6 +96,11 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
   const { loadStoredFilters, persistFilters } = useGridPersistence(collectionId);
 
   const currentCollection = collections.find((c) => c.id === collectionId);
+  const visibleFields = useMemo(() => fields.filter((field) => !isFieldHidden(field)), [fields]);
+  const visibleFieldNames = useMemo(
+    () => new Set(visibleFields.map((field) => field.name)),
+    [visibleFields],
+  );
 
   const [recordEditorOpen, setRecordEditorOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<DataRecord | undefined>(undefined);
@@ -112,35 +123,31 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
     async function hydrate() {
       const stored = await loadStoredFilters();
       if (stored) {
+        const sanitizedRawValues = Object.fromEntries(
+          Object.entries(stored.rawValues || {}).filter(([name]) => visibleFieldNames.has(name)),
+        );
+        const sanitizedFilters = (stored.filters || []).filter((filter) =>
+          visibleFieldNames.has(filter.field),
+        );
+
         setPagination((prev) => ({
           ...prev,
-          filters: stored.filters || [],
+          filters: sanitizedFilters,
           search: stored.search || "",
         }));
-        setInitialFilterValues(stored.rawValues || {});
+        setInitialFilterValues(sanitizedRawValues);
       }
       setIsHydrated(true);
     }
     void hydrate();
-  }, [loadStoredFilters, setPagination]);
+  }, [loadStoredFilters, setPagination, visibleFieldNames]);
 
   useEffect(() => {
     setActiveTab(resolveTab(searchParams.get("tab"), canManageSchema));
   }, [searchParams, canManageSchema]);
 
-  // Automatically sync searchFields with searchable field names
-  useEffect(() => {
-    if (fields.length > 0) {
-      const searchableFields = fields
-        .filter((f) =>
-          ["TEXT", "NUMBER", "ENUM", "URL", "EMAIL", "PHONE"].includes(f.fieldType.value),
-        )
-        .map((f) => f.name);
-      setSearchFields(searchableFields);
-    }
-  }, [fields, setSearchFields]);
-
   const handleFiltersChange = (filters: ColumnFilter[], rawValues: Record<string, string>) => {
+    setInitialFilterValues(rawValues);
     setFilters(filters);
     persistFilters(filters, rawValues, pagination.search || "");
   };
@@ -173,14 +180,61 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
   };
 
   useEffect(() => {
-    setSearchFields(fields.map((field) => field.name));
-  }, [fields, setSearchFields]);
+    const searchableFields = visibleFields
+      .filter((field) => SEARCHABLE_FIELD_TYPES.has(field.fieldType.value))
+      .map((field) => field.name);
+
+    setSearchFields(searchableFields);
+  }, [visibleFields, setSearchFields]);
 
   const handleInlineEdit = async (record: DataRecord, field: Field, value: unknown) => {
     await updateRecord(record.id, {
       ...record.data,
       [field.name]: value,
     });
+  };
+
+  const persistPrunedFilters = (
+    hiddenFieldName: string,
+    nextSearch: string = pagination.search || "",
+  ) => {
+    const nextRawValues = Object.fromEntries(
+      Object.entries(initialFilterValues).filter(([name]) => name !== hiddenFieldName),
+    );
+    const nextFilters = (pagination.filters || []).filter(
+      (filter) => filter.field !== hiddenFieldName,
+    );
+
+    setInitialFilterValues(nextRawValues);
+    setFilters(nextFilters);
+    persistFilters(nextFilters, nextRawValues, nextSearch);
+  };
+
+  const handleToggleIdColumn = async (hidden: boolean) => {
+    if (!currentCollection) return;
+
+    await updateCollection({
+      ...currentCollection.toJSON(),
+      settings: {
+        ...currentCollection.settings,
+        hideIdColumn: hidden,
+      },
+    });
+  };
+
+  const handleToggleFieldVisibility = async (field: Field, hidden: boolean) => {
+    const result = await updateField({
+      ...field.toJSON(),
+      id: field.id,
+      config: {
+        ...(field.config?.value || {}),
+        hidden,
+      },
+    });
+
+    if (result.ok && hidden) {
+      persistPrunedFilters(field.name);
+    }
   };
 
   if (!isHydrated) return null;
@@ -278,6 +332,10 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
                   onDelete={deleteRecord}
                   onAddRecord={handleCreateRecord}
                   reverseLookupResults={reverseLookupResults}
+                  hideIdColumn={currentCollection?.settings.hideIdColumn === true}
+                  canConfigureColumns={canManageSchema}
+                  onToggleIdColumn={handleToggleIdColumn}
+                  onToggleFieldVisibility={handleToggleFieldVisibility}
                   canCreate={canCreate}
                   canRead={canRead}
                   canUpdate={canUpdate}
@@ -336,6 +394,7 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
                 createField={createField}
                 updateField={updateField}
                 deleteField={deleteField}
+                reorderFields={reorderFields}
               />
             </div>
           </div>

@@ -161,6 +161,7 @@ export function makeCollection(
     description: string;
     icon: string;
     primaryFieldName: string | null;
+    settings: { hideIdColumn?: boolean };
     createdAt: Date;
     updatedAt: Date;
   }> = {},
@@ -175,6 +176,7 @@ export function makeCollection(
     description: overrides.description ?? `Description ${order}`,
     icon: overrides.icon ?? "database",
     primaryFieldName: overrides.primaryFieldName ?? null,
+    settings: overrides.settings,
     createdAt: overrides.createdAt ?? dateFor(order),
     updatedAt: overrides.updatedAt ?? dateFor(order),
   });

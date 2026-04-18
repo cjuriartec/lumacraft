@@ -92,6 +92,7 @@ export class CreateFieldUseCase {
         const reverseConfigRes = FieldConfig.create("REVERSE_LOOKUP", {
           targetCollectionId: request.collectionId,
           targetFieldId: createdField.id,
+          hidden: true,
         });
 
         if (reverseConfigRes.ok) {

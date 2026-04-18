@@ -3,6 +3,10 @@ import { fail, ok, Result } from "@/shared/domain/result";
 import { DisplayName } from "@/shared/domain/value-objects/display-name.vo";
 import { Identifier } from "@/shared/domain/value-objects/identifier.vo";
 
+export interface CollectionSettings {
+  hideIdColumn?: boolean;
+}
+
 interface CollectionProps {
   id: string;
   accountId: string;
@@ -11,6 +15,7 @@ interface CollectionProps {
   description?: string;
   icon?: string;
   primaryFieldName?: string | null;
+  settings?: CollectionSettings;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -43,6 +48,7 @@ export class Collection extends BaseEntity {
     description?: string;
     icon?: string;
     primaryFieldName?: string | null;
+    settings?: CollectionSettings;
     createdAt?: Date;
     updatedAt?: Date;
   }): Result<Collection> {
@@ -75,6 +81,10 @@ export class Collection extends BaseEntity {
     return this.props.primaryFieldName;
   }
 
+  get settings(): CollectionSettings {
+    return this.props.settings || {};
+  }
+
   public toJSON() {
     return {
       id: this.id,
@@ -84,6 +94,7 @@ export class Collection extends BaseEntity {
       description: this.description,
       icon: this.icon,
       primaryFieldName: this.primaryFieldName,
+      settings: this.settings,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
     };

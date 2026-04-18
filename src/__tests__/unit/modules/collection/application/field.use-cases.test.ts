@@ -134,6 +134,9 @@ describe("field use cases", () => {
       inverseFieldName: "orders",
     });
     expect(repository.create.mock.calls[1][0].fieldType.value).toBe("REVERSE_LOOKUP");
+    expect(repository.create.mock.calls[1][0].config?.value).toMatchObject({
+      hidden: true,
+    });
     uuidSpy.mockRestore();
   });
 

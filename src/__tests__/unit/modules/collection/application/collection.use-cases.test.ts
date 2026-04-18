@@ -88,6 +88,7 @@ describe("collection use cases", () => {
       name: "projects",
       displayName: "Projects Updated",
       primaryFieldName: "title",
+      settings: { hideIdColumn: true },
     });
 
     expect(result.ok).toBe(true);
@@ -95,6 +96,7 @@ describe("collection use cases", () => {
     if (result.ok) {
       expect(result.value.displayName).toBe("Projects Updated");
       expect(result.value.primaryFieldName).toBe("title");
+      expect(result.value.settings.hideIdColumn).toBe(true);
     }
   });
 

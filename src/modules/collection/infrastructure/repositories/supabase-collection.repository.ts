@@ -3,7 +3,7 @@ import { SupabaseClient } from "@supabase/supabase-js";
 import { DomainError, fail, ok, Result } from "@/shared/domain/result";
 import { BaseRepository } from "@/shared/infrastructure/base-repository";
 
-import { Collection } from "../../domain/entities/collection.entity";
+import { Collection, CollectionSettings } from "../../domain/entities/collection.entity";
 import { ICollectionRepository } from "../../domain/ports/collection-repository.port";
 
 export class SupabaseCollectionRepository extends BaseRepository implements ICollectionRepository {
@@ -42,6 +42,7 @@ export class SupabaseCollectionRepository extends BaseRepository implements ICol
         description: collection.description,
         icon: collection.icon,
         primary_field_name: collection.primaryFieldName,
+        settings: collection.settings,
       })
       .select()
       .single();
@@ -61,6 +62,7 @@ export class SupabaseCollectionRepository extends BaseRepository implements ICol
         description: collection.description,
         icon: collection.icon,
         primary_field_name: collection.primaryFieldName,
+        settings: collection.settings,
         updated_at: new Date().toISOString(),
       })
       .eq("id", collection.id)
@@ -102,6 +104,7 @@ export class SupabaseCollectionRepository extends BaseRepository implements ICol
       description: (data.description as string) || undefined,
       icon: (data.icon as string) || undefined,
       primaryFieldName: (data.primary_field_name as string) || null,
+      settings: (data.settings as CollectionSettings) || {},
       createdAt: new Date(data.created_at as string),
       updatedAt: new Date(data.updated_at as string),
     });
