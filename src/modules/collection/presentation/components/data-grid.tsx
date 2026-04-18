@@ -53,8 +53,8 @@ import {
 } from "@/shared/presentation/components/ui/table";
 
 import { Field } from "../../domain/entities/field.entity";
-import { formatShortRecordId } from "../../domain/services/record-label.service";
 import { DataRecord } from "../../domain/entities/record.entity";
+import { formatShortRecordId } from "../../domain/services/record-label.service";
 import { ColumnFilter } from "../../domain/types/pagination.types";
 import { RecordQuickViewDialog } from "../components/record-quick-view-dialog";
 import { ReverseLookupResults } from "../hooks/use-records";
