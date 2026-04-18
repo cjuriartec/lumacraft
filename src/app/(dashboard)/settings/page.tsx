@@ -1,4 +1,4 @@
-import { BrainCircuit, Shield, Users } from "lucide-react";
+import { BrainCircuit, Building2 } from "lucide-react";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -30,23 +30,13 @@ export default function SettingsPage() {
           </p>
         </Link>
         <Link
-          href="/settings/roles"
+          href="/settings/workspace/general"
           className="rounded-2xl border border-border/50 bg-surface p-6 transition-colors hover:bg-surface-hover/30"
         >
-          <Users className="text-primary" size={18} />
-          <h2 className="mt-4 text-lg font-semibold text-foreground">Roles y Miembros</h2>
+          <Building2 className="text-primary" size={18} />
+          <h2 className="mt-4 text-lg font-semibold text-foreground">Workspace</h2>
           <p className="mt-2 text-sm text-foreground/65">
-            Gestiona admins, roles personalizados e invitaciones.
-          </p>
-        </Link>
-        <Link
-          href="/settings/permissions"
-          className="rounded-2xl border border-border/50 bg-surface p-6 transition-colors hover:bg-surface-hover/30"
-        >
-          <Shield className="text-primary" size={18} />
-          <h2 className="mt-4 text-lg font-semibold text-foreground">Permisos</h2>
-          <p className="mt-2 text-sm text-foreground/65">
-            Define acceso granular por colección y rol.
+            Centraliza usuarios, roles, permisos y la identidad del espacio actual.
           </p>
         </Link>
       </div>

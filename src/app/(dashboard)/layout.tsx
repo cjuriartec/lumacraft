@@ -1,14 +1,6 @@
 "use client";
 
-import {
-  ChevronRight,
-  LayoutDashboard,
-  PanelLeft,
-  Settings,
-  Share2,
-  Shield,
-  Users,
-} from "lucide-react";
+import { ChevronRight, LayoutDashboard, PanelLeft, Settings, Share2 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -20,10 +12,7 @@ import {
   UserPreferencesProvider,
   useUserPreferences as useSidebarPreferences,
 } from "@/modules/auth/presentation/providers/user-preferences-provider";
-import {
-  PermissionProvider,
-  usePermissions,
-} from "@/modules/authorization/presentation/providers/permission-provider";
+import { PermissionProvider } from "@/modules/authorization/presentation/providers/permission-provider";
 import { GuidanceProvider } from "@/modules/guidance/presentation/providers/guidance-provider";
 import { WorkspaceSwitcher } from "@/modules/workspace/presentation/components/workspace-switcher";
 import WorkspaceProvider from "@/modules/workspace/presentation/providers/workspace-provider";
@@ -295,8 +284,6 @@ function SidebarNav({
   setSidebarOpen: (o: boolean) => void;
   isCollapsed: boolean;
 }) {
-  const { isOwner, isSuperAdmin } = usePermissions();
-
   return (
     <nav
       data-guidance-anchor="sidebar-nav"
@@ -326,30 +313,6 @@ function SidebarNav({
         isCollapsed={isCollapsed}
         onClick={() => setSidebarOpen(false)}
       />
-
-      {(isOwner || isSuperAdmin) && (
-        <>
-          <div className={`mb-3 mt-8 ${isCollapsed ? "hidden" : ""}`}>
-            <p className="text-[10px] font-bold uppercase tracking-[0.15em] px-3 text-foreground/30">
-              Gestión
-            </p>
-          </div>
-          <NavLink
-            href="/settings/roles"
-            icon={<Users size={18} strokeWidth={1.5} />}
-            label="Miembros"
-            isCollapsed={isCollapsed}
-            onClick={() => setSidebarOpen(false)}
-          />
-          <NavLink
-            href="/settings/permissions"
-            icon={<Shield size={18} strokeWidth={1.5} />}
-            label="Permisos"
-            isCollapsed={isCollapsed}
-            onClick={() => setSidebarOpen(false)}
-          />
-        </>
-      )}
 
       <div className="pt-4 mt-auto border-t border-border/5">
         <NavLink

@@ -337,8 +337,8 @@ export const HELP_ARTICLES: HelpArticleDefinition[] = [
       {
         type: "route-cta",
         title: "Gestionar equipo",
-        href: "/settings/roles",
-        label: "Ir a Roles y Miembros",
+        href: "/settings/workspace/users",
+        label: "Ir a Usuarios del Workspace",
         adminOnly: true,
       },
     ],
@@ -367,8 +367,8 @@ export const HELP_ARTICLES: HelpArticleDefinition[] = [
       {
         type: "route-cta",
         title: "Abrir matriz",
-        href: "/settings/permissions",
-        label: "Ir a Permisos",
+        href: "/settings/workspace/roles",
+        label: "Ir a Roles y Permisos",
         adminOnly: true,
       },
     ],

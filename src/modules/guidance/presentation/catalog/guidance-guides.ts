@@ -306,7 +306,7 @@ export const GUIDANCE_GUIDES: GuideDefinition[] = [
     summary: "Crea roles, invita miembros y distribuye responsabilidades del workspace.",
     pageContextId: "roles-members",
     articleId: "roles-y-miembros",
-    targetRoute: "/settings/roles",
+    targetRoute: "/settings/workspace/users",
     adminOnly: true,
     steps: [
       {
@@ -331,7 +331,7 @@ export const GUIDANCE_GUIDES: GuideDefinition[] = [
     summary: "Reparte lectura, creación, actualización y eliminación por rol y colección.",
     pageContextId: "permissions",
     articleId: "permisos",
-    targetRoute: "/settings/permissions",
+    targetRoute: "/settings/workspace/roles",
     adminOnly: true,
     steps: [
       {

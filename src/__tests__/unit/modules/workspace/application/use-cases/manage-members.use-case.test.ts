@@ -29,6 +29,7 @@ describe("ManageMembersUseCase", () => {
       findById: vi.fn(),
       findByUserId: vi.fn(),
       create: vi.fn(),
+      update: vi.fn(),
     };
 
     useCase = new ManageMembersUseCase(memberRepository, workspaceRepository);

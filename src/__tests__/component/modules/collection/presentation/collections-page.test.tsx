@@ -39,15 +39,11 @@ vi.mock("@/modules/auth/presentation/providers/auth-provider", () => ({
   }),
 }));
 
-vi.mock("@/modules/workspace/presentation/hooks/use-members", () => ({
-  useMembers: () => ({
-    members: [{ userId: "user-1", roleId: "role-1" }],
-  }),
-}));
-
-vi.mock("@/modules/workspace/presentation/hooks/use-roles", () => ({
-  useRoles: () => ({
-    roles: [{ id: "role-1", isSuperadmin: true }],
+vi.mock("@/modules/workspace/presentation/hooks/use-workspace-access", () => ({
+  useWorkspaceAccess: () => ({
+    canManageWorkspace: true,
+    canRenameWorkspace: true,
+    loading: false,
   }),
 }));
 

@@ -7,10 +7,12 @@ import { SupabaseTemplateRepository } from "@/modules/template/infrastructure/re
 import { SupabaseRoleRepository } from "../infrastructure/repositories/supabase-role.repository";
 import { SupabaseWorkspaceRepository } from "../infrastructure/repositories/supabase-workspace.repository";
 import { SupabaseWorkspaceMemberRepository } from "../infrastructure/repositories/supabase-workspace-member.repository";
+import { CreateWorkspaceUseCase } from "./use-cases/create-workspace.use-case";
 import { GetWorkspaceStatsUseCase } from "./use-cases/get-workspace-stats.use-case";
 import { GetWorkspacesByUserUseCase } from "./use-cases/get-workspaces-by-user.use-case";
 import { ManageMembersUseCase } from "./use-cases/manage-members.use-case";
 import { ManageRolesUseCase } from "./use-cases/manage-roles.use-case";
+import { UpdateWorkspaceUseCase } from "./use-cases/update-workspace.use-case";
 
 export class WorkspaceUseCaseFactory {
   public static create(supabase: SupabaseClient) {
@@ -41,6 +43,14 @@ class WorkspaceUseCaseFactoryImpl {
 
   public getWorkspacesByUser() {
     return new GetWorkspacesByUserUseCase(this.repositories.workspace);
+  }
+
+  public createWorkspace() {
+    return new CreateWorkspaceUseCase(this.repositories.workspace);
+  }
+
+  public updateWorkspace() {
+    return new UpdateWorkspaceUseCase(this.repositories.workspace);
   }
 
   public manageMembers() {
