@@ -3,8 +3,8 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { makeField, resetFactories } from "@/__tests__/factories/domain-factories";
-import { RecordQuickViewDialog } from "@/modules/collection/presentation/components/record-quick-view-dialog";
 import type { EagerLoadedRecord } from "@/modules/collection/domain/types/eager-loading.types";
+import { RecordQuickViewDialog } from "@/modules/collection/presentation/components/record-quick-view-dialog";
 import type { RelatedRecordSummary } from "@/modules/collection/presentation/lib/record-relations";
 
 const collectionsState = vi.hoisted(() => ({

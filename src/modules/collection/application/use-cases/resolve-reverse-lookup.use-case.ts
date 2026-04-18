@@ -49,9 +49,9 @@ export class ResolveReverseLookupUseCase {
       return ok(map);
     }
 
-    const uniqueSourceRecordIds = [...new Set(
-      relationsRes.value.map((relation) => relation.sourceRecordId),
-    )];
+    const uniqueSourceRecordIds = [
+      ...new Set(relationsRes.value.map((relation) => relation.sourceRecordId)),
+    ];
     const recordsRes = await this.recordRepository.findByCollectionId(request.targetCollectionId, {
       page: 1,
       pageSize: Math.max(uniqueSourceRecordIds.length, 1),

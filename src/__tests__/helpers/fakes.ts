@@ -499,14 +499,16 @@ export class InMemoryRelationRepository implements IRelationRepository {
     );
   });
 
-  public listByFieldAndTargetRecordIds = vi.fn(async (fieldId: string, targetRecordIds: string[]) => {
-    return ok(
-      this.items.filter(
-        (relation) =>
-          relation.fieldId === fieldId && targetRecordIds.includes(relation.targetRecordId),
-      ),
-    );
-  });
+  public listByFieldAndTargetRecordIds = vi.fn(
+    async (fieldId: string, targetRecordIds: string[]) => {
+      return ok(
+        this.items.filter(
+          (relation) =>
+            relation.fieldId === fieldId && targetRecordIds.includes(relation.targetRecordId),
+        ),
+      );
+    },
+  );
 
   public validateCardinality = vi.fn(async (request: ValidateCardinalityRequest) => {
     if (this.validateCardinalityResult) return this.validateCardinalityResult;
