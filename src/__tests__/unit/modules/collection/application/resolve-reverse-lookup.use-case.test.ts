@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
 
 import { makeField, makeRecord } from "@/__tests__/factories/domain-factories";
-import { InMemoryFieldRepository, InMemoryRecordRepository } from "@/__tests__/helpers/fakes";
+import {
+  InMemoryFieldRepository,
+  InMemoryRecordRepository,
+  InMemoryRelationRepository,
+} from "@/__tests__/helpers/fakes";
 import { ResolveReverseLookupUseCase } from "@/modules/collection/application/use-cases/resolve-reverse-lookup.use-case";
 
 describe("ResolveReverseLookupUseCase", () => {
-  it("resolves reverse relations in bulk correctly", async () => {
+  it("resolves reverse relations in bulk from the canonical relation graph", async () => {
     // 1. Setup
     const office1Id = "office-1";
     const office2Id = "office-2";
@@ -18,29 +22,59 @@ describe("ResolveReverseLookupUseCase", () => {
 
     const fieldRepository = new InMemoryFieldRepository([relationField]);
     const recordRepository = new InMemoryRecordRepository();
+    const relationRepository = new InMemoryRelationRepository([
+      {
+        id: "rel-1",
+        accountId: "account-1",
+        fieldId: relationField.id,
+        sourceRecordId: "worker-1",
+        targetRecordId: office1Id,
+        createdAt: new Date(),
+      },
+      {
+        id: "rel-2",
+        accountId: "account-1",
+        fieldId: relationField.id,
+        sourceRecordId: "worker-2",
+        targetRecordId: office1Id,
+        createdAt: new Date(),
+      },
+      {
+        id: "rel-3",
+        accountId: "account-1",
+        fieldId: relationField.id,
+        sourceRecordId: "worker-3",
+        targetRecordId: office2Id,
+        createdAt: new Date(),
+      },
+    ]);
 
     // Create workers linked to offices
     const worker1 = makeRecord({
       id: "worker-1",
       collectionId: "personal-collection",
-      data: { oficina: office1Id, nombre: "Worker 1" },
+      data: { oficina: [office1Id], nombre: "Worker 1" },
     });
     const worker2 = makeRecord({
       id: "worker-2",
       collectionId: "personal-collection",
-      data: { oficina: office1Id, nombre: "Worker 2" },
+      data: { nombre: "Worker 2" },
     });
     const worker3 = makeRecord({
       id: "worker-3",
       collectionId: "personal-collection",
-      data: { oficina: office2Id, nombre: "Worker 3" },
+      data: { oficina: [office2Id, office1Id], nombre: "Worker 3" },
     });
 
     await recordRepository.create(worker1);
     await recordRepository.create(worker2);
     await recordRepository.create(worker3);
 
-    const useCase = new ResolveReverseLookupUseCase(fieldRepository, recordRepository);
+    const useCase = new ResolveReverseLookupUseCase(
+      fieldRepository,
+      recordRepository,
+      relationRepository,
+    );
 
     // 2. Execute
     const result = await useCase.execute({

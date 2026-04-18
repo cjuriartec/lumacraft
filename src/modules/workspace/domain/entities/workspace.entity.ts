@@ -28,6 +28,14 @@ export class Workspace extends BaseEntity {
     return this.props.ownerId;
   }
 
+  get settings(): Record<string, unknown> | undefined {
+    return this.props.settings;
+  }
+
+  get isActive(): boolean {
+    return this.props.isActive ?? true;
+  }
+
   public static create(props: {
     id: string;
     name: string;
@@ -53,6 +61,8 @@ export class Workspace extends BaseEntity {
       id: this.id,
       name: this.name,
       ownerId: this.ownerId,
+      settings: this.settings,
+      isActive: this.isActive,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
     };

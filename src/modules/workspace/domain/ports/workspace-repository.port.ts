@@ -6,4 +6,5 @@ export interface IWorkspaceRepository {
   findById(id: string): Promise<Result<Workspace | null>>;
   findByUserId(userId: string): Promise<Result<Workspace[]>>;
   create(workspace: Workspace): Promise<Result<Workspace>>;
+  update(workspace: Workspace): Promise<Result<Workspace>>;
 }

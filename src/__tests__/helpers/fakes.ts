@@ -65,6 +65,7 @@ export class InMemoryWorkspaceRepository implements IWorkspaceRepository {
   public findByIdResult?: Result<Workspace | null>;
   public findByUserIdResult?: Result<Workspace[]>;
   public createResult?: Result<Workspace>;
+  public updateResult?: Result<Workspace>;
 
   public findById = vi.fn(async (id: string) => {
     return this.findByIdResult ?? ok(this.items.find((workspace) => workspace.id === id) ?? null);
@@ -79,6 +80,12 @@ export class InMemoryWorkspaceRepository implements IWorkspaceRepository {
   public create = vi.fn(async (workspace: Workspace) => {
     if (this.createResult) return this.createResult;
     this.items.push(workspace);
+    return ok(workspace);
+  });
+
+  public update = vi.fn(async (workspace: Workspace) => {
+    if (this.updateResult) return this.updateResult;
+    this.items = this.items.map((item) => (item.id === workspace.id ? workspace : item));
     return ok(workspace);
   });
 }
@@ -346,7 +353,27 @@ export class InMemoryRecordRepository implements IRecordRepository {
     if (options.filters && options.filters.length > 0) {
       filtered = filtered.filter((record) => {
         return options.filters!.every((filter) => {
-          const value = record.data[filter.field];
+          const nativeValue = (() => {
+            switch (filter.field) {
+              case "id":
+                return record.id;
+              case "collection_id":
+                return record.collectionId;
+              case "account_id":
+                return record.accountId;
+              case "created_at":
+                return record.createdAt.toISOString();
+              case "updated_at":
+                return record.updatedAt.toISOString();
+              case "created_by":
+                return record.createdBy;
+              case "updated_by":
+                return record.updatedBy;
+              default:
+                return undefined;
+            }
+          })();
+          const value = nativeValue ?? record.data[filter.field];
           switch (filter.operator) {
             case "eq":
               return String(value) === String(filter.value);
@@ -469,6 +496,15 @@ export class InMemoryRelationRepository implements IRelationRepository {
     return (
       this.listBySourceRecordResult ??
       ok(this.items.filter((relation) => relation.sourceRecordId === sourceRecordId))
+    );
+  });
+
+  public listByFieldAndTargetRecordIds = vi.fn(async (fieldId: string, targetRecordIds: string[]) => {
+    return ok(
+      this.items.filter(
+        (relation) =>
+          relation.fieldId === fieldId && targetRecordIds.includes(relation.targetRecordId),
+      ),
     );
   });
 

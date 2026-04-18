@@ -26,6 +26,25 @@ export class SupabaseRelationRepository extends BaseRepository implements IRelat
     return ok((data as Record<string, unknown>[]).map((item) => this.toEntity(item)));
   }
 
+  public async listByFieldAndTargetRecordIds(
+    fieldId: string,
+    targetRecordIds: string[],
+  ): Promise<Result<RecordRelation[]>> {
+    if (targetRecordIds.length === 0) {
+      return ok([]);
+    }
+
+    const { data, error } = await this.table
+      .select("*")
+      .eq("field_id", fieldId)
+      .in("target_record_id", targetRecordIds)
+      .order("created_at", { ascending: true });
+
+    if (error) return fail(new DomainError(error.message, "DB_ERROR"));
+
+    return ok((data as Record<string, unknown>[]).map((item) => this.toEntity(item)));
+  }
+
   public async validateCardinality(request: ValidateCardinalityRequest): Promise<Result<void>> {
     const uniqueTargetIds = [...new Set(request.targetRecordIds)];
 

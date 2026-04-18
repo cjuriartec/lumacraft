@@ -312,4 +312,52 @@ describe("DataGrid", () => {
 
     expect(screen.getByTestId("record-quick-view")).toHaveTextContent("client-1:ACME Corp");
   });
+
+  it("renders reverse lookup values in the grid when they are resolved externally", async () => {
+    resetFactories();
+    const field = makeField({
+      id: "field-reverse-1",
+      collectionId: "collection-1",
+      name: "orders_inverse",
+      displayName: "Pedidos vinculados",
+      fieldType: "REVERSE_LOOKUP",
+      config: {
+        targetCollectionId: "11111111-1111-4111-8111-111111111111",
+        targetFieldId: "33333333-3333-4333-8333-333333333333",
+      },
+    });
+    const record = makeRecord({
+      id: "record-3",
+      collectionId: field.collectionId,
+      data: {},
+    });
+
+    render(
+      <DataGrid
+        collectionId={field.collectionId}
+        fields={[field]}
+        records={[record]}
+        total={1}
+        currentPage={1}
+        pageSize={25}
+        search=""
+        onSearchChange={vi.fn()}
+        onFiltersChange={vi.fn()}
+        onPageChange={vi.fn()}
+        onSort={vi.fn()}
+        onInlineEdit={vi.fn()}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+        reverseLookupResults={{
+          "record-3": {
+            orders_inverse: [{ id: "order-1", label: "order-1" }],
+          },
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByText(/1 Relación/i));
+
+    expect(screen.getByRole("button", { name: "order-1" })).toBeInTheDocument();
+  });
 });
