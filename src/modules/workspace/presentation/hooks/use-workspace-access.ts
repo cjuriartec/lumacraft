@@ -4,11 +4,13 @@ import { usePermissions } from "@/modules/authorization/presentation/providers/p
 
 export function useWorkspaceAccess() {
   const { isOwner, isSuperAdmin, loading } = usePermissions();
+  const canAccessSettings = isOwner || isSuperAdmin;
 
   return {
     isOwner,
     isSuperAdmin,
-    canManageWorkspace: isOwner || isSuperAdmin,
+    canAccessSettings,
+    canManageWorkspace: canAccessSettings,
     canRenameWorkspace: isOwner,
     loading,
   };

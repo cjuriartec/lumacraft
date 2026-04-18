@@ -186,6 +186,73 @@ export async function addMemberToAccount(accountId: string, userId: string) {
   }
 }
 
+export async function createRoleForAccount(params: {
+  accountId: string;
+  name: string;
+  description?: string | null;
+  isSuperadmin?: boolean;
+}) {
+  const service = createAdminSupabaseClient();
+
+  const { data, error } = await service
+    .from("roles")
+    .insert({
+      account_id: params.accountId,
+      name: params.name,
+      description: params.description ?? null,
+      is_superadmin: params.isSuperadmin ?? false,
+    })
+    .select("id")
+    .single();
+
+  if (error || !data?.id) {
+    throw error ?? new Error("Failed to create role");
+  }
+
+  return data.id as string;
+}
+
+export async function addMemberToAccountWithRole(accountId: string, userId: string, roleId: string) {
+  const service = createAdminSupabaseClient();
+
+  const { error } = await service.from("account_members").insert({
+    account_id: accountId,
+    user_id: userId,
+    role_id: roleId,
+  });
+
+  if (error) {
+    throw error;
+  }
+}
+
+export async function grantCollectionPermission(params: {
+  roleId: string;
+  collectionId: string;
+  canRead?: boolean;
+  canCreate?: boolean;
+  canUpdate?: boolean;
+  canDelete?: boolean;
+}) {
+  const service = createAdminSupabaseClient();
+
+  const { error } = await service.from("collection_permissions").upsert(
+    {
+      role_id: params.roleId,
+      collection_id: params.collectionId,
+      can_read: params.canRead ?? false,
+      can_create: params.canCreate ?? false,
+      can_update: params.canUpdate ?? false,
+      can_delete: params.canDelete ?? false,
+    },
+    { onConflict: "role_id,collection_id" },
+  );
+
+  if (error) {
+    throw error;
+  }
+}
+
 export async function cleanupTestUser(userId: string) {
   const escapedUserId = escapeSqlLiteral(userId);
 

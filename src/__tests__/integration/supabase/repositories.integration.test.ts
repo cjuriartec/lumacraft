@@ -9,10 +9,13 @@ import {
 } from "@/__tests__/factories/domain-factories";
 import {
   addMemberToAccount,
+  addMemberToAccountWithRole,
   canRunLocalSupabaseTests,
   cleanupTestUser,
+  createRoleForAccount,
   createTestUser,
   getPersonalAccountId,
+  grantCollectionPermission,
   TestUserSession,
 } from "@/__tests__/helpers/supabase-harness";
 import { SupabaseCollectionRepository } from "@/modules/collection/infrastructure/repositories/supabase-collection.repository";
@@ -29,18 +32,23 @@ const describeIfLocalSupabase = canRunLocalSupabaseTests ? describe : describe.s
 describeIfLocalSupabase("Supabase repositories integration", () => {
   let owner: TestUserSession;
   let member: TestUserSession;
+  let editor: TestUserSession;
   let outsider: TestUserSession;
   let accountId: string;
 
   beforeAll(async () => {
     owner = await createTestUser("repo-owner");
     member = await createTestUser("repo-member");
+    editor = await createTestUser("repo-editor");
     outsider = await createTestUser("repo-outsider");
     accountId = await getPersonalAccountId(owner.id);
     await addMemberToAccount(accountId, member.id);
   });
 
   afterAll(async () => {
+    if (editor) {
+      await cleanupTestUser(editor.id);
+    }
     if (member) {
       await cleanupTestUser(member.id);
     }
@@ -167,6 +175,83 @@ describeIfLocalSupabase("Supabase repositories integration", () => {
       expect((staleUpdate.error as Error & { code?: string }).code).toBe(
         "TEMPLATE_VERSION_CONFLICT",
       );
+    }
+  });
+
+  it("allows non-admin members with collection update permission to edit linked templates", async () => {
+    const ownerCollections = new SupabaseCollectionRepository(owner.client);
+    const ownerTemplates = new SupabaseTemplateRepository(owner.client);
+    const editorTemplates = new SupabaseTemplateRepository(editor.client);
+
+    const collection = await ownerCollections.create(
+      makeCollection({
+        id: crypto.randomUUID(),
+        accountId,
+        name: `template_scope_${crypto.randomUUID().slice(0, 6)}`,
+        displayName: "Template scope",
+      }),
+    );
+
+    if (!collection.ok) {
+      throw collection.error;
+    }
+
+    const editorRoleId = await createRoleForAccount({
+      accountId,
+      name: `Editor ${crypto.randomUUID().slice(0, 6)}`,
+      description: "Can edit templates for an allowed collection",
+    });
+
+    await addMemberToAccountWithRole(accountId, editor.id, editorRoleId);
+    await grantCollectionPermission({
+      roleId: editorRoleId,
+      collectionId: collection.value.id,
+      canRead: true,
+      canUpdate: true,
+    });
+
+    const created = await ownerTemplates.create(
+      makeTemplate({
+        id: crypto.randomUUID(),
+        accountId,
+        collectionId: collection.value.id,
+        name: `editable_template_${crypto.randomUUID().slice(0, 6)}`,
+        blocks: [{ type: "p", children: [{ text: "Original" }] }],
+        createdBy: owner.id,
+      }),
+    );
+
+    expect(created.ok).toBe(true);
+    if (!created.ok) {
+      throw created.error;
+    }
+
+    const updatedTemplateResult = Template.create({
+      id: created.value.id,
+      accountId,
+      name: `${created.value.name} actualizado`,
+      description: created.value.description,
+      collectionId: created.value.collectionId,
+      blocks: [{ type: "p", children: [{ text: "Editado por rol no admin" }] }],
+      pageConfig: created.value.pageConfig,
+      version: created.value.version + 1,
+      createdBy: created.value.createdBy,
+      createdAt: created.value.createdAt,
+      updatedAt: created.value.updatedAt,
+    });
+
+    if (!updatedTemplateResult.ok) {
+      throw updatedTemplateResult.error;
+    }
+
+    const updateResult = await editorTemplates.update(
+      updatedTemplateResult.value,
+      created.value.version,
+    );
+
+    expect(updateResult.ok).toBe(true);
+    if (updateResult.ok) {
+      expect(updateResult.value.name).toContain("actualizado");
     }
   });
 

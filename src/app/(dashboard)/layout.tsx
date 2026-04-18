@@ -14,6 +14,7 @@ import {
 } from "@/modules/auth/presentation/providers/user-preferences-provider";
 import { PermissionProvider } from "@/modules/authorization/presentation/providers/permission-provider";
 import { GuidanceProvider } from "@/modules/guidance/presentation/providers/guidance-provider";
+import { useWorkspaceAccess } from "@/modules/workspace/presentation/hooks/use-workspace-access";
 import { WorkspaceSwitcher } from "@/modules/workspace/presentation/components/workspace-switcher";
 import WorkspaceProvider from "@/modules/workspace/presentation/providers/workspace-provider";
 import { getMissingPublicSupabaseEnv } from "@/shared/infrastructure/supabase/env";
@@ -284,6 +285,8 @@ function SidebarNav({
   setSidebarOpen: (o: boolean) => void;
   isCollapsed: boolean;
 }) {
+  const { canAccessSettings } = useWorkspaceAccess();
+
   return (
     <nav
       data-guidance-anchor="sidebar-nav"
@@ -314,15 +317,17 @@ function SidebarNav({
         onClick={() => setSidebarOpen(false)}
       />
 
-      <div className="pt-4 mt-auto border-t border-border/5">
-        <NavLink
-          href="/settings"
-          icon={<Settings size={18} strokeWidth={1.5} />}
-          label="Configuración"
-          isCollapsed={isCollapsed}
-          onClick={() => setSidebarOpen(false)}
-        />
-      </div>
+      {canAccessSettings ? (
+        <div className="pt-4 mt-auto border-t border-border/5">
+          <NavLink
+            href="/settings"
+            icon={<Settings size={18} strokeWidth={1.5} />}
+            label="Configuración"
+            isCollapsed={isCollapsed}
+            onClick={() => setSidebarOpen(false)}
+          />
+        </div>
+      ) : null}
     </nav>
   );
 }
