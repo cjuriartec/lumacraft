@@ -1,6 +1,8 @@
 "use client";
 
-import { Check, ChevronDown, Layers, UserPlus } from "lucide-react";
+import { Check, ChevronDown, Layers, Plus, Settings2, UserPlus } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { cn } from "@/shared/lib/utils";
@@ -8,15 +10,19 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/shared/presentation/components/ui/dropdown-menu";
 
 import { useWorkspace } from "../providers/workspace-provider";
+import { CreateWorkspaceDialog } from "./create-workspace-dialog";
 import { InviteMemberModal } from "./invite-member-modal";
 
 export function WorkspaceSwitcher({ showName = true }: { showName?: boolean }) {
   const { workspaces, currentWorkspace, setCurrentWorkspace, loading } = useWorkspace();
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const router = useRouter();
 
   if (loading || workspaces.length === 0) {
     return (
@@ -29,7 +35,7 @@ export function WorkspaceSwitcher({ showName = true }: { showName?: boolean }) {
       <DropdownMenuTrigger asChild>
         <button
           className={cn(
-            "w-full flex items-center group hover:bg-surface-hover/20 rounded-xl transition-all duration-300 border border-transparent hover:border-border/10",
+            "w-full flex items-center cursor-pointer group hover:bg-surface-hover/20 rounded-xl transition-all duration-300 border border-transparent hover:border-border/10",
             showName ? "justify-between px-2.5 py-2" : "justify-center p-2",
           )}
         >
@@ -44,7 +50,7 @@ export function WorkspaceSwitcher({ showName = true }: { showName?: boolean }) {
                 <span className="text-[12px] font-bold uppercase text-foreground/90">
                   Lumacraft
                 </span>
-                <span className="text-[11px] text-muted-foreground font-medium truncate w-full group-hover:text-foreground/70 transition-colors">
+                <span className="text-[11px] text-muted-foreground font-medium truncate w-full group-hover:text-foreground/70 transition-colors text-start">
                   {currentWorkspace?.name || "Seleccionar..."}
                 </span>
               </div>
@@ -96,6 +102,27 @@ export function WorkspaceSwitcher({ showName = true }: { showName?: boolean }) {
           );
         })}
 
+        <DropdownMenuSeparator className="mt-1.5 bg-border/10" />
+        <DropdownMenuItem
+          className="flex items-center gap-2.5 px-3 py-2.5 cursor-pointer rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-surface-hover/30"
+          onSelect={(e) => {
+            e.preventDefault();
+            setCreateDialogOpen(true);
+          }}
+        >
+          <Plus size={14} className="text-muted" />
+          Crear workspace
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link
+            href="/settings/workspace/general"
+            className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-xs font-medium text-muted-foreground hover:bg-surface-hover/30 hover:text-foreground"
+          >
+            <Settings2 size={14} className="text-muted" />
+            Administrar workspace
+          </Link>
+        </DropdownMenuItem>
+
         <div className="mt-1.5 pt-1.5 border-t border-border/10">
           <DropdownMenuItem
             className="flex items-center gap-2.5 px-3 py-2.5 cursor-pointer rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-surface-hover/30"
@@ -105,10 +132,20 @@ export function WorkspaceSwitcher({ showName = true }: { showName?: boolean }) {
             }}
           >
             <UserPlus size={14} className="text-muted" />
-            Invitar equipo
+            Agregar usuario
           </DropdownMenuItem>
         </div>
       </DropdownMenuContent>
+      <CreateWorkspaceDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        onCreated={() => {
+          setCreateDialogOpen(false);
+          router.push("/settings/workspace/general");
+        }}
+      >
+        <button type="button" className="hidden" aria-hidden="true" />
+      </CreateWorkspaceDialog>
       <InviteMemberModal open={inviteModalOpen} onOpenChange={setInviteModalOpen} />
     </DropdownMenu>
   );

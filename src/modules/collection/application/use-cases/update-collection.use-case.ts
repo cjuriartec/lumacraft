@@ -1,5 +1,6 @@
 import { DomainError, fail, Result } from "@/shared/domain/result";
 
+import { CollectionSettings } from "../../domain/entities/collection.entity";
 import { Collection } from "../../domain/entities/collection.entity";
 import { ICollectionRepository } from "../../domain/ports/collection-repository.port";
 
@@ -11,6 +12,7 @@ export interface UpdateCollectionRequest {
   description?: string;
   icon?: string;
   primaryFieldName?: string | null;
+  settings?: CollectionSettings;
 }
 
 export class UpdateCollectionUseCase {

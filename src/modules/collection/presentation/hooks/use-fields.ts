@@ -7,6 +7,26 @@ import { CreateFieldRequest } from "../../application/use-cases/create-field.use
 import { UpdateFieldRequest } from "../../application/use-cases/update-field.use-case";
 import { Field } from "../../domain/entities/field.entity";
 
+export function reorderFieldsLocally(fields: Field[], fieldIds: string[]) {
+  const fieldMap = new Map(fields.map((field) => [field.id, field]));
+
+  return fieldIds
+    .map((id, index) => {
+      const field = fieldMap.get(id);
+      if (!field) return null;
+
+      const nextField = Field.create({
+        ...field.toJSON(),
+        fieldType: field.fieldType,
+        config: field.config,
+        sortOrder: index,
+      });
+
+      return nextField.ok ? nextField.value : field;
+    })
+    .filter((field): field is Field => field !== null);
+}
+
 export function useFields(collectionId: string) {
   const { supabase } = useSupabase();
   const [fields, setFields] = useState<Field[]>([]);
@@ -67,7 +87,7 @@ export function useFields(collectionId: string) {
   const reorderFields = async (fieldIds: string[]) => {
     const res = await reorderUseCase.execute(collectionId, fieldIds);
     if (res.ok) {
-      await fetchFields();
+      setFields((currentFields) => reorderFieldsLocally(currentFields, fieldIds));
     }
     return res;
   };

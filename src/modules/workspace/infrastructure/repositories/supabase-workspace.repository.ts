@@ -66,9 +66,30 @@ export class SupabaseWorkspaceRepository extends BaseRepository implements IWork
         id: workspace.id,
         name: workspace.name,
         owner_id: workspace.ownerId,
+        settings: workspace.settings,
+        is_active: workspace.isActive,
         created_at: workspace.createdAt,
         updated_at: workspace.updatedAt,
       })
+      .select()
+      .single();
+
+    if (error) {
+      return fail(new DomainError(error.message, "DB_ERROR"));
+    }
+
+    return ok(this.toEntity(data));
+  }
+
+  public async update(workspace: Workspace): Promise<Result<Workspace>> {
+    const { data, error } = await this.table
+      .update({
+        name: workspace.name,
+        settings: workspace.settings,
+        is_active: workspace.isActive,
+        updated_at: workspace.updatedAt,
+      })
+      .eq("id", workspace.id)
       .select()
       .single();
 

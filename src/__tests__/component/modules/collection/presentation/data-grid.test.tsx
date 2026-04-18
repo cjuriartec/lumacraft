@@ -181,6 +181,112 @@ describe("DataGrid", () => {
     expect(onInlineEdit).toHaveBeenCalled();
   });
 
+  it("shows the synthetic ID column by default and hides it when configured", () => {
+    resetFactories();
+    const field = makeField({ name: "title", displayName: "Title", fieldType: "TEXT" });
+    const record = makeRecord({
+      id: "abcd1234-1111-4111-8111-111111111111",
+      collectionId: field.collectionId,
+      data: { title: "Alpha" },
+    });
+
+    const { rerender } = render(
+      <DataGrid
+        fields={[field]}
+        records={[record]}
+        total={1}
+        currentPage={1}
+        pageSize={25}
+        search=""
+        onSearchChange={vi.fn()}
+        onFiltersChange={vi.fn()}
+        onPageChange={vi.fn()}
+        onSort={vi.fn()}
+        onInlineEdit={vi.fn()}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("columnheader", { name: "ID" })).toBeInTheDocument();
+    expect(screen.getByText("abcd1234")).toBeInTheDocument();
+
+    rerender(
+      <DataGrid
+        fields={[field]}
+        records={[record]}
+        total={1}
+        currentPage={1}
+        pageSize={25}
+        search=""
+        hideIdColumn
+        onSearchChange={vi.fn()}
+        onFiltersChange={vi.fn()}
+        onPageChange={vi.fn()}
+        onSort={vi.fn()}
+        onInlineEdit={vi.fn()}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByRole("columnheader", { name: "ID" })).not.toBeInTheDocument();
+    expect(screen.queryByText("abcd1234")).not.toBeInTheDocument();
+  });
+
+  it("hides backend-hidden fields from the table surface and triggers shared visibility callbacks", async () => {
+    resetFactories();
+    const visibleField = makeField({ id: "field-1", name: "title", displayName: "Title" });
+    const hiddenField = makeField({
+      id: "field-2",
+      name: "secret",
+      displayName: "Secret",
+      fieldType: "TEXT",
+      config: { hidden: true },
+    });
+    const record = makeRecord({
+      collectionId: visibleField.collectionId,
+      data: { title: "Alpha", secret: "Hidden value" },
+    });
+    const onToggleIdColumn = vi.fn();
+    const onToggleFieldVisibility = vi.fn();
+
+    render(
+      <DataGrid
+        fields={[visibleField, hiddenField]}
+        records={[record]}
+        total={1}
+        currentPage={1}
+        pageSize={25}
+        search=""
+        canConfigureColumns
+        onToggleIdColumn={onToggleIdColumn}
+        onToggleFieldVisibility={onToggleFieldVisibility}
+        onSearchChange={vi.fn()}
+        onFiltersChange={vi.fn()}
+        onPageChange={vi.fn()}
+        onSort={vi.fn()}
+        onInlineEdit={vi.fn()}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("columnheader", { name: "Title" })).toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "Secret" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Hidden value")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Filtros" }));
+    expect(screen.queryByText("Secret")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Columnas" }));
+    fireEvent.click(screen.getByLabelText("Mostrar columna ID"));
+    fireEvent.click(screen.getByLabelText("Mostrar columna Secret"));
+
+    expect(onToggleIdColumn).toHaveBeenCalledWith(true);
+    expect(onToggleFieldVisibility).toHaveBeenCalledWith(hiddenField, false);
+  });
+
   it("renders the eye action as a link to the record detail page", async () => {
     resetFactories();
     const field = makeField({ name: "title", displayName: "Title", fieldType: "TEXT" });
@@ -311,5 +417,53 @@ describe("DataGrid", () => {
     fireEvent.click(screen.getByRole("button", { name: "ACME Corp" }));
 
     expect(screen.getByTestId("record-quick-view")).toHaveTextContent("client-1:ACME Corp");
+  });
+
+  it("renders reverse lookup values in the grid when they are resolved externally", async () => {
+    resetFactories();
+    const field = makeField({
+      id: "field-reverse-1",
+      collectionId: "collection-1",
+      name: "orders_inverse",
+      displayName: "Pedidos vinculados",
+      fieldType: "REVERSE_LOOKUP",
+      config: {
+        targetCollectionId: "11111111-1111-4111-8111-111111111111",
+        targetFieldId: "33333333-3333-4333-8333-333333333333",
+      },
+    });
+    const record = makeRecord({
+      id: "record-3",
+      collectionId: field.collectionId,
+      data: {},
+    });
+
+    render(
+      <DataGrid
+        collectionId={field.collectionId}
+        fields={[field]}
+        records={[record]}
+        total={1}
+        currentPage={1}
+        pageSize={25}
+        search=""
+        onSearchChange={vi.fn()}
+        onFiltersChange={vi.fn()}
+        onPageChange={vi.fn()}
+        onSort={vi.fn()}
+        onInlineEdit={vi.fn()}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+        reverseLookupResults={{
+          "record-3": {
+            orders_inverse: [{ id: "order-1", label: "order-1" }],
+          },
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByText(/1 Relación/i));
+
+    expect(screen.getByRole("button", { name: "order-1" })).toBeInTheDocument();
   });
 });

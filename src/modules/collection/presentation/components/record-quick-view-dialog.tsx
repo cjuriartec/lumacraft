@@ -78,8 +78,8 @@ export function RecordQuickViewDialog({ open, onOpenChange, target }: RecordQuic
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg rounded-2xl border-border/40 bg-surface p-0 overflow-hidden shadow-2xl">
-        <DialogHeader className="border-b border-border/20 px-6 py-5 pr-14">
+      <DialogContent className="flex max-h-[85vh] max-w-lg flex-col overflow-hidden rounded-2xl border-border/40 bg-surface p-0 shadow-2xl">
+        <DialogHeader className="shrink-0 border-b border-border/20 px-6 py-5 pr-14">
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-2 text-left">
               <div className="flex flex-wrap items-center gap-2">
@@ -127,7 +127,10 @@ export function RecordQuickViewDialog({ open, onOpenChange, target }: RecordQuic
           </div>
         </DialogHeader>
 
-        <div className="px-6 py-5">
+        <div
+          data-testid="record-quick-view-scroll-area"
+          className="min-h-0 overflow-y-auto px-6 py-5"
+        >
           {loading || loadingFields ? (
             <div className="flex min-h-[200px] flex-col items-center justify-center gap-3 text-center">
               <Loader2 className="animate-spin text-primary" size={22} />

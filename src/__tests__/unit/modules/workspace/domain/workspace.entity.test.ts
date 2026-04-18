@@ -15,6 +15,8 @@ describe("Workspace entity", () => {
       id: workspace.id,
       name: "Lumacraft HQ",
       ownerId: "owner-1",
+      settings: workspace.settings,
+      isActive: workspace.isActive,
       createdAt: workspace.createdAt,
       updatedAt: workspace.updatedAt,
     });

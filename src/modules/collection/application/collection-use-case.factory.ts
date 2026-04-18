@@ -160,6 +160,10 @@ class CollectionUseCaseFactoryImpl {
   }
 
   public resolveReverseLookup() {
-    return new ResolveReverseLookupUseCase(this.repositories.field, this.repositories.record);
+    return new ResolveReverseLookupUseCase(
+      this.repositories.field,
+      this.repositories.record,
+      this.repositories.relation,
+    );
   }
 }

@@ -5,30 +5,39 @@ import { DomainError, fail, ok, Result } from "@/shared/domain/result";
 import { FieldTypeValue } from "./field-type.vo";
 
 // Config schema per field type
+const hiddenConfigSchema = {
+  hidden: z.boolean().optional(),
+};
+
 const textConfigSchema = z.object({
   minLength: z.number().int().min(0).optional(),
   maxLength: z.number().positive().optional(),
   placeholder: z.string().optional(),
   multiline: z.boolean().optional(),
+  ...hiddenConfigSchema,
 });
 
 const numberConfigSchema = z.object({
   min: z.number().optional(),
   max: z.number().optional(),
   decimals: z.number().int().min(0).max(10).optional(),
+  ...hiddenConfigSchema,
 });
 
 const enumConfigSchema = z.object({
   options: z.array(z.string().min(1)).min(1, "At least one option is required"),
+  ...hiddenConfigSchema,
 });
 
 const dateConfigSchema = z.object({
   includeTime: z.boolean().optional(),
+  ...hiddenConfigSchema,
 });
 
 const booleanConfigSchema = z.object({
   trueLabel: z.string().optional(),
   falseLabel: z.string().optional(),
+  ...hiddenConfigSchema,
 });
 
 const relationTypeSchema = z.enum(["ONE_TO_ONE", "ONE_TO_MANY", "MANY_TO_ONE", "MANY_TO_MANY"]);
@@ -42,21 +51,25 @@ const relationConfigSchema = z.object({
   bidirectional: z.boolean().optional(),
   inverseFieldName: z.string().min(1).optional(),
   onDelete: onDeleteSchema.optional(),
+  ...hiddenConfigSchema,
 });
 
 const reverseLookupConfigSchema = z.object({
   targetCollectionId: z.string().uuid(),
   targetFieldId: z.string().uuid(),
+  ...hiddenConfigSchema,
 });
 
 const fileConfigSchema = z.object({
   allowedMimeTypes: z.array(z.string().min(1)).optional(),
   maxSizeBytes: z.number().int().positive().optional(),
+  ...hiddenConfigSchema,
 });
 
 const imageConfigSchema = z.object({
   allowedMimeTypes: z.array(z.string().startsWith("image/")).optional(),
   maxSizeBytes: z.number().int().positive().optional(),
+  ...hiddenConfigSchema,
 });
 
 const locationConfigSchema = z.object({
@@ -64,6 +77,7 @@ const locationConfigSchema = z.object({
   maxLat: z.number().min(-90).max(90).optional(),
   minLng: z.number().min(-180).max(180).optional(),
   maxLng: z.number().min(-180).max(180).optional(),
+  ...hiddenConfigSchema,
 });
 
 // All schemas are defined above, we now use a switch in FieldConfig.create

@@ -4,6 +4,12 @@ import { Edit2, Loader2, MoreHorizontal, Plus, Shield, Trash2 } from "lucide-rea
 import React, { useState } from "react";
 
 import { useGuidance } from "@/modules/guidance/presentation/hooks/use-guidance";
+import {
+  CreateRoleRequest,
+  UpdateRoleRequest,
+} from "@/modules/workspace/application/use-cases/manage-roles.use-case";
+import { Role } from "@/modules/workspace/domain/entities/role.entity";
+import { Result } from "@/shared/domain/result";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/presentation/components/ui/button";
 import {
@@ -41,10 +47,39 @@ const inputFieldClass = cn(
   "placeholder:font-light focus-visible:border-primary/30 focus-visible:ring-2 focus-visible:ring-primary/10",
 );
 
-export function RoleManager() {
+interface RoleManagerProps {
+  roles?: Role[];
+  loading?: boolean;
+  createRole?: (request: Omit<CreateRoleRequest, "accountId">) => Promise<Result<Role> | undefined>;
+  updateRole?: (request: UpdateRoleRequest) => Promise<Result<Role>>;
+  deleteRole?: (id: string) => Promise<Result<void>>;
+  selectedRoleId?: string | null;
+  onSelectRole?: (roleId: string) => void;
+}
+
+export function RoleManager({
+  roles: rolesProp,
+  loading: loadingProp,
+  createRole: createRoleProp,
+  updateRole: updateRoleProp,
+  deleteRole: deleteRoleProp,
+  selectedRoleId,
+  onSelectRole,
+}: RoleManagerProps = {}) {
   const { currentWorkspace } = useWorkspace();
-  const { roles, loading, createRole, updateRole, deleteRole } = useRoles(currentWorkspace?.id);
+  const {
+    roles: internalRoles,
+    loading: internalLoading,
+    createRole: internalCreateRole,
+    updateRole: internalUpdateRole,
+    deleteRole: internalDeleteRole,
+  } = useRoles(currentWorkspace?.id);
   const { trackMilestone } = useGuidance();
+  const roles = rolesProp ?? internalRoles;
+  const loading = loadingProp ?? internalLoading;
+  const createRole = createRoleProp ?? internalCreateRole;
+  const updateRole = updateRoleProp ?? internalUpdateRole;
+  const deleteRole = deleteRoleProp ?? internalDeleteRole;
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<{
@@ -83,6 +118,7 @@ export function RoleManager() {
       result = await createRole({ name: formData.name, description: formData.description });
       if (result?.ok) {
         void trackMilestone("role_created");
+        onSelectRole?.(result.value.id);
       }
     }
 
@@ -142,63 +178,75 @@ export function RoleManager() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {roles.map((role) => (
-              <TableRow
-                key={role.id}
-                className="group hover:bg-surface-hover/30 transition-colors border-b border-border/5 last:border-0"
-              >
-                <TableCell className="py-4">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-sm text-foreground">{role.name}</span>
-                    {role.isSuperadmin && (
-                      <Shield size={12} className="text-primary fill-primary/10" />
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell className="py-4 text-xs font-light text-muted-foreground leading-relaxed max-w-md truncate">
-                  {role.description || <span className="opacity-30">Sin descripción</span>}
-                </TableCell>
-                <TableCell className="py-4 text-right">
-                  {!role.isSuperadmin && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label={`Acciones para rol ${role.name}`}
-                          className="h-8 w-8 text-muted hover:text-foreground transition-all"
-                        >
-                          <MoreHorizontal size={14} />
-                          <span className="sr-only">Acciones para rol {role.name}</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-48 bg-surface border-border/50">
-                        <DropdownMenuItem
-                          onClick={() => handleOpenEdit(role)}
-                          className="flex items-center gap-2 cursor-pointer"
-                        >
-                          <Edit2 size={14} className="text-muted" />
-                          <span>Editar Rol</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator className="bg-border/10" />
-                        <DropdownMenuItem
-                          onClick={() => handleDelete(role.id, role.name)}
-                          className="flex items-center gap-2 cursor-pointer text-red-500 focus:text-red-500 focus:bg-red-500/10"
-                        >
-                          <Trash2 size={14} />
-                          <span>Eliminar Rol</span>
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+            {roles.map((role) => {
+              const isSelected = selectedRoleId === role.id;
+
+              return (
+                <TableRow
+                  key={role.id}
+                  className={cn(
+                    "group border-b border-border/5 transition-colors last:border-0",
+                    isSelected ? "bg-primary/5" : "hover:bg-surface-hover/30",
+                    onSelectRole && "cursor-pointer",
                   )}
-                  {role.isSuperadmin && (
-                    <div className="flex items-center justify-end pr-3 text-muted-foreground/30">
-                      <Shield size={14} />
+                  onClick={() => onSelectRole?.(role.id)}
+                >
+                  <TableCell className="py-4">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-sm text-foreground">{role.name}</span>
+                      {role.isSuperadmin && (
+                        <Shield size={12} className="text-primary fill-primary/10" />
+                      )}
                     </div>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
+                  </TableCell>
+                  <TableCell className="py-4 text-xs font-light text-muted-foreground leading-relaxed max-w-md truncate">
+                    {role.description || <span className="opacity-30">Sin descripción</span>}
+                  </TableCell>
+                  <TableCell className="py-4 text-right">
+                    {!role.isSuperadmin && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Acciones para rol ${role.name}`}
+                            className="h-8 w-8 text-muted hover:text-foreground transition-all"
+                          >
+                            <MoreHorizontal size={14} />
+                            <span className="sr-only">Acciones para rol {role.name}</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align="end"
+                          className="w-48 bg-surface border-border/50"
+                        >
+                          <DropdownMenuItem
+                            onClick={() => handleOpenEdit(role)}
+                            className="flex items-center gap-2 cursor-pointer"
+                          >
+                            <Edit2 size={14} className="text-muted" />
+                            <span>Editar Rol</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator className="bg-border/10" />
+                          <DropdownMenuItem
+                            onClick={() => handleDelete(role.id, role.name)}
+                            className="flex items-center gap-2 cursor-pointer text-red-500 focus:text-red-500 focus:bg-red-500/10"
+                          >
+                            <Trash2 size={14} />
+                            <span>Eliminar Rol</span>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                    {role.isSuperadmin && (
+                      <div className="flex items-center justify-end pr-3 text-muted-foreground/30">
+                        <Shield size={14} />
+                      </div>
+                    )}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
             {roles.length === 0 && (
               <TableRow>
                 <TableCell
@@ -212,6 +260,12 @@ export function RoleManager() {
           </TableBody>
         </Table>
       </div>
+
+      {selectedRoleId ? (
+        <p className="px-1 text-xs text-foreground/55">
+          El rol seleccionado controla la matriz de permisos de esta vista.
+        </p>
+      ) : null}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="flex flex-col gap-0 overflow-hidden p-0 sm:max-w-[480px] rounded-2xl border-none bg-surface shadow-[0_32px_64px_rgba(0,0,0,0.6)]">

@@ -3,9 +3,11 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "@/modules/auth/presentation/providers/auth-provider";
+import { DomainError, fail, Result } from "@/shared/domain/result";
 import { useSupabase } from "@/shared/presentation/providers/supabase-provider";
 
 import { GetWorkspacesByUserUseCase } from "../../application/use-cases/get-workspaces-by-user.use-case";
+import { WorkspaceUseCaseFactory } from "../../application/workspace-use-case.factory";
 import { Workspace } from "../../domain/entities/workspace.entity";
 import { IWorkspaceRepository } from "../../domain/ports/workspace-repository.port";
 import { SupabaseWorkspaceRepository } from "../../infrastructure/repositories/supabase-workspace.repository";
@@ -16,6 +18,9 @@ type WorkspaceContext = {
   workspaces: Workspace[];
   currentWorkspace: Workspace | null;
   setCurrentWorkspace: (workspace: Workspace) => void;
+  createWorkspace: (name: string) => Promise<Result<Workspace>>;
+  renameWorkspace: (workspaceId: string, name: string) => Promise<Result<Workspace>>;
+  refreshWorkspaces: () => Promise<void>;
   loading: boolean;
 };
 
@@ -43,11 +48,14 @@ export default function WorkspaceProvider({
     () => new GetWorkspacesByUserUseCase(repository),
     [repository],
   );
+  const factory = useMemo(() => WorkspaceUseCaseFactory.create(supabase), [supabase]);
+  const createWorkspaceUseCase = useMemo(() => factory.createWorkspace(), [factory]);
+  const updateWorkspaceUseCase = useMemo(() => factory.updateWorkspace(), [factory]);
 
   useEffect(() => {
     let active = true;
 
-    const fetchWorkspaces = async () => {
+    const fetchWorkspaces = async (preferredWorkspaceId?: string) => {
       // Si la autenticación sigue cargando, mantenemos también nuestras banderas en true
       if (authLoading) {
         if (active) setLoading(true);
@@ -76,13 +84,18 @@ export default function WorkspaceProvider({
 
         setWorkspaces(res.value);
         setCurrentWorkspace((current) =>
-          current && res.value.some((workspace) => workspace.id === current.id)
-            ? current
-            : persistedWorkspaceId
-              ? (res.value.find((workspace) => workspace.id === persistedWorkspaceId) ??
-                res.value[0] ??
-                null)
-              : (res.value[0] ?? null),
+          preferredWorkspaceId
+            ? (res.value.find((workspace) => workspace.id === preferredWorkspaceId) ??
+              current ??
+              res.value[0] ??
+              null)
+            : current && res.value.some((workspace) => workspace.id === current.id)
+              ? current
+              : persistedWorkspaceId
+                ? (res.value.find((workspace) => workspace.id === persistedWorkspaceId) ??
+                  res.value[0] ??
+                  null)
+                : (res.value[0] ?? null),
         );
       }
       setLoading(false);
@@ -110,8 +123,68 @@ export default function WorkspaceProvider({
     }
   }, [currentWorkspace, workspaces.length, loading]);
 
+  const refreshWorkspaces = async () => {
+    if (!userId) return;
+    setLoading(true);
+    const res = await getWorkspacesUseCase.execute(userId);
+    if (res.ok) {
+      const nextWorkspaces = res.value;
+      setWorkspaces(nextWorkspaces);
+      setCurrentWorkspace((current) =>
+        current && nextWorkspaces.some((workspace) => workspace.id === current.id)
+          ? current
+          : (nextWorkspaces[0] ?? null),
+      );
+    }
+    setLoading(false);
+  };
+
+  const createWorkspace = async (name: string): Promise<Result<Workspace>> => {
+    if (!userId) {
+      return fail(new DomainError("No authenticated user found", "UNAUTHORIZED"));
+    }
+
+    const result = await createWorkspaceUseCase.execute({
+      name,
+      ownerId: userId,
+    });
+
+    if (result.ok) {
+      setWorkspaces((current) => [...current, result.value]);
+      setCurrentWorkspace(result.value);
+    }
+
+    return result;
+  };
+
+  const renameWorkspace = async (workspaceId: string, name: string): Promise<Result<Workspace>> => {
+    const result = await updateWorkspaceUseCase.execute({
+      id: workspaceId,
+      name,
+    });
+
+    if (result.ok) {
+      setWorkspaces((current) =>
+        current.map((workspace) => (workspace.id === workspaceId ? result.value : workspace)),
+      );
+      setCurrentWorkspace((current) => (current?.id === workspaceId ? result.value : current));
+    }
+
+    return result;
+  };
+
   return (
-    <Context.Provider value={{ workspaces, currentWorkspace, setCurrentWorkspace, loading }}>
+    <Context.Provider
+      value={{
+        workspaces,
+        currentWorkspace,
+        setCurrentWorkspace,
+        createWorkspace,
+        renameWorkspace,
+        refreshWorkspaces,
+        loading,
+      }}
+    >
       {children}
     </Context.Provider>
   );

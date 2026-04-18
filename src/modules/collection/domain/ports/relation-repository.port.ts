@@ -8,6 +8,10 @@ import {
 
 export interface IRelationRepository {
   listBySourceRecord(sourceRecordId: string): Promise<Result<RecordRelation[]>>;
+  listByFieldAndTargetRecordIds(
+    fieldId: string,
+    targetRecordIds: string[],
+  ): Promise<Result<RecordRelation[]>>;
   validateCardinality(request: ValidateCardinalityRequest): Promise<Result<void>>;
   syncFieldRelationsForSource(request: SyncFieldRelationsRequest): Promise<Result<void>>;
 }

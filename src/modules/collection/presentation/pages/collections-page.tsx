@@ -3,11 +3,8 @@
 import { Clock, Database, ExternalLink, Plus, Settings2, Trash2 } from "lucide-react";
 import Link from "next/link";
 
-import { useAuth } from "@/modules/auth/presentation/providers/auth-provider";
 import { useGuidancePage } from "@/modules/guidance/presentation/hooks/use-guidance-page";
-import { useMembers } from "@/modules/workspace/presentation/hooks/use-members";
-import { useRoles } from "@/modules/workspace/presentation/hooks/use-roles";
-import { useWorkspace } from "@/modules/workspace/presentation/providers/workspace-provider";
+import { useWorkspaceAccess } from "@/modules/workspace/presentation/hooks/use-workspace-access";
 import { useBreadcrumbs } from "@/shared/presentation/providers/breadcrumb-provider";
 
 import { CreateCollectionDialog } from "../components/create-collection-dialog";
@@ -15,17 +12,7 @@ import { useCollections } from "../hooks/use-collections";
 
 export default function CollectionsPage() {
   const { collections, loading, deleteCollection, refresh } = useCollections();
-
-  // Calculate if the user has permissions to create/modify collections
-  const { currentWorkspace } = useWorkspace();
-  const { user } = useAuth();
-  const { members } = useMembers(currentWorkspace?.id);
-  const { roles } = useRoles(currentWorkspace?.id);
-
-  const currentUserMember = members.find((m) => m.userId === user?.id);
-  const currentUserIsAdmin =
-    currentWorkspace?.ownerId === user?.id ||
-    roles.find((r) => r.id === currentUserMember?.roleId)?.isSuperadmin === true;
+  const { canManageWorkspace: currentUserIsAdmin } = useWorkspaceAccess();
 
   useBreadcrumbs([{ label: "Colecciones" }]);
   useGuidancePage({ id: "collections" });

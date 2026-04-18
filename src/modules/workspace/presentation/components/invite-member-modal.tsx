@@ -83,10 +83,11 @@ export function InviteMemberModal({ open, onOpenChange }: InviteMemberModalProps
       <DialogContent className="flex flex-col gap-0 overflow-hidden p-0 sm:max-w-[480px] rounded-2xl border-none bg-surface shadow-[0_32px_64px_rgba(0,0,0,0.6)]">
         <DialogHeader className="shrink-0 px-8 pt-8 pb-4 text-left">
           <DialogTitle className="text-xl font-bold tracking-[-0.01em] text-foreground">
-            Añadir Miembro
+            Agregar usuario registrado
           </DialogTitle>
           <DialogDescription className="font-light text-sm text-foreground/70">
-            Ingresa el correo electrónico del usuario que deseas invitar a colaborar.
+            Ingresa el correo de un usuario que ya tenga cuenta en Lumacraft para sumarlo a este
+            workspace.
           </DialogDescription>
         </DialogHeader>
 
@@ -158,7 +159,7 @@ export function InviteMemberModal({ open, onOpenChange }: InviteMemberModalProps
                 disabled={submitting || !formData.roleId || !formData.email.trim()}
                 className="w-full bg-primary font-semibold text-primary-foreground rounded-xl shadow-sm transition-all hover:bg-primary/90 hover:-translate-y-0.5 active:translate-y-0 sm:w-auto sm:min-w-[140px]"
               >
-                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Añadir Miembro"}
+                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Agregar usuario"}
               </Button>
             </DialogFooter>
           </div>

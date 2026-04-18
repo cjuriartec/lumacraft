@@ -6,6 +6,7 @@ import { useWorkspace } from "@/modules/workspace/presentation/providers/workspa
 import { useSupabase } from "@/shared/presentation/providers/supabase-provider";
 
 import { CollectionUseCaseFactory } from "../../application/collection-use-case.factory";
+import { CollectionSettings } from "../../domain/entities/collection.entity";
 import { Collection } from "../../domain/entities/collection.entity";
 
 export function useCollections() {
@@ -90,6 +91,7 @@ export function useCollections() {
     description?: string;
     icon?: string;
     primaryFieldName?: string | null;
+    settings?: CollectionSettings;
   }) => {
     if (!currentWorkspace) return;
     const res = await updateUseCase.execute({

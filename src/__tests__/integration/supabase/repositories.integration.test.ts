@@ -181,6 +181,7 @@ describeIfLocalSupabase("Supabase repositories integration", () => {
         accountId,
         name: `fields_${crypto.randomUUID().slice(0, 6)}`,
         displayName: "Field playground",
+        settings: { hideIdColumn: true },
       }),
     );
 
@@ -203,7 +204,7 @@ describeIfLocalSupabase("Supabase repositories integration", () => {
         collectionId: collection.value.id,
         name: "status",
         fieldType: "ENUM",
-        config: { options: ["draft", "published"] },
+        config: { options: ["draft", "published"], hidden: true },
         sortOrder: 1,
       }),
     );
@@ -217,11 +218,17 @@ describeIfLocalSupabase("Supabase repositories integration", () => {
     ]);
 
     const ordered = await ownerFields.findByCollectionId(collection.value.id);
+    const reloadedCollection = await ownerCollections.findById(collection.value.id);
     const outsiderVisible = await outsiderFields.findByCollectionId(collection.value.id);
 
     expect(ordered.ok).toBe(true);
     if (ordered.ok) {
       expect(ordered.value.map((field) => field.name)).toEqual(["status", "title"]);
+      expect(ordered.value[0]?.config?.value).toMatchObject({ hidden: true });
+    }
+    expect(reloadedCollection.ok).toBe(true);
+    if (reloadedCollection.ok) {
+      expect(reloadedCollection.value?.settings).toEqual({ hideIdColumn: true });
     }
     expect(outsiderVisible.ok).toBe(true);
     if (outsiderVisible.ok) {
