@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.3.0](https://github.com/cjuriartec/lumacraft/compare/v0.2.0...v0.3.0) (2026-04-19)
+
+
+### ✨ Features
+
+* implement granular template permissions and restrict settings access to authorized roles ([46d3e51](https://github.com/cjuriartec/lumacraft/commit/46d3e5178e039032688b084bc19cff07efda1f86))
+* implement workspace records page and update dashboard navigation to primary actions ([965aa24](https://github.com/cjuriartec/lumacraft/commit/965aa24ccff7880efbe41b6639c75f14dd124c2b))
+
 ## [0.2.0](https://github.com/cjuriartec/lumacraft/compare/v0.1.14...v0.2.0) (2026-04-18)
 
 
