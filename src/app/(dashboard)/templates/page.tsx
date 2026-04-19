@@ -1,12 +1,20 @@
-import { redirect } from "next/navigation";
+import TemplateListPage from "@/modules/template/presentation/pages/template-list-page";
 
 export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "Plantillas | Lumacraft",
-  description: "Las plantillas ahora viven dentro de cada colección.",
+  description: "Consulta las plantillas accesibles del workspace actual.",
 };
 
 export default function TemplatesPage() {
-  redirect("/collections");
+  return (
+    <TemplateListPage
+      canCreate={false}
+      canUpdate={false}
+      canDelete={false}
+      enableCollectionFilter
+      showCollectionShortcut
+    />
+  );
 }

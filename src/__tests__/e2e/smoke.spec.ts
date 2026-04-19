@@ -21,7 +21,7 @@ test.describe("authenticated smoke flows", () => {
     await page.goto("/");
     await expect(page.getByRole("heading", { name: /Hola,/ })).toBeVisible();
 
-    await page.getByRole("link", { name: "Ir a Colecciones" }).click();
+    await page.getByRole("link", { name: /Colecciones/ }).click();
     await expect(page).toHaveURL(/\/collections$/);
     await expect(page.getByRole("heading", { name: "Colecciones", exact: true })).toBeVisible();
     await expect(page.getByTestId("create-collection-button").first()).toBeVisible();

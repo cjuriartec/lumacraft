@@ -27,7 +27,7 @@ test.describe("full collection lifecycle", () => {
       accountId: string;
     };
     const goToCollectionsFromDashboard = async () => {
-      await page.getByRole("link", { name: "Ir a Colecciones" }).click();
+      await page.getByRole("link", { name: /Colecciones/ }).click();
       await expect(page).toHaveURL(/\/collections$/);
       await expect(page.getByRole("heading", { name: "Colecciones", exact: true })).toBeVisible();
     };

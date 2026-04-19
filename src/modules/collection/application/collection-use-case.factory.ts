@@ -23,6 +23,7 @@ import { GetWorkspaceSchemaUseCase } from "./use-cases/get-workspace-schema.use-
 import { ListCollectionsUseCase } from "./use-cases/list-collections.use-case";
 import { ListFieldsUseCase } from "./use-cases/list-fields.use-case";
 import { ListRecordsUseCase } from "./use-cases/list-records.use-case";
+import { ListWorkspaceRecordsUseCase } from "./use-cases/list-workspace-records.use-case";
 import { PersistGridFiltersUseCase } from "./use-cases/persist-grid-filters.use-case";
 import { ReorderFieldsUseCase } from "./use-cases/reorder-fields.use-case";
 import { ResolveReverseLookupUseCase } from "./use-cases/resolve-reverse-lookup.use-case";
@@ -112,6 +113,10 @@ class CollectionUseCaseFactoryImpl {
   // --- Records ---
   public listRecords() {
     return new ListRecordsUseCase(this.repositories.record);
+  }
+
+  public listWorkspaceRecords() {
+    return new ListWorkspaceRecordsUseCase(this.repositories.record);
   }
 
   public createRecord() {
