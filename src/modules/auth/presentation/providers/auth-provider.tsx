@@ -34,10 +34,23 @@ export default function AuthProvider({
   useEffect(() => {
     let active = true;
 
+    const enrichUser = async (baseUser: User) => {
+      const profileResult = await service.getUserProfile(baseUser.id);
+      if (active && profileResult.ok && profileResult.value) {
+        baseUser.updateProfileData(profileResult.value);
+        // Create a new reference to trigger React re-render
+        const enrichedUser = User.create(baseUser.toJSON());
+        if (enrichedUser.ok) {
+          setUser(enrichedUser.value);
+        }
+      }
+    };
+
     const checkUser = async () => {
       const res = await service.getCurrentUser();
-      if (active && res.ok) {
+      if (active && res.ok && res.value) {
         setUser(res.value);
+        enrichUser(res.value);
       }
       if (active) {
         setLoading(false);
@@ -49,6 +62,9 @@ export default function AuthProvider({
     const unsubscribe = service.onAuthStateChange((nextUser) => {
       if (active) {
         setUser(nextUser);
+        if (nextUser) {
+          enrichUser(nextUser);
+        }
       }
     });
 

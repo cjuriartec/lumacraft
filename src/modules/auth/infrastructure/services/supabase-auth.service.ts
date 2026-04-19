@@ -9,8 +9,8 @@ import { createClient } from "@/shared/infrastructure/supabase/client";
 export class SupabaseAuthService implements IAuthProvider {
   private supabase: SupabaseClient;
 
-  constructor() {
-    this.supabase = createClient();
+  constructor(client?: SupabaseClient) {
+    this.supabase = client ?? createClient();
   }
 
   public async signInWithGoogle(): Promise<Result<void>> {
@@ -38,6 +38,24 @@ export class SupabaseAuthService implements IAuthProvider {
     return ok(undefined);
   }
 
+  public async updateProfile(props: {
+    fullName?: string;
+    avatarUrl?: string;
+  }): Promise<Result<void>> {
+    const { error } = await this.supabase.auth.updateUser({
+      data: {
+        full_name: props.fullName,
+        avatar_url: props.avatarUrl,
+      },
+    });
+
+    if (error) {
+      return fail(new DomainError(error.message, "AUTH_ERROR"));
+    }
+
+    return ok(undefined);
+  }
+
   public async getCurrentUser(): Promise<Result<User | null>> {
     const {
       data: { session },
@@ -49,6 +67,26 @@ export class SupabaseAuthService implements IAuthProvider {
     }
 
     return this.mapSupabaseUser(session?.user ?? null);
+  }
+
+  public async getUserProfile(
+    userId: string,
+  ): Promise<Result<{ fullName?: string; avatarUrl?: string } | null>> {
+    const { data, error } = await this.supabase
+      .from("user_profiles")
+      .select("full_name, avatar_url")
+      .eq("id", userId)
+      .single();
+
+    if (error) {
+      if (error.code === "PGRST116") return ok(null);
+      return fail(new DomainError(error.message, "DATABASE_ERROR"));
+    }
+
+    return ok({
+      fullName: data.full_name,
+      avatarUrl: data.avatar_url,
+    });
   }
 
   public onAuthStateChange(callback: (user: User | null) => void): () => void {

@@ -34,8 +34,10 @@ export class SupabaseUserProfileRepository implements IUserProfileRepository {
 
     return UserProfile.create({
       id: data.id,
+      fullName: data.full_name,
+      avatarUrl: data.avatar_url,
       preferences: data.preferences,
-      createdAt: new Date(data.created_at),
+      createdAt: new Date(data.created_at || data.updated_at),
       updatedAt: new Date(data.updated_at),
     });
   }
@@ -43,6 +45,8 @@ export class SupabaseUserProfileRepository implements IUserProfileRepository {
   public async save(profile: UserProfile): Promise<Result<void>> {
     const { error } = await this.supabase.from("user_profiles").upsert({
       id: profile.id,
+      full_name: profile.fullName,
+      avatar_url: profile.avatarUrl,
       preferences: profile.preferences,
       updated_at: new Date().toISOString(),
     });

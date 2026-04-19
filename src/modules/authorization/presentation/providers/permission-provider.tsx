@@ -32,8 +32,8 @@ const PermissionContext = createContext<PermissionContextValue>({
 
 export function PermissionProvider({ children }: { children: React.ReactNode }) {
   const { supabase } = useSupabase();
-  const { user } = useAuth();
-  const { currentWorkspace } = useWorkspace();
+  const { user, loading: authLoading } = useAuth();
+  const { currentWorkspace, loading: workspaceLoading } = useWorkspace();
 
   const [isOwner, setIsOwner] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
@@ -48,6 +48,13 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
   );
 
   const fetchPermissions = useCallback(async () => {
+    // Si todavía estamos intentando determinar el usuario o el workspace,
+    // mantenemos el estado de carga y no tomamos decisiones de acceso prematuras.
+    if (authLoading || workspaceLoading) {
+      setLoading(true);
+      return;
+    }
+
     if (!userId || !workspaceId) {
       setIsOwner(false);
       setIsSuperAdmin(false);
@@ -65,7 +72,7 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
       setPermissions(result.value.permissions);
     }
     setLoading(false);
-  }, [userId, workspaceId, useCase]);
+  }, [userId, workspaceId, authLoading, workspaceLoading, useCase]);
 
   useEffect(() => {
     let isMounted = true;

@@ -7,7 +7,6 @@ import {
   Laptop,
   LogOut,
   Moon,
-  Settings,
   Sun,
   User as UserIcon,
 } from "lucide-react";
@@ -88,18 +87,16 @@ export default function UserMenu() {
         <DropdownMenuSeparator className="bg-border/20 mx-[-6px]" />
 
         <div className="p-1 space-y-0.5">
-          <DropdownMenuItem className="flex items-center rounded-lg gap-3 cursor-pointer text-[13px] font-semibold py-2.5 px-3 transition-all duration-150 text-foreground/70 hover:bg-surface-hover hover:text-foreground focus:bg-surface-hover focus:text-foreground">
-            <div className="bg-foreground/5 p-1.5 rounded-md group-hover:bg-foreground/10 transition-colors">
-              <UserIcon size={14} className="text-foreground/60" />
-            </div>
-            Mi Perfil
-          </DropdownMenuItem>
-
-          <DropdownMenuItem className="flex items-center rounded-lg gap-3 cursor-pointer text-[13px] font-semibold py-2.5 px-3 transition-all duration-150 text-foreground/70 hover:bg-surface-hover hover:text-foreground focus:bg-surface-hover focus:text-foreground">
-            <div className="bg-foreground/5 p-1.5 rounded-md">
-              <Settings size={14} className="text-foreground/60" />
-            </div>
-            Ajustes
+          <DropdownMenuItem asChild>
+            <Link
+              href="/profile"
+              className="flex items-center rounded-lg gap-3 cursor-pointer text-[13px] font-semibold py-2.5 px-3 transition-all duration-150 text-foreground/70 hover:bg-surface-hover hover:text-foreground focus:bg-surface-hover focus:text-foreground"
+            >
+              <div className="bg-foreground/5 p-1.5 rounded-md group-hover:bg-foreground/10 transition-colors">
+                <UserIcon size={14} className="text-foreground/60" />
+              </div>
+              Mi Perfil
+            </Link>
           </DropdownMenuItem>
 
           <DropdownMenuItem asChild>
