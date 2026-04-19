@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.2.0](https://github.com/cjuriartec/lumacraft/compare/v0.1.14...v0.2.0) (2026-04-18)
+
+
+### ✨ Features
+
+* add settings field to collection entity and support field visibility configuration ([6f7184e](https://github.com/cjuriartec/lumacraft/commit/6f7184ed1dcc068a208861aec58b168b5846944c))
+* add viewport constraints and scrollable area to RecordQuickViewDialog ([7ccd3c4](https://github.com/cjuriartec/lumacraft/commit/7ccd3c40a58f348bc590b158b433742d158b33d0))
+
+
+### ♻️ Code Refactoring
+
+* apply minor code style and formatting improvements across test and application layers ([ebd46b9](https://github.com/cjuriartec/lumacraft/commit/ebd46b97a8bacfbd333c6943beb32b56a95f2f48))
+* enhance AI system prompts and default template logic to prioritize structured ([6b5042b](https://github.com/cjuriartec/lumacraft/commit/6b5042bdc3571a71d95a44378a23bc893c18f051))
+* simplify workspace interface, remove redundant routes, and fix lint/TSC/test failures ([e427128](https://github.com/cjuriartec/lumacraft/commit/e42712870ab71fd21e89c995c3a1ccb3d15aee77))
+
+
+### 📦 Miscellaneous
+
+* reformat tsconfig.json and reorder imports in data-grid.tsx ([695f365](https://github.com/cjuriartec/lumacraft/commit/695f365024ca2e5828939243862d1fcb20f90165))
+
+
+### 🐛 Bug Fixes
+
+* rename migration to resolve version collision in CI ([8a95d1a](https://github.com/cjuriartec/lumacraft/commit/8a95d1a74fb435c13d5cda0a086c324f1d7c3c34))
+
 ### [0.1.14](https://github.com/cjuriartec/lumacraft/compare/v0.1.13...v0.1.14) (2026-04-16)
 
 
