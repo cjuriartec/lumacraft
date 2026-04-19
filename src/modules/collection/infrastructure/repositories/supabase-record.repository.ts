@@ -20,11 +20,35 @@ export class SupabaseRecordRepository extends BaseRepository implements IRecordR
     collectionId: string,
     options: PaginationOptions,
   ): Promise<Result<PaginatedResult<DataRecord>>> {
+    const query = this.table.select("*", { count: "exact" }).eq("collection_id", collectionId);
+    return this.executePaginatedQuery(query, options);
+  }
+
+  public async findByCollectionIds(
+    collectionIds: string[],
+    options: PaginationOptions,
+  ): Promise<Result<PaginatedResult<DataRecord>>> {
+    if (collectionIds.length === 0) {
+      return ok({
+        data: [],
+        total: 0,
+        page: options.page,
+        pageSize: options.pageSize,
+        totalPages: 0,
+      });
+    }
+
+    const query = this.table.select("*", { count: "exact" }).in("collection_id", collectionIds);
+    return this.executePaginatedQuery(query, options);
+  }
+
+  private async executePaginatedQuery(
+    query: ReturnType<typeof this.table.select>,
+    options: PaginationOptions,
+  ): Promise<Result<PaginatedResult<DataRecord>>> {
     const { page, pageSize, sortField, sortDirection, search, searchFields, filters } = options;
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
-
-    let query = this.table.select("*", { count: "exact" }).eq("collection_id", collectionId);
 
     if (search && search.trim().length > 0 && searchFields && searchFields.length > 0) {
       const term = `%${search.trim().replaceAll(",", "")}%`;
@@ -62,10 +86,10 @@ export class SupabaseRecordRepository extends BaseRepository implements IRecordR
     if (error) return fail(new DomainError(error.message, "DB_ERROR"));
 
     const total = count || 0;
-    const totalPages = Math.ceil(total / pageSize);
+    const totalPages = total === 0 ? 0 : Math.ceil(total / pageSize);
 
     return ok({
-      data: data.map((item: Record<string, unknown>) => this.toEntity(item)),
+      data: ((data as Record<string, unknown>[]) || []).map((item) => this.toEntity(item)),
       total,
       page,
       pageSize,

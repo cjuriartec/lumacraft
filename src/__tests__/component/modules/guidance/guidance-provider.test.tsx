@@ -208,7 +208,7 @@ describe("GuidanceProvider", () => {
     await screen.findByText("El sidebar es tu mapa operativo");
 
     fireEvent.click(screen.getByRole("button", { name: "Siguiente" }));
-    await screen.findByText("Sigue el plan sugerido");
+    await screen.findByText("Usa los accesos principales");
 
     fireEvent.click(screen.getByRole("button", { name: "Finalizar" }));
 

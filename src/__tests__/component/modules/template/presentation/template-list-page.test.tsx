@@ -16,7 +16,17 @@ const templatesState = vi.hoisted(() => ({
 }));
 
 const collectionsState = vi.hoisted(() => ({
-  collections: [{ id: "collection-1", name: "projects", displayName: "Projects" }],
+  collections: [
+    { id: "collection-1", name: "projects", displayName: "Projects" },
+    { id: "collection-2", name: "contracts", displayName: "Contracts" },
+  ],
+}));
+
+const permissionsState = vi.hoisted(() => ({
+  can: (_collectionId: string, _action: "read" | "create" | "update" | "delete"): boolean => true,
+  isOwner: true,
+  isSuperAdmin: false,
+  loading: false,
 }));
 
 vi.mock("@/modules/template/presentation/hooks/use-templates", () => ({
@@ -25,6 +35,10 @@ vi.mock("@/modules/template/presentation/hooks/use-templates", () => ({
 
 vi.mock("@/modules/collection/presentation/hooks/use-collections", () => ({
   useCollections: () => collectionsState,
+}));
+
+vi.mock("@/modules/authorization/presentation/providers/permission-provider", () => ({
+  usePermissions: () => permissionsState,
 }));
 
 vi.mock("@/shared/presentation/providers/breadcrumb-provider", () => ({
@@ -92,6 +106,10 @@ describe("TemplateListPage", () => {
       .mockResolvedValue(ok(makeTemplate({ id: "template-1", collectionId: "collection-1" })));
     templatesState.deleteTemplate.mockReset().mockResolvedValue(ok(undefined));
     templatesState.refresh.mockReset();
+    permissionsState.can = () => true;
+    permissionsState.isOwner = true;
+    permissionsState.isSuperAdmin = false;
+    permissionsState.loading = false;
   });
 
   it("renders empty state when there are no templates", () => {
@@ -155,5 +173,28 @@ describe("TemplateListPage", () => {
         collectionId: "collection-1",
       });
     });
+  });
+
+  it("shows only templates from accessible collections in the global read-only hub", () => {
+    permissionsState.isOwner = false;
+    permissionsState.can = (collectionId: string) => collectionId === "collection-1";
+    templatesState.templates = [
+      makeTemplate({ id: "template-1", name: "Contrato", collectionId: "collection-1" }),
+      makeTemplate({ id: "template-2", name: "Privada", collectionId: "collection-2" }),
+    ];
+
+    render(
+      <TemplateListPage
+        canCreate={false}
+        canUpdate={false}
+        canDelete={false}
+        enableCollectionFilter
+        showCollectionShortcut
+      />,
+    );
+
+    expect(screen.getByText("Contrato")).toBeInTheDocument();
+    expect(screen.queryByText("Privada")).not.toBeInTheDocument();
+    expect(screen.queryByText("Nueva Plantilla")).not.toBeInTheDocument();
   });
 });

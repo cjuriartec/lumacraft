@@ -327,6 +327,13 @@ export class InMemoryRecordRepository implements IRecordRepository {
     pageSize: number;
     totalPages: number;
   }>;
+  public findByCollectionIdsResult?: Result<{
+    data: DataRecord[];
+    total: number;
+    page: number;
+    pageSize: number;
+    totalPages: number;
+  }>;
   public findByIdResult?: Result<DataRecord | null>;
   public createResult?: Result<DataRecord>;
   public updateResult?: Result<DataRecord>;
@@ -426,6 +433,55 @@ export class InMemoryRecordRepository implements IRecordRepository {
       totalPages: Math.max(1, Math.ceil(sorted.length / options.pageSize)),
     });
   });
+
+  public findByCollectionIds = vi.fn(
+    async (collectionIds: string[], options: PaginationOptions) => {
+      if (this.findByCollectionIdsResult) return this.findByCollectionIdsResult;
+
+      let filtered = this.items.filter((record) => collectionIds.includes(record.collectionId));
+
+      if (options.search && options.searchFields && options.searchFields.length > 0) {
+        const normalized = options.search.toLowerCase();
+        filtered = filtered.filter((record) =>
+          options.searchFields!.some((field) =>
+            String(record.data[field] ?? "")
+              .toLowerCase()
+              .includes(normalized),
+          ),
+        );
+      }
+
+      const sorted = [...filtered].sort((left, right) => {
+        if (!options.sortField || options.sortField === "created_at") {
+          const leftValue = left.createdAt.getTime();
+          const rightValue = right.createdAt.getTime();
+          return options.sortDirection === "asc" ? leftValue - rightValue : rightValue - leftValue;
+        }
+
+        if (options.sortField === "updated_at") {
+          const leftValue = left.updatedAt.getTime();
+          const rightValue = right.updatedAt.getTime();
+          return options.sortDirection === "asc" ? leftValue - rightValue : rightValue - leftValue;
+        }
+
+        const leftValue = left.data[options.sortField];
+        const rightValue = right.data[options.sortField];
+        const base = compareValues(leftValue, rightValue);
+        return options.sortDirection === "asc" ? base : -base;
+      });
+
+      const from = (options.page - 1) * options.pageSize;
+      const page = sorted.slice(from, from + options.pageSize);
+
+      return ok({
+        data: page,
+        total: sorted.length,
+        page: options.page,
+        pageSize: options.pageSize,
+        totalPages: sorted.length === 0 ? 0 : Math.ceil(sorted.length / options.pageSize),
+      });
+    },
+  );
 
   public findById = vi.fn(async (id: string) => {
     return this.findByIdResult ?? ok(this.items.find((record) => record.id === id) ?? null);

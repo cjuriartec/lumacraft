@@ -1,6 +1,14 @@
 "use client";
 
-import { ChevronRight, LayoutDashboard, PanelLeft, Settings, Share2 } from "lucide-react";
+import {
+  ChevronRight,
+  FileText,
+  LayoutDashboard,
+  PanelLeft,
+  Rows3,
+  Settings,
+  Share2,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -14,8 +22,8 @@ import {
 } from "@/modules/auth/presentation/providers/user-preferences-provider";
 import { PermissionProvider } from "@/modules/authorization/presentation/providers/permission-provider";
 import { GuidanceProvider } from "@/modules/guidance/presentation/providers/guidance-provider";
-import { useWorkspaceAccess } from "@/modules/workspace/presentation/hooks/use-workspace-access";
 import { WorkspaceSwitcher } from "@/modules/workspace/presentation/components/workspace-switcher";
+import { useWorkspaceAccess } from "@/modules/workspace/presentation/hooks/use-workspace-access";
 import WorkspaceProvider from "@/modules/workspace/presentation/providers/workspace-provider";
 import { getMissingPublicSupabaseEnv } from "@/shared/infrastructure/supabase/env";
 import SupabaseConfigMissingState from "@/shared/presentation/components/supabase-config-missing-state";
@@ -129,6 +137,7 @@ function Breadcrumb() {
   // Fallback: derive from pathname when no context items are registered
   const fallbackLabels: Record<string, string> = {
     collections: "Colecciones",
+    records: "Registros",
     templates: "Plantillas",
     relations: "Relaciones",
     settings: "Configuración",
@@ -308,6 +317,22 @@ function SidebarNav({
 
       {/* Collections Section - Will be replaced with SidebarCollections */}
       <SidebarCollections isCollapsed={isCollapsed} setSidebarOpen={setSidebarOpen} />
+
+      <NavLink
+        href="/records"
+        icon={<Rows3 size={18} strokeWidth={1.5} />}
+        label="Registros"
+        isCollapsed={isCollapsed}
+        onClick={() => setSidebarOpen(false)}
+      />
+
+      <NavLink
+        href="/templates"
+        icon={<FileText size={18} strokeWidth={1.5} />}
+        label="Plantillas"
+        isCollapsed={isCollapsed}
+        onClick={() => setSidebarOpen(false)}
+      />
 
       <NavLink
         href="/relations"

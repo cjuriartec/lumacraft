@@ -27,11 +27,11 @@ export const GUIDANCE_GUIDES: GuideDefinition[] = [
         anchor: "sidebar-nav",
       },
       {
-        id: "checklist",
-        title: "Sigue el plan sugerido",
+        id: "quick-actions",
+        title: "Usa los accesos principales",
         description:
-          "Este checklist se desbloquea con acciones reales para acompañarte hasta tu primer documento.",
-        anchor: "dashboard-guidance-checklist",
+          "Desde Inicio puedes entrar directo a colecciones, registros y plantillas según tu nivel de acceso.",
+        anchor: "dashboard-primary-actions",
       },
     ],
   },

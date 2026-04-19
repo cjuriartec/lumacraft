@@ -212,7 +212,11 @@ export async function createRoleForAccount(params: {
   return data.id as string;
 }
 
-export async function addMemberToAccountWithRole(accountId: string, userId: string, roleId: string) {
+export async function addMemberToAccountWithRole(
+  accountId: string,
+  userId: string,
+  roleId: string,
+) {
   const service = createAdminSupabaseClient();
 
   const { error } = await service.from("account_members").insert({

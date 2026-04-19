@@ -67,7 +67,7 @@ export const HELP_ARTICLES: HelpArticleDefinition[] = [
         title: "Ver dashboard",
         href: "/",
         label: "Abrir Inicio",
-        description: "Regresa al tablero principal y revisa el checklist sugerido.",
+        description: "Regresa al tablero principal y usa los accesos principales del workspace.",
       },
     ],
   },

@@ -8,6 +8,10 @@ export interface IRecordRepository {
     collectionId: string,
     options: PaginationOptions,
   ): Promise<Result<PaginatedResult<DataRecord>>>;
+  findByCollectionIds(
+    collectionIds: string[],
+    options: PaginationOptions,
+  ): Promise<Result<PaginatedResult<DataRecord>>>;
   findById(id: string): Promise<Result<DataRecord | null>>;
   create(record: DataRecord, omitFields?: string[]): Promise<Result<DataRecord>>;
   update(record: DataRecord, omitFields?: string[]): Promise<Result<DataRecord>>;
