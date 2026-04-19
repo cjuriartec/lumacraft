@@ -16,6 +16,7 @@ interface UseVariableFieldsOptions {
   collectionId?: string | null;
   recordId?: string | null;
   depth?: number;
+  enabled?: boolean;
 }
 
 interface ResolvedFieldMetadata {
@@ -35,6 +36,7 @@ function normalizeOptions(
       collectionId: value ?? null,
       depth: 2,
       recordId: null,
+      enabled: true,
     };
   }
 
@@ -42,6 +44,7 @@ function normalizeOptions(
     collectionId: value.collectionId ?? null,
     recordId: value.recordId ?? null,
     depth: value.depth ?? 2,
+    enabled: value.enabled ?? true,
   };
 }
 
@@ -114,6 +117,7 @@ export function useVariableFields(value?: string | null | UseVariableFieldsOptio
     () => collectionFactory.getCollection(),
     [collectionFactory],
   );
+  const maxDepth = options.depth ?? 0;
 
   useEffect(() => {
     const listFields = listFieldsUseCase;
@@ -179,7 +183,7 @@ export function useVariableFields(value?: string | null | UseVariableFieldsOptio
       collectionMetaCache: Map<string, { name: string; description?: string }>,
       discoveredErrors: string[],
     ): Promise<VariableNode[]> => {
-      if (currentDepth >= 7) return [];
+      if (currentDepth > maxDepth) return [];
 
       const fields = await fetchFields(targetCollectionId, metadataCache, discoveredErrors);
       const collectionMeta = await fetchCollectionMeta(
@@ -206,7 +210,7 @@ export function useVariableFields(value?: string | null | UseVariableFieldsOptio
         };
 
         if (field.fieldType === "RELATION" && field.targetCollectionId) {
-          if (currentDepth < 4) {
+          if (currentDepth < maxDepth) {
             const children = await resolveNodes(
               field.targetCollectionId,
               fieldPath,
@@ -231,9 +235,10 @@ export function useVariableFields(value?: string | null | UseVariableFieldsOptio
 
     let ignore = false;
     const load = async () => {
-      if (!options.collectionId) {
+      if (!options.enabled || !options.collectionId) {
         setNodes([]);
         setError(null);
+        setLoading(false);
         return;
       }
 
@@ -285,7 +290,9 @@ export function useVariableFields(value?: string | null | UseVariableFieldsOptio
     listFieldsUseCase,
     options.collectionId,
     options.depth,
+    options.enabled,
     options.recordId,
+    maxDepth,
   ]);
 
   return {

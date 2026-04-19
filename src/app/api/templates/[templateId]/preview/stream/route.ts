@@ -9,7 +9,6 @@ import { SaveAccountAISettingsUseCase } from "@/modules/ai/application/use-cases
 import { EdgeFunctionAIProviderFactory } from "@/modules/ai/infrastructure/factories/edge-function-ai-provider.factory";
 import { SupabaseAccountAISettingsRepository } from "@/modules/ai/infrastructure/repositories/supabase-account-ai-settings.repository";
 import { CollectionUseCaseFactory } from "@/modules/collection/application/collection-use-case.factory";
-import { TEMPLATE_PREVIEW_MAX_EAGER_DEPTH } from "@/modules/template/application/constants/template-preview.constants";
 import { TemplateCompilationService } from "@/modules/template/application/services/template-compilation.service";
 import { analyzeTemplateDependencies } from "@/modules/template/application/services/template-dependency-analyzer";
 import { TemplatePreviewEvent } from "@/modules/template/application/services/template-preview.types";
@@ -229,7 +228,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   const templateHeader = templateHeaderResult.value;
 
   const dependencyPlan = analyzeTemplateDependencies(bodyResult.data.blocks);
-  const previewDepth = Math.min(TEMPLATE_PREVIEW_MAX_EAGER_DEPTH, dependencyPlan.depth);
   const shouldStream = bodyResult.data.options?.stream ?? true;
   const collectionFactory = CollectionUseCaseFactory.create(supabase);
   const eagerLoadUseCase = collectionFactory.eagerLoadRecord();
@@ -315,7 +313,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const contextResult = await contextResolver.resolve({
       collectionId: bodyResult.data.collectionId,
       recordId: bodyResult.data.recordId,
-      depth: previewDepth,
       dependencyPlan,
     });
 

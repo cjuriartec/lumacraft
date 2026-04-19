@@ -7,6 +7,10 @@ import { hashStableValue } from "@/shared/lib/stable-hash";
 import { TemplateBlocks } from "../../domain/types/template-blocks";
 import { TemplateRuntimeContext } from "../../domain/types/template-runtime-context";
 import { TemplateAssetUrlResolverPort } from "../ports/template-asset-url-resolver.port";
+import {
+  projectTemplateContextByPaths,
+  projectTemplateContextWithTopLevelPrimitives,
+} from "./template-context-projection";
 import { analyzeTemplateDependencies } from "./template-dependency-analyzer";
 import { TemplatePreviewEvent, TemplatePreviewResult } from "./template-preview.types";
 import { compileTemplatePreviewBlocks } from "./template-preview-blocks-compiler";
@@ -67,13 +71,25 @@ function buildPreviewCacheKey(params: {
     enableLogic: boolean;
     maxAiBlocks: number;
   };
+  dependencyPlan: ReturnType<typeof analyzeTemplateDependencies>;
 }): string {
+  const projectedContext = params.dependencyPlan.aiBlocks.some(
+    (block) => block.contextMode === "full_root",
+  )
+    ? params.context.root
+    : params.dependencyPlan.aiBlocks.some((block) => block.contextMode === "minimal_summary")
+      ? projectTemplateContextWithTopLevelPrimitives(
+          params.context.root,
+          params.dependencyPlan.referencedPaths,
+        )
+      : projectTemplateContextByPaths(params.context.root, params.dependencyPlan.referencedPaths);
+
   return hashStableValue({
     templateId: params.templateId,
     templateVersion: params.templateVersion,
     collectionId: params.collectionId,
     recordId: params.recordId,
-    context: params.context.root,
+    context: projectedContext,
     blocks: params.blocks,
     aiSettingsHash: params.aiSettingsHash ?? null,
     options: params.options,
@@ -119,11 +135,21 @@ export class TemplateCompilationService {
         enableLogic,
         maxAiBlocks,
       },
+      dependencyPlan,
     });
 
     if (params.previewCache) {
       const cachedResult = await params.previewCache.findByKey(previewCacheKey);
       if (cachedResult.ok && cachedResult.value) {
+        console.info(
+          JSON.stringify({
+            level: "info",
+            requestId: params.requestId,
+            templateId: params.templateId,
+            recordId: params.recordId,
+            cacheHit: true,
+          }),
+        );
         const cachedPreviewResult: TemplatePreviewResult = {
           requestId: params.requestId,
           warnings: cachedResult.value.warnings,
@@ -140,6 +166,16 @@ export class TemplateCompilationService {
         return ok(cachedPreviewResult);
       }
     }
+
+    console.info(
+      JSON.stringify({
+        level: "info",
+        requestId: params.requestId,
+        templateId: params.templateId,
+        recordId: params.recordId,
+        cacheHit: false,
+      }),
+    );
 
     let pendingCompilation = previewCompilationInFlight.get(previewCacheKey);
     if (!pendingCompilation) {

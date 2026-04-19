@@ -17,6 +17,7 @@ interface UseTemplatePreviewParams {
   templateId: string;
   collectionId?: string | null;
   accountId?: string;
+  enabled?: boolean;
 }
 
 function parseSseChunk(chunk: string): Array<{ event: string; data: string }> {
@@ -42,8 +43,9 @@ export function useTemplatePreview({
   templateId,
   collectionId,
   accountId,
+  enabled = true,
 }: UseTemplatePreviewParams) {
-  const { records, loading: recordsLoading } = useRecords(collectionId ?? "");
+  const { records, loading: recordsLoading } = useRecords(collectionId ?? "", { enabled });
 
   const [selectedRecordId, setSelectedRecordId] = useState("");
   const [loading, setLoading] = useState(false);

@@ -83,6 +83,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
     recordId,
     title,
     pageConfig: contextResult.value.template.pageConfig,
+    existingDocument: contextResult.value.currentDocument,
   });
 
   if (!pdfResult.ok) {

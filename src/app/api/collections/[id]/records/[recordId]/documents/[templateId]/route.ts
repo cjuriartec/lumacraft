@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { GetRecordDocumentUseCase } from "@/modules/document/application/use-cases/get-record-document.use-case";
 import { SaveRecordDocumentEditsUseCase } from "@/modules/document/application/use-cases/save-record-document-edits.use-case";
 import {
   buildRecordDocumentPayload,
@@ -61,17 +60,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
     );
   }
 
-  const useCase = new GetRecordDocumentUseCase(contextResult.value.documentRepository);
-  const documentResult = await useCase.execute({ templateId, recordId });
-
-  if (!documentResult.ok) {
-    return NextResponse.json(
-      { error: { code: documentResult.error.code, message: documentResult.error.message } },
-      { status: statusForError(documentResult.error.code) },
-    );
-  }
-
-  if (!documentResult.value) {
+  if (!contextResult.value.currentDocument) {
     return NextResponse.json(
       { error: { code: "DOCUMENT_NOT_FOUND", message: "Record document not found" } },
       { status: 404 },
@@ -81,7 +70,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
   return NextResponse.json({
     data: buildRecordDocumentPayload({
       collection: contextResult.value.collection,
-      document: documentResult.value,
+      document: contextResult.value.currentDocument,
       permissions: contextResult.value.permissions,
       record: contextResult.value.record,
       template: contextResult.value.template,

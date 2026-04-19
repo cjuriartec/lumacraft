@@ -609,12 +609,14 @@ export function TemplateAIInlinePromptEditor({
   nodes = [],
   loading = false,
   textStyle,
+  onVariableSelectorOpenChange,
 }: {
   value: string;
   onChange: (nextPrompt: string) => void;
   nodes?: VariableNode[];
   loading?: boolean;
   textStyle?: React.CSSProperties;
+  onVariableSelectorOpenChange?: (open: boolean) => void;
 }) {
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
   const [localValue, setLocalValue] = React.useState(value);
@@ -674,6 +676,7 @@ export function TemplateAIInlinePromptEditor({
         <VariableSelector
           nodes={nodes}
           loading={loading}
+          onOpenChange={onVariableSelectorOpenChange}
           onSelect={handleVariableSelect}
           trigger={
             <Button
@@ -700,6 +703,7 @@ export function TemplateConditionalElement(
     nodes: variableCatalog,
     loading: variableCatalogLoading,
     error: variableCatalogError,
+    activate,
   } = useTemplateVariableCatalog();
   const editor = useEditorRef();
   const { ref: shellRef, density } = useLogicBlockDensity();
@@ -738,7 +742,14 @@ export function TemplateConditionalElement(
         }
         containerRef={shellRef}
         density={density}
-        onClick={density === "nano" ? () => setIsDialogOpen(true) : undefined}
+        onClick={
+          density === "nano"
+            ? () => {
+                activate();
+                setIsDialogOpen(true);
+              }
+            : undefined
+        }
         style={{
           marginLeft: indent ? `${indent * 24}px` : undefined,
         }}
@@ -776,14 +787,23 @@ export function TemplateConditionalElement(
                 ? "h-7 w-full max-w-full px-2 py-1 text-[10px]"
                 : "h-auto w-full max-w-full px-2 py-1.5 text-[11px] whitespace-normal wrap-break-word",
           )}
-          onClick={() => setIsDialogOpen(true)}
+          onClick={() => {
+            activate();
+            setIsDialogOpen(true);
+          }}
         >
           {density === "micro" ? <GitBranch size={13} /> : "Configurar Condición"}
         </Button>
       </BlockShell>
       <LogicBlockEditorDialog
         open={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
+        onOpenChange={(nextOpen) => {
+          if (nextOpen) {
+            activate();
+          }
+
+          setIsDialogOpen(nextOpen);
+        }}
         element={element}
         onSave={onSave}
         catalogNodes={variableCatalog}
@@ -801,6 +821,7 @@ export function TemplateListElement(props: PlateElementProps<TemplateListElement
     nodes: variableCatalog,
     loading: variableCatalogLoading,
     error: variableCatalogError,
+    activate,
   } = useTemplateVariableCatalog();
   const editor = useEditorRef();
   const { ref: shellRef, density } = useLogicBlockDensity();
@@ -839,7 +860,14 @@ export function TemplateListElement(props: PlateElementProps<TemplateListElement
         }
         containerRef={shellRef}
         density={density}
-        onClick={density === "nano" ? () => setIsDialogOpen(true) : undefined}
+        onClick={
+          density === "nano"
+            ? () => {
+                activate();
+                setIsDialogOpen(true);
+              }
+            : undefined
+        }
         style={{
           marginLeft: indent ? `${indent * 24}px` : undefined,
         }}
@@ -876,14 +904,23 @@ export function TemplateListElement(props: PlateElementProps<TemplateListElement
                 ? "h-7 w-full max-w-full px-2 py-1 text-[10px]"
                 : "h-auto w-full max-w-full px-2 py-1.5 text-[11px] whitespace-normal wrap-break-word",
           )}
-          onClick={() => setIsDialogOpen(true)}
+          onClick={() => {
+            activate();
+            setIsDialogOpen(true);
+          }}
         >
           {density === "micro" ? <ListTree size={13} /> : "Configurar Bucle"}
         </Button>
       </BlockShell>
       <LogicBlockEditorDialog
         open={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
+        onOpenChange={(nextOpen) => {
+          if (nextOpen) {
+            activate();
+          }
+
+          setIsDialogOpen(nextOpen);
+        }}
         element={element}
         onSave={onSave}
         catalogNodes={variableCatalog}
@@ -901,6 +938,7 @@ export function TemplateSwitchElement(props: PlateElementProps<TemplateSwitchEle
     nodes: variableCatalog,
     loading: variableCatalogLoading,
     error: variableCatalogError,
+    activate,
   } = useTemplateVariableCatalog();
   const editor = useEditorRef();
   const { ref: shellRef, density } = useLogicBlockDensity();
@@ -939,7 +977,14 @@ export function TemplateSwitchElement(props: PlateElementProps<TemplateSwitchEle
         }
         containerRef={shellRef}
         density={density}
-        onClick={density === "nano" ? () => setIsDialogOpen(true) : undefined}
+        onClick={
+          density === "nano"
+            ? () => {
+                activate();
+                setIsDialogOpen(true);
+              }
+            : undefined
+        }
         style={{
           marginLeft: indent ? `${indent * 24}px` : undefined,
         }}
@@ -976,14 +1021,23 @@ export function TemplateSwitchElement(props: PlateElementProps<TemplateSwitchEle
                 ? "h-7 w-full max-w-full px-2 py-1 text-[10px]"
                 : "h-auto w-full max-w-full px-2 py-1.5 text-[11px] whitespace-normal wrap-break-word",
           )}
-          onClick={() => setIsDialogOpen(true)}
+          onClick={() => {
+            activate();
+            setIsDialogOpen(true);
+          }}
         >
           {density === "micro" ? <Split size={13} /> : "Configurar Casos"}
         </Button>
       </BlockShell>
       <LogicBlockEditorDialog
         open={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
+        onOpenChange={(nextOpen) => {
+          if (nextOpen) {
+            activate();
+          }
+
+          setIsDialogOpen(nextOpen);
+        }}
         element={element}
         onSave={onSave}
         catalogNodes={variableCatalog}
@@ -1001,6 +1055,7 @@ export function TemplateAIElement(props: PlateElementProps<TemplateAIElementNode
     nodes: variableCatalog,
     loading: variableCatalogLoading,
     error: variableCatalogError,
+    activate,
   } = useTemplateVariableCatalog();
   const editor = useEditorRef();
   const { ref: shellRef, density } = useLogicBlockDensity();
@@ -1044,7 +1099,14 @@ export function TemplateAIElement(props: PlateElementProps<TemplateAIElementNode
         }
         containerRef={shellRef}
         density={density}
-        onClick={density === "nano" ? () => setIsDialogOpen(true) : undefined}
+        onClick={
+          density === "nano"
+            ? () => {
+                activate();
+                setIsDialogOpen(true);
+              }
+            : undefined
+        }
         style={{
           marginLeft: indent ? `${indent * 24}px` : undefined,
         }}
@@ -1063,6 +1125,11 @@ export function TemplateAIElement(props: PlateElementProps<TemplateAIElementNode
           nodes={variableCatalog}
           loading={variableCatalogLoading}
           onChange={(nextPrompt) => onSave({ promptTemplate: nextPrompt })}
+          onVariableSelectorOpenChange={(nextOpen) => {
+            if (nextOpen) {
+              activate();
+            }
+          }}
           textStyle={{
             textAlign: align,
             lineHeight,
@@ -1073,7 +1140,13 @@ export function TemplateAIElement(props: PlateElementProps<TemplateAIElementNode
       </BlockShell>
       <LogicBlockEditorDialog
         open={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
+        onOpenChange={(nextOpen) => {
+          if (nextOpen) {
+            activate();
+          }
+
+          setIsDialogOpen(nextOpen);
+        }}
         element={element}
         onSave={onSave}
         catalogNodes={variableCatalog}

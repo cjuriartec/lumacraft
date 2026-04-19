@@ -41,6 +41,7 @@ import {
 import { useCollections } from "@/modules/collection/presentation/hooks/use-collections";
 import { useGuidancePage } from "@/modules/guidance/presentation/hooks/use-guidance-page";
 import { TEMPLATE_PREVIEW_MAX_EAGER_DEPTH } from "@/modules/template/application/constants/template-preview.constants";
+import { analyzeTemplateDependencies } from "@/modules/template/application/services/template-dependency-analyzer";
 import type { PdfPageConfig } from "@/modules/template/domain/types/pdf-page-config";
 import { cn, getShortcutText } from "@/shared/lib/utils";
 import { DndKit } from "@/shared/presentation/components/editor/plugins/dnd-kit";
@@ -140,6 +141,8 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
     useTemplateEditor(templateId);
   const { collections } = useCollections();
   useGuidancePage({ id: "template-editor" });
+  const [isVariableCatalogActive, setIsVariableCatalogActive] = React.useState(false);
+  const [isPreviewDataActive, setIsPreviewDataActive] = React.useState(false);
 
   const { can, isOwner, isSuperAdmin } = usePermissions();
   const {
@@ -156,6 +159,7 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
     templateId,
     collectionId: template?.collectionId,
     accountId: template?.accountId,
+    enabled: isPreviewDataActive,
   });
 
   const [localName, setLocalName] = React.useState(template?.name || "");
@@ -164,6 +168,32 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
   const [localPageConfig, setLocalPageConfig] = React.useState<PdfPageConfig | null>(
     template?.pageConfig ?? null,
   );
+  const variableCatalogDepth = React.useMemo(() => {
+    const templateBlocks = template?.blocks ?? [];
+    const inferredDepth = analyzeTemplateDependencies(templateBlocks).depth;
+    return Math.min(TEMPLATE_PREVIEW_MAX_EAGER_DEPTH, Math.max(2, inferredDepth));
+  }, [template?.blocks]);
+  const activateVariableCatalog = React.useCallback(() => {
+    setIsVariableCatalogActive(true);
+    setIsPreviewDataActive(true);
+  }, []);
+  const handleVariableSelectorOpenChange = React.useCallback(
+    (nextOpen: boolean) => {
+      if (nextOpen) {
+        activateVariableCatalog();
+      }
+
+      setIsVariableSelectorOpen(nextOpen);
+    },
+    [activateVariableCatalog],
+  );
+  const handlePreviewOpenChange = React.useCallback((nextOpen: boolean) => {
+    if (nextOpen) {
+      setIsPreviewDataActive(true);
+    }
+
+    setIsPreviewOpen(nextOpen);
+  }, []);
 
   const {
     nodes: variableCatalog,
@@ -172,7 +202,8 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
   } = useVariableFields({
     collectionId: template?.collectionId,
     recordId: selectedRecordId || null,
-    depth: TEMPLATE_PREVIEW_MAX_EAGER_DEPTH,
+    depth: variableCatalogDepth,
+    enabled: isVariableCatalogActive,
   });
 
   const canEdit = template?.collectionId
@@ -209,14 +240,17 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
   // Listen for slash command variable trigger
   React.useEffect(() => {
     const handleOpenVariableSelector = () => {
-      if (canEdit) setIsVariableSelectorOpen(true);
+      if (canEdit) {
+        activateVariableCatalog();
+        setIsVariableSelectorOpen(true);
+      }
     };
 
     window.addEventListener("open-variable-selector", handleOpenVariableSelector);
     return () => {
       window.removeEventListener("open-variable-selector", handleOpenVariableSelector);
     };
-  }, [canEdit]);
+  }, [activateVariableCatalog, canEdit]);
 
   const activeCollection = template?.collectionId
     ? (collections.find((col) => col.id === template.collectionId) ?? null)
@@ -335,6 +369,7 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
         loading: variableCatalogLoading,
         error: variableCatalogError,
         collectionContext: collectionContextForAI,
+        activate: activateVariableCatalog,
       }}
     >
       <Plate
@@ -564,12 +599,12 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
                         <VariableSelector
                           collectionId={template.collectionId || undefined}
                           recordId={selectedRecordId || null}
-                          depth={TEMPLATE_PREVIEW_MAX_EAGER_DEPTH}
+                          depth={variableCatalogDepth}
                           nodes={variableCatalog}
                           loading={variableCatalogLoading}
                           disabled={!template.collectionId}
                           open={isVariableSelectorOpen}
-                          onOpenChange={setIsVariableSelectorOpen}
+                          onOpenChange={handleVariableSelectorOpenChange}
                           onSelect={(node) => {
                             const isImageVariable = node.fieldType === "IMAGE";
                             const currentFormatting = getCurrentVariableFormatting(editor);
@@ -663,7 +698,7 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
               </div>
             </div>
 
-            <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+            <Dialog open={isPreviewOpen} onOpenChange={handlePreviewOpenChange}>
               <DialogContent className="flex h-[90vh] w-full max-w-[95vw] flex-col overflow-hidden border-none bg-background p-0 shadow-2xl ring-1 ring-border/5">
                 <DialogHeader className="shrink-0 border-b border-border/5 bg-surface/10 px-8 py-4">
                   <div className="flex items-center justify-between">

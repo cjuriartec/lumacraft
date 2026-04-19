@@ -14,7 +14,6 @@ import { resolveCollectionRecordLabel } from "@/modules/collection/domain/servic
 import { SupabaseRecordRepository } from "@/modules/collection/infrastructure/repositories/supabase-record.repository";
 import { RecordDocument } from "@/modules/document/domain/entities/record-document.entity";
 import { RecordDocumentPreviewPayload } from "@/modules/document/presentation/types/record-document";
-import { TEMPLATE_PREVIEW_MAX_EAGER_DEPTH } from "@/modules/template/application/constants/template-preview.constants";
 import { TemplateCompilationService } from "@/modules/template/application/services/template-compilation.service";
 import { GenerateTemplatePreviewUseCase } from "@/modules/template/application/use-cases/generate-template-preview.use-case";
 import { Template } from "@/modules/template/domain/entities/template.entity";
@@ -346,7 +345,6 @@ export async function createDocumentPreviewCompiler(params: {
         aiSettingsHash,
         previewCache: previewCacheRepository,
         aiBlockCache: aiBlockCacheRepository,
-        depth: TEMPLATE_PREVIEW_MAX_EAGER_DEPTH,
         signal: params.signal,
         options: {
           enableAI: accountAISettings.featureTemplateAI,

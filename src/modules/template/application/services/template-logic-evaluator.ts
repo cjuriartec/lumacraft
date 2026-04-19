@@ -359,11 +359,6 @@ async function evaluateBlock(
       const stream = provider.stream(
         {
           prompt: groundedPrompt.prompt,
-          groundingContext: groundedPrompt.contextSnapshot,
-          metadata: {
-            usedPaths: groundedPrompt.usedPaths,
-            fieldMetadataSnapshot: groundedPrompt.metadataSnapshot,
-          },
         },
         params.signal,
       );

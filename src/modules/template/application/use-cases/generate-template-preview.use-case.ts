@@ -1,5 +1,4 @@
 import { AIProviderFactoryPort } from "@/modules/ai/domain/ports/ai-provider-factory.port";
-import { TEMPLATE_PREVIEW_MAX_EAGER_DEPTH } from "@/modules/template/application/constants/template-preview.constants";
 import { DomainError, fail, ok, Result } from "@/shared/domain/result";
 
 import { Template } from "../../domain/entities/template.entity";
@@ -107,7 +106,7 @@ export class GenerateTemplatePreviewUseCase {
       : await this.contextResolver.resolve({
           collectionId: params.collectionId,
           recordId: params.recordId,
-          depth: params.depth ?? Math.min(TEMPLATE_PREVIEW_MAX_EAGER_DEPTH, dependencyPlan.depth),
+          depth: params.depth,
           dependencyPlan,
         });
 

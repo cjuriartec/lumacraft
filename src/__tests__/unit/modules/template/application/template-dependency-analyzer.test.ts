@@ -53,7 +53,7 @@ describe("analyzeTemplateDependencies", () => {
       expect.objectContaining({
         blockId: "item-ai",
         promptPaths: ["cliente.requerimientos.nombre", "cliente.estado"],
-        requiresFullContext: false,
+        contextMode: "explicit_paths",
       }),
     ]);
     expect(result.depth).toBeGreaterThanOrEqual(2);
@@ -74,7 +74,7 @@ describe("analyzeTemplateDependencies", () => {
     expect(result.aiBlocks).toEqual([
       expect.objectContaining({
         blockId: "ai-root",
-        requiresFullContext: true,
+        contextMode: "full_root",
       }),
     ]);
   });

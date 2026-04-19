@@ -72,8 +72,8 @@ function collectTextTemplatePaths(
 function computeDepth(paths: string[]): number {
   return paths.reduce((maxDepth, path) => {
     const segments = splitPath(path);
-    return Math.max(maxDepth, Math.max(1, Math.min(5, segments.length - 1)));
-  }, 1);
+    return Math.max(maxDepth, Math.max(0, Math.min(5, segments.length - 1)));
+  }, 0);
 }
 
 function isImagePathCandidate(value: string): boolean {
@@ -127,12 +127,15 @@ function analyzeBlocks(
         blockId,
         blockIndex: blockIndexFallback,
         promptPaths,
-        requiresFullContext:
-          promptPaths.length === 0 ||
-          promptPaths.some((path) => {
-            const normalized = normalizePath(path);
-            return normalized === "" || normalized === "root" || normalized === "record";
-          }),
+        contextMode:
+          promptPaths.length === 0
+            ? "minimal_summary"
+            : promptPaths.some((path) => {
+                  const normalized = normalizePath(path);
+                  return normalized === "" || normalized === "root" || normalized === "record";
+                })
+              ? "full_root"
+              : "explicit_paths",
       });
     }
 

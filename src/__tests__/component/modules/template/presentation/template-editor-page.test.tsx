@@ -44,6 +44,10 @@ const previewState = vi.hoisted(() => ({
   cancel: vi.fn(),
 }));
 
+const previewHookState = vi.hoisted(() => ({
+  lastParams: null as Record<string, unknown> | null,
+}));
+
 const plateEditorState = vi.hoisted(() => ({
   children: [] as Array<Record<string, unknown>>,
 }));
@@ -51,6 +55,11 @@ const plateEditorState = vi.hoisted(() => ({
 const variableCatalogState = vi.hoisted(() => ({
   loading: false,
   nodes: [],
+  error: null as string | null,
+}));
+
+const variableCatalogHookState = vi.hoisted(() => ({
+  lastParams: null as Record<string, unknown> | null,
 }));
 
 vi.mock("@/modules/template/presentation/hooks/use-template-editor", () => ({
@@ -58,11 +67,17 @@ vi.mock("@/modules/template/presentation/hooks/use-template-editor", () => ({
 }));
 
 vi.mock("@/modules/template/presentation/hooks/use-template-preview", () => ({
-  useTemplatePreview: () => previewState,
+  useTemplatePreview: (params: Record<string, unknown>) => {
+    previewHookState.lastParams = params;
+    return previewState;
+  },
 }));
 
 vi.mock("@/modules/template/presentation/hooks/use-variable-fields", () => ({
-  useVariableFields: () => variableCatalogState,
+  useVariableFields: (params: Record<string, unknown>) => {
+    variableCatalogHookState.lastParams = params;
+    return variableCatalogState;
+  },
 }));
 
 vi.mock("@/modules/collection/presentation/hooks/use-collections", () => ({
@@ -251,11 +266,17 @@ vi.mock("@/modules/template/presentation/components/variable-selector", () => ({
   VariableSelector: ({
     collectionId,
     disabled,
+    onOpenChange,
   }: {
     collectionId?: string | null;
     disabled?: boolean;
+    onOpenChange?: (open: boolean) => void;
   }) => (
-    <button data-testid="variable-selector" disabled={disabled}>
+    <button
+      data-testid="variable-selector"
+      disabled={disabled}
+      onClick={() => onOpenChange?.(true)}
+    >
       {collectionId ?? "sin-coleccion"}
     </button>
   ),
@@ -305,9 +326,12 @@ describe("TemplateEditorPage", () => {
     previewState.warnings = [];
     previewState.requestId = null;
     previewState.blockStates = [];
+    previewHookState.lastParams = null;
     plateEditorState.children = [];
     variableCatalogState.loading = false;
     variableCatalogState.nodes = [];
+    variableCatalogState.error = null;
+    variableCatalogHookState.lastParams = null;
     templateEditorState.template = makeTemplate({
       id: "template-1",
       collectionId: null,
@@ -327,6 +351,41 @@ describe("TemplateEditorPage", () => {
     expect(screen.getByText("font-family")).toBeInTheDocument();
     expect(screen.getByText("paragraph-spacing")).toBeInTheDocument();
     expect(screen.getAllByText("font-color")).toHaveLength(2);
+  });
+
+  it("keeps preview data and variable catalog lazy until their UI is opened", () => {
+    templateEditorState.template = makeTemplate({
+      id: "template-1",
+      collectionId: "collection-1",
+      blocks: [],
+      name: "Contrato Base",
+    });
+
+    render(<TemplateEditorPage templateId="template-1" />);
+
+    expect(previewHookState.lastParams).toEqual(
+      expect.objectContaining({
+        enabled: false,
+      }),
+    );
+    expect(variableCatalogHookState.lastParams).toEqual(
+      expect.objectContaining({
+        enabled: false,
+      }),
+    );
+
+    fireEvent.click(screen.getByTestId("variable-selector"));
+
+    expect(previewHookState.lastParams).toEqual(
+      expect.objectContaining({
+        enabled: true,
+      }),
+    );
+    expect(variableCatalogHookState.lastParams).toEqual(
+      expect.objectContaining({
+        enabled: true,
+      }),
+    );
   });
 
   it("shows the collection primary field as record label in preview selector", () => {

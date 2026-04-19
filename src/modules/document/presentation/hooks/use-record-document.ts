@@ -107,20 +107,6 @@ export function useRecordDocument(params: {
     setLoadingPhase("loading");
     setError(null);
 
-    const getResult = await requestJson<RecordDocumentPreviewPayload>(endpointBase);
-    if (getResult.ok && getResult.payload) {
-      applyPayload(getResult.payload, true);
-      setLoading(false);
-      return;
-    }
-
-    if (getResult.status !== 404) {
-      setError(getResult.error ?? "No fue posible cargar el documento");
-      setLoading(false);
-      return;
-    }
-
-    setLoadingPhase("compiling");
     const compileResult = await requestJson<RecordDocumentPreviewPayload>(
       `${endpointBase}/compile`,
       {

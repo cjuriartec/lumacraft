@@ -5,7 +5,17 @@ import { Field } from "@/modules/collection/domain/entities/field.entity";
 import { DomainError, fail, ok, Result } from "@/shared/domain/result";
 
 import { TemplateRuntimeContextResolverPort } from "../../application/ports/template-runtime-context-resolver.port";
+import {
+  projectTemplateContextByPaths,
+  projectTemplateContextWithTopLevelPrimitives,
+} from "../../application/services/template-context-projection";
+import { resolveTemplateDependencyPlan } from "../../application/services/template-dependency-plan-resolver";
 import { mapEagerRecordToTemplateRoot } from "../../application/services/template-runtime-context-mapper";
+import {
+  ResolvedTemplateDependencyPlan,
+  TemplateDependencyFieldDescriptor,
+  TemplateDependencyPlan,
+} from "../../application/types/template-dependency-plan";
 import {
   TemplateRuntimeContext,
   TemplateRuntimeFieldMetadata,
@@ -56,6 +66,38 @@ function getTopLevelRelationFields(paths?: string[]): string[] | undefined {
   return fields.length > 0 ? fields : undefined;
 }
 
+function toDependencyFieldDescriptor(field: Field): TemplateDependencyFieldDescriptor {
+  const targetCollectionId = field.config?.value?.targetCollectionId;
+
+  return {
+    name: field.name,
+    fieldType: field.fieldType.value,
+    targetCollectionId: typeof targetCollectionId === "string" ? targetCollectionId : null,
+  };
+}
+
+function buildFallbackResolvedPlan(
+  dependencyPlan: TemplateDependencyPlan | undefined,
+  requestedDepth: number | undefined,
+): ResolvedTemplateDependencyPlan {
+  return {
+    blockMetadata: dependencyPlan?.blockMetadata ?? [],
+    referencedPaths: dependencyPlan?.referencedPaths ?? [],
+    relationPaths: dependencyPlan?.relationPaths ?? [],
+    aiBlocks: dependencyPlan?.aiBlocks ?? [],
+    imagePaths: dependencyPlan?.imagePaths ?? [],
+    depth: dependencyPlan?.depth ?? Math.max(0, Math.min(requestedDepth ?? 2, 5)),
+    eagerDepth: Math.max(0, Math.min(requestedDepth ?? 2, 5)),
+    runtimeProjectionPaths: [],
+    fieldMetadataPaths: [],
+    requiresFieldMetadata: false,
+    requiresCollectionContext: false,
+    requiresMinimalSummary: false,
+    requiresFullRoot: true,
+    includeAllRelationPaths: true,
+  };
+}
+
 export class EagerLoadTemplateContextResolverAdapter implements TemplateRuntimeContextResolverPort {
   constructor(
     private readonly eagerLoadRecordUseCase: EagerLoadRecordUseCase,
@@ -100,7 +142,7 @@ export class EagerLoadTemplateContextResolverAdapter implements TemplateRuntimeC
   private async resolveFieldMetadata(
     params: MetadataResolveParams,
   ): Promise<Record<string, TemplateRuntimeFieldMetadata>> {
-    if (params.depth <= 0) return {};
+    if (params.depth < 0) return {};
 
     const fieldsResult = await this.getFieldsByCollection(params.collectionId, params.cache);
     if (!fieldsResult.ok) {
@@ -139,7 +181,7 @@ export class EagerLoadTemplateContextResolverAdapter implements TemplateRuntimeC
           return metadata;
         }
 
-        if (!hasNestedRelevantPath(path, params.referencedPaths)) {
+        if (!hasNestedRelevantPath(path, params.referencedPaths) || params.depth <= 0) {
           return metadata;
         }
 
@@ -172,19 +214,43 @@ export class EagerLoadTemplateContextResolverAdapter implements TemplateRuntimeC
     collectionId: string;
     recordId: string;
     depth?: number;
-    dependencyPlan?: {
-      depth: number;
-      referencedPaths: string[];
-      relationPaths: string[];
-    };
+    dependencyPlan?: TemplateDependencyPlan;
   }): Promise<Result<TemplateRuntimeContext>> {
-    const resolvedDepth = Math.max(
-      1,
-      Math.min(params.dependencyPlan?.depth ?? params.depth ?? 2, 5),
-    );
-    const includeRelationPaths = params.dependencyPlan?.relationPaths;
+    const fallbackPlan = buildFallbackResolvedPlan(params.dependencyPlan, params.depth);
+    const dependencyFieldCache = new Map<string, Field[]>();
+    const resolvedPlanResult = params.dependencyPlan
+      ? await resolveTemplateDependencyPlan({
+          collectionId: params.collectionId,
+          dependencyPlan: params.dependencyPlan,
+          loadFields: async (collectionId) => {
+            const fieldsResult = await this.getFieldsByCollection(
+              collectionId,
+              dependencyFieldCache,
+            );
+            if (!fieldsResult.ok) {
+              return fail(fieldsResult.error);
+            }
+
+            return ok(fieldsResult.value.map(toDependencyFieldDescriptor));
+          },
+        })
+      : ok(fallbackPlan);
+
+    if (!resolvedPlanResult.ok) {
+      return fail(new DomainError(resolvedPlanResult.error.message, "TEMPLATE_CONTEXT_NOT_FOUND"));
+    }
+
+    const resolvedPlan = resolvedPlanResult.value;
+    const resolvedDepth = Math.max(0, Math.min(params.depth ?? resolvedPlan.eagerDepth, 5));
+    const includeRelationPaths = resolvedPlan.includeAllRelationPaths
+      ? undefined
+      : resolvedPlan.relationPaths;
+
+    const collectionPromise = resolvedPlan.requiresCollectionContext
+      ? this.getCollectionUseCase.execute(params.collectionId)
+      : Promise.resolve(ok(null));
     const [collectionResult, eagerResult] = await Promise.all([
-      this.getCollectionUseCase.execute(params.collectionId),
+      collectionPromise,
       this.eagerLoadRecordUseCase.execute({
         collectionId: params.collectionId,
         recordId: params.recordId,
@@ -203,21 +269,42 @@ export class EagerLoadTemplateContextResolverAdapter implements TemplateRuntimeC
     }
 
     const root = mapEagerRecordToTemplateRoot(eagerResult.value);
-    const fieldMetadataByPath = await this.resolveFieldMetadata({
-      collectionId: params.collectionId,
-      prefix: "",
-      depth: resolvedDepth,
-      cache: new Map<string, Field[]>(),
-      visitedCollections: new Set<string>([params.collectionId]),
-      referencedPaths: params.dependencyPlan?.referencedPaths,
-    });
+    const projectedRoot = resolvedPlan.requiresFullRoot
+      ? root
+      : resolvedPlan.requiresMinimalSummary
+        ? projectTemplateContextWithTopLevelPrimitives(root, resolvedPlan.runtimeProjectionPaths)
+        : projectTemplateContextByPaths(root, resolvedPlan.runtimeProjectionPaths);
+    const fieldMetadataByPath = resolvedPlan.requiresFieldMetadata
+      ? await this.resolveFieldMetadata({
+          collectionId: params.collectionId,
+          prefix: "",
+          depth: resolvedDepth,
+          cache: new Map<string, Field[]>(),
+          visitedCollections: new Set<string>([params.collectionId]),
+          referencedPaths: resolvedPlan.fieldMetadataPaths,
+        })
+      : undefined;
+
+    console.info(
+      JSON.stringify({
+        level: "info",
+        collectionId: params.collectionId,
+        recordId: params.recordId,
+        dependencyDepth: resolvedDepth,
+        referencedPathCount: resolvedPlan.referencedPaths.length,
+        projectionPathCount: resolvedPlan.runtimeProjectionPaths.length,
+        requiresFullRoot: resolvedPlan.requiresFullRoot,
+      }),
+    );
 
     return ok({
       recordId: eagerResult.value.id,
       collectionId: eagerResult.value.collectionId,
       collectionName: eagerResult.value.collectionName,
-      collectionDescription: collectionResult.value?.description ?? null,
-      root,
+      collectionDescription: resolvedPlan.requiresCollectionContext
+        ? (collectionResult.value?.description ?? null)
+        : null,
+      root: projectedRoot,
       fieldMetadataByPath,
     });
   }

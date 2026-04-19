@@ -1379,11 +1379,6 @@ async function compileTemplateAiNodeStreamed(
     model: typeof node.model === "string" ? node.model : undefined,
     temperature: typeof node.temperature === "number" ? node.temperature : undefined,
     maxTokens: typeof node.maxTokens === "number" ? node.maxTokens : undefined,
-    groundingContext: groundedPrompt.contextSnapshot,
-    metadata: {
-      usedPaths: groundedPrompt.usedPaths,
-      fieldMetadataSnapshot: groundedPrompt.metadataSnapshot,
-    },
     responseFormat: {
       mimeType: "application/json" as const,
       schema: AI_DOCUMENT_RESPONSE_SCHEMA,
@@ -1399,8 +1394,6 @@ async function compileTemplateAiNodeStreamed(
     temperature: request.temperature ?? "default",
     maxTokens: request.maxTokens ?? "default",
     prompt: request.prompt,
-    groundingContext: request.groundingContext,
-    metadata: request.metadata,
     responseFormat: request.responseFormat,
     aiSettingsHash: compileContext.aiSettingsHash ?? "default",
     presentation: {
@@ -1420,6 +1413,18 @@ async function compileTemplateAiNodeStreamed(
   if (compileContext.aiBlockCache) {
     const cachedResult = await compileContext.aiBlockCache.findByKey(aiCacheKey);
     if (cachedResult.ok && cachedResult.value) {
+      console.info(
+        JSON.stringify({
+          level: "info",
+          requestId: compileContext.requestId,
+          blockId: blockMeta.blockId,
+          aiPromptMode: groundedPrompt.mode,
+          usedPathCount: groundedPrompt.usedPaths.length,
+          contextChars: groundedPrompt.contextSnapshot.length,
+          metadataChars: groundedPrompt.metadataSnapshot.length,
+          cacheHit: true,
+        }),
+      );
       warnings.push(...cachedResult.value.warnings);
       return cloneSerializableBlocks(cachedResult.value.blocks);
     }
@@ -1428,6 +1433,18 @@ async function compileTemplateAiNodeStreamed(
   let pendingCompilation = aiBlockInFlightCache.get(aiCacheKey);
   if (!pendingCompilation) {
     pendingCompilation = compileContext.aiLimiter.run(async () => {
+      console.info(
+        JSON.stringify({
+          level: "info",
+          requestId: compileContext.requestId,
+          blockId: blockMeta.blockId,
+          aiPromptMode: groundedPrompt.mode,
+          usedPathCount: groundedPrompt.usedPaths.length,
+          contextChars: groundedPrompt.contextSnapshot.length,
+          metadataChars: groundedPrompt.metadataSnapshot.length,
+          cacheHit: false,
+        }),
+      );
       let aiText = "";
       let streamError: DomainError | null = null;
       const aiWarnings: string[] = [];

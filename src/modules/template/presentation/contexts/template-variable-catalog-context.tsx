@@ -12,6 +12,7 @@ interface TemplateVariableCatalogContextValue {
   loading: boolean;
   error: string | null;
   collectionContext: TemplateCollectionContext | null;
+  activate: () => void;
 }
 
 const TemplateVariableCatalogContext = React.createContext<TemplateVariableCatalogContextValue>({
@@ -19,6 +20,7 @@ const TemplateVariableCatalogContext = React.createContext<TemplateVariableCatal
   loading: false,
   error: null,
   collectionContext: null,
+  activate: () => undefined,
 });
 
 interface TemplateVariableCatalogProviderProps {

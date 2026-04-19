@@ -75,7 +75,7 @@ describe("buildGroundedPrompt", () => {
     expect(result.prompt).toContain("Item actual: Laptop");
   });
 
-  it("includes full root context when prompt has no variable tokens", () => {
+  it("uses a minimal summary when prompt has no variable tokens", () => {
     const result = buildGroundedPrompt({
       promptTemplate: "Escribe un resumen ejecutivo.",
       context: {
@@ -85,9 +85,9 @@ describe("buildGroundedPrompt", () => {
     });
 
     expect(result.usedPaths).toEqual([]);
-    expect(result.contextSnapshot).toContain('"cliente"');
-    expect(result.contextSnapshot).toContain('"Ana"');
     expect(result.contextSnapshot).toContain('"total"');
+    expect(result.contextSnapshot).not.toContain('"cliente"');
+    expect(result.mode).toBe("minimal_summary");
   });
 
   it("includes collection context in the prompt when provided", () => {

@@ -99,6 +99,23 @@ function buildContext(): TemplateRuntimeContext {
   };
 }
 
+function buildContextWithUnrelatedFields(age: number): TemplateRuntimeContext {
+  return {
+    recordId: "record-1",
+    collectionId: "collection-1",
+    collectionName: "Clientes",
+    root: {
+      cliente: {
+        nombre: "Ana",
+        edad: age,
+      },
+      auditoria: {
+        actualizadoPor: `user-${age}`,
+      },
+    },
+  };
+}
+
 describe("TemplateCompilationService", () => {
   it("reuses full preview cache for identical inputs", async () => {
     const previewCache = new InMemoryPreviewCacheRepository();
@@ -193,6 +210,44 @@ describe("TemplateCompilationService", () => {
     expect(first.ok).toBe(true);
     expect(second.ok).toBe(true);
     expect(streamSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("reuses preview cache when unrelated context fields change", async () => {
+    const previewCache = new InMemoryPreviewCacheRepository();
+    const service = new TemplateCompilationService();
+    const blocks: TemplateBlocks = [{ type: "p", children: [{ text: "Hola {{cliente.nombre}}" }] }];
+
+    const first = await service.compile({
+      requestId: "req-projected-1",
+      templateId: "template-1",
+      templateVersion: 2,
+      accountId: "workspace-1",
+      collectionId: "collection-1",
+      recordId: "record-1",
+      blocks,
+      context: buildContextWithUnrelatedFields(30),
+      aiProviderFactory: new SlowStructuredAIProviderFactory(new SlowStructuredAIProvider(vi.fn())),
+      previewCache,
+      aiSettingsHash: "settings-hash",
+    });
+
+    const second = await service.compile({
+      requestId: "req-projected-2",
+      templateId: "template-1",
+      templateVersion: 2,
+      accountId: "workspace-1",
+      collectionId: "collection-1",
+      recordId: "record-1",
+      blocks,
+      context: buildContextWithUnrelatedFields(31),
+      aiProviderFactory: new SlowStructuredAIProviderFactory(new SlowStructuredAIProvider(vi.fn())),
+      previewCache,
+      aiSettingsHash: "settings-hash",
+    });
+
+    expect(first.ok).toBe(true);
+    expect(second.ok).toBe(true);
+    expect(previewCache.save).toHaveBeenCalledTimes(1);
   });
 
   it("busts preview cache when ai settings hash changes", async () => {

@@ -124,14 +124,18 @@ describe("useRecordDocument", () => {
     const firstSave = createDeferred<ReturnType<typeof makeJsonResponse>>();
     const secondSave = createDeferred<ReturnType<typeof makeJsonResponse>>();
     const patchBodies: Array<{ editedBlocks: TemplateBlocks; version: number }> = [];
+    const requestUrls: string[] = [];
 
-    fetchMock.mockImplementation((_input, init) => {
-      if (!init?.method || init.method === "GET") {
+    fetchMock.mockImplementation((input, init) => {
+      const method = init?.method;
+      requestUrls.push(String(input));
+
+      if (method === "POST" && String(input).endsWith("/compile")) {
         return Promise.resolve(makeJsonResponse({ data: buildPayload(1, makeBlocks("Inicial")) }));
       }
 
-      if (init.method === "PATCH") {
-        patchBodies.push(JSON.parse(String(init.body)));
+      if (method === "PATCH") {
+        patchBodies.push(JSON.parse(String(init?.body)));
 
         if (patchBodies.length === 1) {
           return firstSave.promise;
@@ -142,7 +146,7 @@ describe("useRecordDocument", () => {
         }
       }
 
-      throw new Error(`Unexpected request: ${String(init?.method ?? "GET")}`);
+      throw new Error(`Unexpected request: ${String(method ?? "GET")}`);
     });
 
     render(<HookHarness />);
@@ -152,6 +156,9 @@ describe("useRecordDocument", () => {
       await flushPromises();
     });
 
+    expect(requestUrls).toEqual([
+      "/api/collections/collection-1/records/record-1/documents/template-1/compile",
+    ]);
     expect(screen.getByTestId("version")).toHaveTextContent("1");
 
     fireEvent.click(screen.getByRole("button", { name: /Editar 1/i }));
@@ -205,13 +212,15 @@ describe("useRecordDocument", () => {
   it("uses the latest persisted version for sequential saves", async () => {
     const patchBodies: Array<{ editedBlocks: TemplateBlocks; version: number }> = [];
 
-    fetchMock.mockImplementation((_input, init) => {
-      if (!init?.method || init.method === "GET") {
+    fetchMock.mockImplementation((input, init) => {
+      const method = init?.method;
+
+      if (method === "POST" && String(input).endsWith("/compile")) {
         return Promise.resolve(makeJsonResponse({ data: buildPayload(10, makeBlocks("Inicial")) }));
       }
 
-      if (init.method === "PATCH") {
-        const body = JSON.parse(String(init.body)) as {
+      if (method === "PATCH") {
+        const body = JSON.parse(String(init?.body)) as {
           editedBlocks: TemplateBlocks;
           version: number;
         };
@@ -225,7 +234,7 @@ describe("useRecordDocument", () => {
         );
       }
 
-      throw new Error(`Unexpected request: ${String(init?.method ?? "GET")}`);
+      throw new Error(`Unexpected request: ${String(method ?? "GET")}`);
     });
 
     render(<HookHarness />);

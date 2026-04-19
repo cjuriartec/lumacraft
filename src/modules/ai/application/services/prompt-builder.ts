@@ -1,71 +1,20 @@
+import {
+  getValueAtTemplatePath,
+  projectTemplateContextByPaths,
+} from "@/modules/template/application/services/template-context-projection";
 import { interpolateTemplateString } from "@/modules/template/application/services/template-path-resolver";
 import { TemplateRuntimeFieldMetadata } from "@/modules/template/domain/types/template-runtime-context";
 
 import { ACCOUNT_AI_INTERNAL_BASE_PROMPT } from "./account-ai-system-prompt";
 
-const DEFAULT_MAX_CONTEXT_CHARS = 10_000;
+const EXPLICIT_CONTEXT_MAX_CHARS = 4_000;
+const METADATA_MAX_CHARS = 2_000;
+const MINIMAL_SUMMARY_MAX_CHARS = 1_500;
+const FIELD_VALUE_MAX_CHARS = 300;
 const TOKEN_REGEX = /\{\{\s*([a-zA-Z0-9_.\[\]-]+)\s*\}\}/g;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function cloneJsonValue<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
-}
-
-function getPathSegments(path: string): string[] {
-  return path
-    .replace(/\[(\d+)\]/g, ".$1")
-    .split(".")
-    .map((segment) => segment.trim())
-    .filter(Boolean);
-}
-
-function getValueAtPath(root: Record<string, unknown>, path: string): unknown {
-  const normalizedPath = path.trim();
-  if (!normalizedPath || normalizedPath === "root" || normalizedPath === "record") {
-    return root;
-  }
-
-  const segments = getPathSegments(normalizedPath);
-  let current: unknown = root;
-
-  for (const segment of segments) {
-    if (Array.isArray(current)) {
-      const index = Number(segment);
-      if (!Number.isInteger(index)) return undefined;
-      current = current[index];
-      continue;
-    }
-
-    if (!isRecord(current)) return undefined;
-    current = current[segment];
-  }
-
-  return current;
-}
-
-function setValueAtPath(target: Record<string, unknown>, path: string, value: unknown) {
-  const segments = getPathSegments(path);
-  if (!segments.length) return;
-
-  let cursor: Record<string, unknown> = target;
-  for (let index = 0; index < segments.length - 1; index += 1) {
-    const segment = segments[index];
-    const existing = cursor[segment];
-
-    if (!isRecord(existing)) {
-      const next: Record<string, unknown> = {};
-      cursor[segment] = next;
-      cursor = next;
-      continue;
-    }
-
-    cursor = existing;
-  }
-
-  cursor[segments[segments.length - 1]] = value;
 }
 
 function extractPromptPaths(promptTemplate: string): string[] {
@@ -82,22 +31,11 @@ function extractPromptPaths(promptTemplate: string): string[] {
   return Array.from(uniquePaths);
 }
 
-function requiresFullContext(paths: string[]): boolean {
-  return (
-    paths.length === 0 ||
-    paths.some((path) => {
-      const normalizedPath = path.trim();
-      return !normalizedPath || normalizedPath === "root" || normalizedPath === "record";
-    })
-  );
-}
+export type PromptGroundingMode = "explicit_paths" | "minimal_summary" | "full_root";
 
-function projectContextByPaths(
-  context: Record<string, unknown>,
-  paths: string[],
-): Record<string, unknown> {
+function resolveGroundingMode(paths: string[]): PromptGroundingMode {
   if (paths.length === 0) {
-    return cloneJsonValue(context);
+    return "minimal_summary";
   }
 
   if (
@@ -106,17 +44,10 @@ function projectContextByPaths(
       return !normalizedPath || normalizedPath === "root" || normalizedPath === "record";
     })
   ) {
-    return cloneJsonValue(context);
+    return "full_root";
   }
 
-  const projected: Record<string, unknown> = {};
-  for (const path of paths) {
-    const value = getValueAtPath(context, path);
-    if (value !== undefined) {
-      setValueAtPath(projected, path, cloneJsonValue(value));
-    }
-  }
-  return projected;
+  return "explicit_paths";
 }
 
 function inferFieldType(value: unknown): string {
@@ -157,7 +88,7 @@ function buildFieldMetadataSnapshot(
 ) {
   return usedPaths.map((path) => {
     const metadata = fieldMetadataByPath?.[path];
-    const value = getValueAtPath(context, path);
+    const value = getValueAtTemplatePath(context, path);
     return {
       path,
       displayName: metadata?.displayName ?? toFieldLabel(path),
@@ -183,6 +114,42 @@ function clampSnapshot(raw: string, maxChars: number): { text: string; truncated
   };
 }
 
+function stringifyPrimitiveValue(value: string | number | boolean) {
+  const raw = String(value);
+  if (raw.length <= FIELD_VALUE_MAX_CHARS) {
+    return { value: raw, truncated: false };
+  }
+
+  return {
+    value: `${raw.slice(0, FIELD_VALUE_MAX_CHARS)}...`,
+    truncated: true,
+  };
+}
+
+function buildMinimalContextSummary(context: Record<string, unknown>) {
+  const summary: Record<string, string | number | boolean> = {};
+  let truncated = false;
+
+  for (const [key, value] of Object.entries(context)) {
+    if (typeof value !== "string" && typeof value !== "number" && typeof value !== "boolean") {
+      continue;
+    }
+
+    const serialized = stringifyPrimitiveValue(value);
+    summary[key] = typeof value === "string" ? serialized.value : value;
+    truncated ||= serialized.truncated;
+  }
+
+  if (Object.keys(summary).length === 0) {
+    summary._note = "No primitive top-level fields available.";
+  }
+
+  return {
+    summary,
+    truncated,
+  };
+}
+
 export interface CollectionContextInput {
   id: string;
   name: string;
@@ -193,7 +160,7 @@ export interface BuildPromptInput {
   promptTemplate: string;
   context: Record<string, unknown>;
   locals?: Record<string, unknown>;
-  maxContextChars?: number;
+  mode?: PromptGroundingMode;
   systemInstruction?: string;
   fieldMetadataByPath?: Record<string, TemplateRuntimeFieldMetadata>;
   collectionContext?: CollectionContextInput | null;
@@ -205,6 +172,7 @@ export interface BuildPromptOutput {
   metadataSnapshot: string;
   usedPaths: string[];
   truncated: boolean;
+  mode: PromptGroundingMode;
 }
 
 export function buildGroundedPrompt(input: BuildPromptInput): BuildPromptOutput {
@@ -214,19 +182,37 @@ export function buildGroundedPrompt(input: BuildPromptInput): BuildPromptOutput 
   };
 
   const usedPaths = extractPromptPaths(input.promptTemplate);
-  const contextPaths = requiresFullContext(usedPaths) ? ["root"] : usedPaths;
-  const projectedContext = projectContextByPaths(mergedContext, contextPaths);
-  const metadata = buildFieldMetadataSnapshot(
-    mergedContext,
-    contextPaths,
-    input.fieldMetadataByPath,
-  );
+  const mode = input.mode ?? resolveGroundingMode(usedPaths);
+  let contextSnapshot = "";
+  let metadataSnapshot = "";
+  let truncated = false;
 
-  const maxContextChars = Math.max(512, input.maxContextChars ?? DEFAULT_MAX_CONTEXT_CHARS);
-  const serializedContext = JSON.stringify(projectedContext, null, 2);
-  const serializedMetadata = JSON.stringify(metadata, null, 2);
-  const contextClamped = clampSnapshot(serializedContext, maxContextChars);
-  const metadataClamped = clampSnapshot(serializedMetadata, maxContextChars);
+  if (mode === "minimal_summary") {
+    const summaryResult = buildMinimalContextSummary(input.context);
+    const serializedSummary = JSON.stringify(summaryResult.summary, null, 2);
+    const clampedSummary = clampSnapshot(serializedSummary, MINIMAL_SUMMARY_MAX_CHARS);
+    contextSnapshot = clampedSummary.text;
+    truncated = summaryResult.truncated || clampedSummary.truncated;
+  } else {
+    const contextPaths = mode === "full_root" ? ["root"] : usedPaths;
+    const projectedContext = projectTemplateContextByPaths(mergedContext, contextPaths);
+    const serializedContext = JSON.stringify(projectedContext, null, 2);
+    const contextClamped = clampSnapshot(serializedContext, EXPLICIT_CONTEXT_MAX_CHARS);
+    contextSnapshot = contextClamped.text;
+    truncated ||= contextClamped.truncated;
+
+    if (mode === "explicit_paths") {
+      const metadata = buildFieldMetadataSnapshot(
+        mergedContext,
+        usedPaths,
+        input.fieldMetadataByPath,
+      );
+      const serializedMetadata = JSON.stringify(metadata, null, 2);
+      const metadataClamped = clampSnapshot(serializedMetadata, METADATA_MAX_CHARS);
+      metadataSnapshot = metadataClamped.text;
+      truncated ||= metadataClamped.truncated;
+    }
+  }
 
   const renderedPrompt = interpolateTemplateString(input.promptTemplate, {
     root: input.context,
@@ -247,23 +233,25 @@ export function buildGroundedPrompt(input: BuildPromptInput): BuildPromptOutput 
   }
 
   promptSections.push(
-    "# Context (Variables Referenciadas)",
-    contextClamped.text,
+    mode === "minimal_summary" ? "# Context Summary" : "# Context",
+    contextSnapshot,
     "",
-    "# Field Metadata (Variables Referenciadas)",
-    metadataClamped.text,
-    "",
-    "# User Prompt",
-    renderedPrompt,
   );
+
+  if (metadataSnapshot.trim()) {
+    promptSections.push("# Field Metadata", metadataSnapshot, "");
+  }
+
+  promptSections.push("# User Prompt", renderedPrompt);
 
   const prompt = promptSections.join("\n");
 
   return {
     prompt,
-    contextSnapshot: contextClamped.text,
-    metadataSnapshot: metadataClamped.text,
+    contextSnapshot,
+    metadataSnapshot,
     usedPaths,
-    truncated: contextClamped.truncated || metadataClamped.truncated,
+    truncated,
+    mode,
   };
 }

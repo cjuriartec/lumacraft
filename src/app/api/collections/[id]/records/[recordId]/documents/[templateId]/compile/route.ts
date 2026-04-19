@@ -101,6 +101,16 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     );
   }
 
+  console.info(
+    JSON.stringify({
+      level: "info",
+      collectionId,
+      recordId,
+      templateId,
+      compiledOnLoad: compiledResult.value.compiled,
+    }),
+  );
+
   return NextResponse.json({
     data: buildRecordDocumentPayload({
       collection: contextResult.value.collection,

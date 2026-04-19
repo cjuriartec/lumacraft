@@ -11,7 +11,12 @@ import { ColumnFilter, PaginationOptions } from "../../domain/types/pagination.t
 
 export type ReverseLookupResults = Record<string, Record<string, { id: string; label: string }[]>>;
 
-export function useRecords(collectionId: string) {
+interface UseRecordsOptions {
+  enabled?: boolean;
+}
+
+export function useRecords(collectionId: string, options: UseRecordsOptions = {}) {
+  const { enabled = true } = options;
   const { supabase } = useSupabase();
   const { currentWorkspace } = useWorkspace();
   const { user } = useAuth();
@@ -41,7 +46,7 @@ export function useRecords(collectionId: string) {
   const resolveReverseLookupUseCase = useMemo(() => factory.resolveReverseLookup(), [factory]);
 
   const fetchRecords = useCallback(async () => {
-    if (!collectionId) {
+    if (!enabled || !collectionId) {
       setData([]);
       setTotal(0);
       setLoading(false);
@@ -54,7 +59,7 @@ export function useRecords(collectionId: string) {
       setTotal(res.value.total);
     }
     setLoading(false);
-  }, [collectionId, listUseCase, pagination]);
+  }, [collectionId, enabled, listUseCase, pagination]);
 
   const resolveLabel = (record: DataRecord, displayField?: string | null): string => {
     if (displayField && displayField !== "id" && record.data[displayField]) {

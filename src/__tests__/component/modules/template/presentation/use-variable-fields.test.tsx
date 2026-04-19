@@ -34,8 +34,14 @@ function flattenNodes(nodes: TemplateVariableCatalogNode[]): TemplateVariableCat
   return nodes.flatMap((node) => [node, ...(node.children ? flattenNodes(node.children) : [])]);
 }
 
-function VariableFieldsProbe({ collectionId }: { collectionId: string }) {
-  const { nodes, loading, error } = useVariableFields({ collectionId, depth: 2 });
+function VariableFieldsProbe({
+  collectionId,
+  enabled = true,
+}: {
+  collectionId: string;
+  enabled?: boolean;
+}) {
+  const { nodes, loading, error } = useVariableFields({ collectionId, depth: 2, enabled });
 
   return (
     <div>
@@ -182,5 +188,20 @@ describe("useVariableFields regression coverage", () => {
     expect(flattened.some((node) => node.path === "billing_contact.orders")).toBe(false);
     expect(flattened.some((node) => node.path === "shipping_contact.orders")).toBe(false);
     expect(screen.getByTestId("error")).toHaveTextContent("");
+  });
+
+  it("does not fetch catalog data while disabled", async () => {
+    render(
+      <SupabaseProvider client={{} as never}>
+        <VariableFieldsProbe collectionId="11111111-1111-4111-8111-111111111111" enabled={false} />
+      </SupabaseProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("loading")).toHaveTextContent("false");
+    });
+
+    expect(collectionFactoryState.listFieldsExecute).not.toHaveBeenCalled();
+    expect(collectionFactoryState.eagerLoadExecute).not.toHaveBeenCalled();
   });
 });
