@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.3.1](https://github.com/cjuriartec/lumacraft/compare/v0.3.0...v0.3.1) (2026-04-20)
+
+
+### ✨ Features
+
+* implement user profile management with profile editing UI ([e8e171d](https://github.com/cjuriartec/lumacraft/commit/e8e171de6551565a41ebcfc1647745993c060c6d))
+
+
+### 🐛 Bug Fixes
+
+* **template:** fix PDF justification and link wrapping for long tokens ([e2014f2](https://github.com/cjuriartec/lumacraft/commit/e2014f20aec7128fe831a9a3dbb9ca78ce74d949))
+
 ## [0.3.0](https://github.com/cjuriartec/lumacraft/compare/v0.2.0...v0.3.0) (2026-04-19)
 
 
