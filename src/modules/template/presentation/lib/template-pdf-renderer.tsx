@@ -292,6 +292,106 @@ function resolveTextAlign(
   return undefined;
 }
 
+const PDF_SOFT_BREAK = "\u200B";
+const PDF_LINK_BREAK_AFTER_PATTERN = /([/._?&=#%-])/g;
+
+function hasLongUnbreakablePdfToken(text: string): boolean {
+  return text.split(/[\s\u200B]+/).some((token) => token.length >= 24);
+}
+
+function hasUnsafePdfJustificationContent(node: PlateNode): boolean {
+  if (isTextNode(node)) {
+    return hasLongUnbreakablePdfToken(node.text);
+  }
+
+  if (!isElementNode(node)) {
+    return false;
+  }
+
+  if (node.type === "a") {
+    return node.children.some((child) => {
+      if (isTextNode(child)) {
+        return hasLongUnbreakablePdfToken(formatPdfLinkDisplayText(child.text));
+      }
+
+      return isElementNode(child) ? hasUnsafePdfJustificationContent(child) : false;
+    });
+  }
+
+  return node.children.some(hasUnsafePdfJustificationContent);
+}
+
+export function resolvePdfTextAlign(
+  node: Pick<PlateElementNode, "align" | "children">,
+): "left" | "center" | "right" | "justify" | undefined {
+  const align = resolveTextAlign(node.align);
+
+  // react-pdf can stretch glyphs too aggressively when justified text contains
+  // links or long unbreakable runs, so we degrade those cases to left alignment.
+  if (align === "justify" && node.children.some(hasUnsafePdfJustificationContent)) {
+    return "left";
+  }
+
+  return align;
+}
+
+function insertSoftBreaksIntoLongToken(token: string, maxChunkLength = 12): string {
+  if (token.length <= maxChunkLength) {
+    return token;
+  }
+
+  const chunks: string[] = [];
+
+  for (let index = 0; index < token.length; index += maxChunkLength) {
+    chunks.push(token.slice(index, index + maxChunkLength));
+  }
+
+  return chunks.join(PDF_SOFT_BREAK);
+}
+
+export function formatPdfLinkDisplayText(text: string): string {
+  if (text.length === 0) {
+    return text;
+  }
+
+  const textWithNaturalBreaks = text.replace(PDF_LINK_BREAK_AFTER_PATTERN, `$1${PDF_SOFT_BREAK}`);
+
+  return textWithNaturalBreaks
+    .split(/(\s+)/)
+    .map((segment) => {
+      if (segment.trim().length === 0) {
+        return segment;
+      }
+
+      if (segment.includes(PDF_SOFT_BREAK) || segment.length <= 24) {
+        return segment;
+      }
+
+      return insertSoftBreaksIntoLongToken(segment);
+    })
+    .join("");
+}
+
+function patchPdfLinkChildren(children: PlateNode[]): PlateNode[] {
+  return children.map((child) => {
+    if (isTextNode(child)) {
+      return {
+        ...child,
+        text: formatPdfLinkDisplayText(child.text),
+      };
+    }
+
+    if (!isElementNode(child)) {
+      return child;
+    }
+
+    return {
+      ...child,
+      children: patchPdfLinkChildren(child.children),
+    };
+  });
+}
+
 function resolveIndent(indent?: number): number {
   return typeof indent === "number" ? indent * 20 : 0;
 }
@@ -302,6 +402,7 @@ function resolveBlockTypography(
   renderMode: PdfRenderMode = "body",
 ): Style {
   const spacing = resolvePdfBlockSpacingForRenderMode(node.type, renderMode);
+  const textAlign = resolvePdfTextAlign(node);
   const fontFamily = resolvePdfFontFamily(
     typeof node.fontFamily === "string"
       ? node.fontFamily
@@ -324,7 +425,7 @@ function resolveBlockTypography(
       node.type === "p" ? resolveParagraphSpacingAfter(node.spaceAfter) : spacing.pdfMarginBottom,
     marginTop:
       node.type === "p" ? resolveParagraphSpacingBefore(node.spaceBefore) : spacing.pdfMarginTop,
-    ...(resolveTextAlign(node.align) ? { textAlign: resolveTextAlign(node.align) } : {}),
+    ...(textAlign ? { textAlign } : {}),
   };
 }
 
@@ -482,10 +583,11 @@ function renderInlineChildren(
             : typeof child.path === "string"
               ? child.path
               : "#";
+        const pdfFriendlyChildren = patchPdfLinkChildren(child.children);
 
         return (
           <Link key={index} src={href} style={{ color: "#2563eb", textDecoration: "underline" }}>
-            {renderInlineChildren(child.children, context)}
+            {renderInlineChildren(pdfFriendlyChildren, context)}
           </Link>
         );
       }
