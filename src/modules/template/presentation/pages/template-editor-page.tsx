@@ -165,6 +165,7 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
   const [localName, setLocalName] = React.useState(template?.name || "");
   const [isVariableSelectorOpen, setIsVariableSelectorOpen] = React.useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = React.useState(false);
+  const [shouldGeneratePreviewOnOpen, setShouldGeneratePreviewOnOpen] = React.useState(false);
   const [localPageConfig, setLocalPageConfig] = React.useState<PdfPageConfig | null>(
     template?.pageConfig ?? null,
   );
@@ -190,6 +191,8 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
   const handlePreviewOpenChange = React.useCallback((nextOpen: boolean) => {
     if (nextOpen) {
       setIsPreviewDataActive(true);
+    } else {
+      setShouldGeneratePreviewOnOpen(false);
     }
 
     setIsPreviewOpen(nextOpen);
@@ -329,6 +332,24 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
     },
   });
 
+  React.useEffect(() => {
+    if (!isPreviewOpen || !shouldGeneratePreviewOnOpen) return;
+    if (!template?.collectionId || previewRecordsLoading || previewLoading || !selectedRecordId)
+      return;
+
+    void generatePreview(plateValueToTemplateBlocks(editor.children));
+    setShouldGeneratePreviewOnOpen(false);
+  }, [
+    editor.children,
+    generatePreview,
+    isPreviewOpen,
+    previewLoading,
+    previewRecordsLoading,
+    selectedRecordId,
+    shouldGeneratePreviewOnOpen,
+    template?.collectionId,
+  ]);
+
   // Synchronize editor value when template data arrives
   const isFirstLoad = React.useRef(true);
   React.useEffect(() => {
@@ -455,8 +476,9 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
                     size="sm"
                     className="h-8 gap-2.5 px-4 text-[11px] font-bold uppercase tracking-[0.15em] text-foreground/60 transition-all hover:bg-primary/5 hover:text-primary"
                     onClick={() => {
+                      setIsPreviewDataActive(true);
+                      setShouldGeneratePreviewOnOpen(true);
                       setIsPreviewOpen(true);
-                      void generatePreview(plateValueToTemplateBlocks(editor.children));
                     }}
                   >
                     <Eye size={14} className="opacity-70" />
@@ -652,7 +674,7 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
               {/* A4 sheet: 794px wide = 210mm @ 96dpi */}
               <div className="mx-auto w-[794px] max-w-full">
                 {/* ── HEADER mini-editor ── */}
-                <div className="overflow-hidden rounded-t-sm bg-white shadow-[0_-2px_8px_rgba(0,0,0,0.05)] ring-1 ring-black/[0.05]">
+                <div className="overflow-hidden rounded-t-sm bg-white shadow-[0_-2px_8px_rgba(0,0,0,0.05)] ring-1 ring-black/5">
                   <PdfPageSectionEditor
                     section="header"
                     value={localPageConfig?.header}
@@ -680,7 +702,7 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
                 </ResizableProvider>
 
                 {/* ── FOOTER mini-editor ── */}
-                <div className="overflow-hidden rounded-b-sm bg-white shadow-[0_4px_8px_rgba(0,0,0,0.05)] ring-1 ring-black/[0.05]">
+                <div className="overflow-hidden rounded-b-sm bg-white shadow-[0_4px_8px_rgba(0,0,0,0.05)] ring-1 ring-black/5">
                   <PdfPageSectionEditor
                     section="footer"
                     value={localPageConfig?.footer}

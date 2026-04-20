@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -457,5 +457,53 @@ describe("TemplateEditorPage", () => {
     expect(previewState.generate).toHaveBeenCalledWith([
       { type: "p", children: [{ text: "Desde editor" }] },
     ]);
+  });
+
+  it("waits for the preview record selection before generating on open", async () => {
+    templateEditorState.template = makeTemplate({
+      id: "template-1",
+      collectionId: "collection-1",
+      blocks: [{ type: "p", children: [{ text: "Persistido" }] }] as JsonArray,
+      name: "Contrato Base",
+    });
+
+    collectionsState.collections = [
+      {
+        id: "collection-1",
+        name: "clientes",
+        displayName: "Clientes",
+        primaryFieldName: "nombre",
+      },
+    ];
+
+    previewState.records = [];
+    previewState.recordsLoading = true;
+    previewState.selectedRecordId = "";
+    plateEditorState.children = [{ type: "p", children: [{ text: "Desde editor" }] }];
+
+    const { rerender } = render(<TemplateEditorPage templateId="template-1" />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Vista Previa/i }));
+
+    expect(previewState.generate).not.toHaveBeenCalled();
+
+    previewState.records = [
+      {
+        id: "record-1",
+        data: {
+          nombre: "Ana",
+        },
+      },
+    ];
+    previewState.recordsLoading = false;
+    previewState.selectedRecordId = "record-1";
+
+    rerender(<TemplateEditorPage templateId="template-1" />);
+
+    await waitFor(() => {
+      expect(previewState.generate).toHaveBeenCalledWith([
+        { type: "p", children: [{ text: "Desde editor" }] },
+      ]);
+    });
   });
 });
