@@ -11,5 +11,7 @@ export interface IAuthProvider {
   signInWithGoogle(): Promise<Result<void>>;
   signOut(): Promise<Result<void>>;
   getCurrentUser(): Promise<Result<User | null>>;
+  updateProfile(props: { fullName?: string; avatarUrl?: string }): Promise<Result<void>>;
+  getUserProfile(userId: string): Promise<Result<{ fullName?: string; avatarUrl?: string } | null>>;
   onAuthStateChange(callback: (user: User | null) => void): () => void;
 }

@@ -19,4 +19,22 @@ describe("User Entity", () => {
     expect(user.fullName).toBe("Test User");
     expect(user.avatarUrl).toBe("https://example.com/avatar.png");
   });
+
+  it("should update profile data", () => {
+    const userRes = User.create({
+      id: "123",
+      email: "test@example.com",
+    });
+    if (!userRes.ok) throw userRes.error;
+    const user = userRes.value;
+
+    const result = user.updateProfileData({
+      fullName: "Updated Name",
+      avatarUrl: "https://example.com/new-avatar.png",
+    });
+
+    expect(result.ok).toBe(true);
+    expect(user.fullName).toBe("Updated Name");
+    expect(user.avatarUrl).toBe("https://example.com/new-avatar.png");
+  });
 });

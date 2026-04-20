@@ -59,6 +59,18 @@ export class User extends BaseEntity {
     );
   }
 
+  public updateProfileData(props: { fullName?: string; avatarUrl?: string }): Result<void> {
+    if (props.fullName !== undefined) {
+      const res = DisplayName.create(props.fullName, "Full Name");
+      if (!res.ok) return fail(res.error);
+      this.props.fullName = res.value;
+    }
+    if (props.avatarUrl !== undefined) {
+      this.props.avatarUrl = props.avatarUrl;
+    }
+    return ok(undefined);
+  }
+
   public toJSON() {
     return {
       id: this.id,

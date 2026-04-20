@@ -41,10 +41,16 @@ export class FakeAuthProvider implements IAuthProvider {
   public signInResult: Result<void> = ok(undefined);
   public signOutResult: Result<void> = ok(undefined);
   public currentUserResult: Result<User | null> = ok(null);
+  public updateProfileResult: Result<void> = ok(undefined);
+  public getUserProfileResult: Result<{ fullName?: string; avatarUrl?: string } | null> = ok(null);
 
   public signInWithGoogle = vi.fn(async () => this.signInResult);
   public signOut = vi.fn(async () => this.signOutResult);
   public getCurrentUser = vi.fn(async () => this.currentUserResult);
+  public updateProfile = vi.fn(
+    async (_props: { fullName?: string; avatarUrl?: string }) => this.updateProfileResult,
+  );
+  public getUserProfile = vi.fn(async (_userId: string) => this.getUserProfileResult);
   public onAuthStateChange = vi.fn((callback: (user: User | null) => void) => {
     this.listeners.add(callback);
     return () => {
