@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.3.2](https://github.com/cjuriartec/lumacraft/compare/v0.3.1...v0.3.2) (2026-04-21)
+
+
+### 🐛 Bug Fixes
+
+* implement consistent workspace selection and update tests ([22722df](https://github.com/cjuriartec/lumacraft/commit/22722dfbc4cac2de5cb640723c56d04449b7d82a))
+
 ### [0.3.1](https://github.com/cjuriartec/lumacraft/compare/v0.3.0...v0.3.1) (2026-04-20)
 
 
