@@ -4,6 +4,11 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "@/modules/auth/presentation/providers/auth-provider";
 import { DomainError, fail, Result } from "@/shared/domain/result";
+import {
+  clearCurrentWorkspaceSelection,
+  persistCurrentWorkspaceSelection,
+  readCurrentWorkspaceSelection,
+} from "@/shared/lib/current-workspace-selection";
 import { useSupabase } from "@/shared/presentation/providers/supabase-provider";
 
 import { GetWorkspacesByUserUseCase } from "../../application/use-cases/get-workspaces-by-user.use-case";
@@ -11,8 +16,6 @@ import { WorkspaceUseCaseFactory } from "../../application/workspace-use-case.fa
 import { Workspace } from "../../domain/entities/workspace.entity";
 import { IWorkspaceRepository } from "../../domain/ports/workspace-repository.port";
 import { SupabaseWorkspaceRepository } from "../../infrastructure/repositories/supabase-workspace.repository";
-
-const CURRENT_WORKSPACE_STORAGE_KEY = "lumacraft.currentWorkspaceId";
 
 type WorkspaceContext = {
   workspaces: Workspace[];
@@ -78,9 +81,7 @@ export default function WorkspaceProvider({
 
       if (res.ok) {
         const persistedWorkspaceId =
-          typeof window !== "undefined" && typeof window.localStorage?.getItem === "function"
-            ? window.localStorage.getItem(CURRENT_WORKSPACE_STORAGE_KEY)
-            : null;
+          typeof window !== "undefined" ? readCurrentWorkspaceSelection() : null;
 
         setWorkspaces(res.value);
         setCurrentWorkspace((current) =>
@@ -109,17 +110,10 @@ export default function WorkspaceProvider({
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const storage = window.localStorage as Storage | undefined;
-
-    if (currentWorkspace?.id && typeof storage?.setItem === "function") {
-      storage.setItem(CURRENT_WORKSPACE_STORAGE_KEY, currentWorkspace.id);
-    } else if (
-      storage &&
-      workspaces.length === 0 &&
-      !loading &&
-      typeof storage?.removeItem === "function"
-    ) {
-      storage.removeItem(CURRENT_WORKSPACE_STORAGE_KEY);
+    if (currentWorkspace?.id) {
+      persistCurrentWorkspaceSelection(currentWorkspace.id);
+    } else if (workspaces.length === 0 && !loading) {
+      clearCurrentWorkspaceSelection();
     }
   }, [currentWorkspace, workspaces.length, loading]);
 

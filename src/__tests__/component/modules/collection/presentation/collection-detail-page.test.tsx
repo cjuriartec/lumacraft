@@ -87,6 +87,10 @@ vi.mock("@/modules/collection/presentation/hooks/use-grid-persistence", () => ({
   useGridPersistence: () => gridPersistenceState,
 }));
 
+vi.mock("@/modules/collection/presentation/hooks/use-collection-workspace-guard", () => ({
+  useCollectionWorkspaceGuard: () => false,
+}));
+
 vi.mock("@/shared/presentation/providers/breadcrumb-provider", () => ({
   useBreadcrumbs: vi.fn(),
 }));

@@ -21,6 +21,7 @@ import {
 import { ReadOnlyFieldValue } from "../components/read-only-field-value";
 import { RecordEditorForm } from "../components/record-editor-form";
 import { RecordQuickViewDialog } from "../components/record-quick-view-dialog";
+import { useCollectionWorkspaceGuard } from "../hooks/use-collection-workspace-guard";
 import { useCollections } from "../hooks/use-collections";
 import { useEagerRecord } from "../hooks/use-eager-record";
 import { useFields } from "../hooks/use-fields";
@@ -30,15 +31,18 @@ interface RecordDetailPageProps {
   collectionId: string;
   recordId: string;
   collectionName: string;
+  collectionAccountId?: string | null;
 }
 
 export function RecordDetailPage({
   collectionId,
   recordId,
   collectionName,
+  collectionAccountId,
 }: RecordDetailPageProps) {
   const { supabase } = useSupabase();
   const { currentWorkspace } = useWorkspace();
+  const isWorkspaceMismatch = useCollectionWorkspaceGuard(collectionAccountId);
   const { user } = useAuth();
   const { can } = usePermissions();
   const { collections } = useCollections();
@@ -93,6 +97,10 @@ export function RecordDetailPage({
       error: { message: result.error.message },
     };
   };
+
+  if (isWorkspaceMismatch) {
+    return null;
+  }
 
   return (
     <>

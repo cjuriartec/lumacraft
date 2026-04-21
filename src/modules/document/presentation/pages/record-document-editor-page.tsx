@@ -29,6 +29,7 @@ import { Plate, usePlateEditor } from "platejs/react";
 import * as React from "react";
 
 import { formatShortRecordId } from "@/modules/collection/domain/services/record-label.service";
+import { useCollectionWorkspaceGuard } from "@/modules/collection/presentation/hooks/use-collection-workspace-guard";
 import { useCollections } from "@/modules/collection/presentation/hooks/use-collections";
 import { useGuidance } from "@/modules/guidance/presentation/hooks/use-guidance";
 import { useGuidancePage } from "@/modules/guidance/presentation/hooks/use-guidance-page";
@@ -85,13 +86,16 @@ interface RecordDocumentEditorPageProps {
   collectionId: string;
   recordId: string;
   templateId: string;
+  collectionAccountId?: string | null;
 }
 
 export default function RecordDocumentEditorPage({
   collectionId,
   recordId,
   templateId,
+  collectionAccountId,
 }: RecordDocumentEditorPageProps) {
+  const isWorkspaceMismatch = useCollectionWorkspaceGuard(collectionAccountId);
   const { collections } = useCollections();
   const { trackMilestone } = useGuidance();
   useGuidancePage({ id: "document-editor" });
@@ -189,6 +193,10 @@ export default function RecordDocumentEditorPage({
 
     window.open(pdfUrl, "_blank", "noopener");
   }, [canUpdate, flushPendingSave, pdfUrl]);
+
+  if (isWorkspaceMismatch) {
+    return null;
+  }
 
   if (loading) {
     return (

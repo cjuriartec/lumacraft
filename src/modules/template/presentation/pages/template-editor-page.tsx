@@ -38,6 +38,7 @@ import {
   formatShortRecordId,
   toRecordLabelValue,
 } from "@/modules/collection/domain/services/record-label.service";
+import { useCollectionWorkspaceGuard } from "@/modules/collection/presentation/hooks/use-collection-workspace-guard";
 import { useCollections } from "@/modules/collection/presentation/hooks/use-collections";
 import { useGuidancePage } from "@/modules/guidance/presentation/hooks/use-guidance-page";
 import { TEMPLATE_PREVIEW_MAX_EAGER_DEPTH } from "@/modules/template/application/constants/template-preview.constants";
@@ -133,9 +134,14 @@ import { getCurrentVariableFormatting } from "../lib/template-editor-formatting"
 
 interface TemplateEditorPageProps {
   templateId: string;
+  collectionAccountId?: string | null;
 }
 
-export default function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
+export default function TemplateEditorPage({
+  templateId,
+  collectionAccountId,
+}: TemplateEditorPageProps) {
+  const isWorkspaceMismatch = useCollectionWorkspaceGuard(collectionAccountId);
   const { template, loading, saveStatus, handleBlocksChange, handlePageConfigChange, updateName } =
     useTemplateEditor(templateId);
   const { collections } = useCollections();
@@ -307,6 +313,10 @@ export default function TemplateEditorPage({ templateId }: TemplateEditorPagePro
       editor.tf.setValue(plateValue);
     }
   }, [template, editor, plateValue]);
+
+  if (isWorkspaceMismatch) {
+    return null;
+  }
 
   if (loading) {
     return (

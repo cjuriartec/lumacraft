@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { CollectionDetailPage } from "@/modules/collection/presentation/pages/collection-detail-page";
 import { createClient } from "@/shared/infrastructure/supabase/server";
+import { matchesCurrentWorkspaceSelection } from "@/shared/lib/current-workspace-selection.server";
 
 interface Props {
   params: Promise<{
@@ -30,11 +31,11 @@ export default async function Page({ params }: Props) {
   // Fetch collection name for the title
   const { data: collection } = await supabase
     .from("collections")
-    .select("name, display_name")
+    .select("name, display_name, account_id")
     .eq("id", id)
-    .single();
+    .maybeSingle();
 
-  if (!collection) {
+  if (!collection || !(await matchesCurrentWorkspaceSelection(collection.account_id))) {
     redirect("/collections");
   }
 
@@ -42,6 +43,7 @@ export default async function Page({ params }: Props) {
     <div className="w-full max-w-7xl mx-auto py-10 px-8 h-full">
       <CollectionDetailPage
         collectionId={id}
+        collectionAccountId={collection.account_id}
         collectionName={collection.display_name || collection.name}
       />
     </div>

@@ -26,6 +26,7 @@ import { SupabaseTemplateAIBlockCacheRepository } from "@/modules/template/infra
 import { SupabaseTemplatePreviewCacheRepository } from "@/modules/template/infrastructure/repositories/supabase-template-preview-cache.repository";
 import { DomainError, fail, ok, Result } from "@/shared/domain/result";
 import { createAdminClientOrNull } from "@/shared/infrastructure/supabase/admin";
+import { matchesCurrentWorkspaceSelection } from "@/shared/lib/current-workspace-selection.server";
 import { hashStableValue } from "@/shared/lib/stable-hash";
 
 import { SupabaseRecordDocumentRepository } from "./repositories/supabase-record-document.repository";
@@ -166,6 +167,15 @@ export async function resolveDocumentRouteContext(params: {
 
   if (!collectionResult.value) {
     return fail(new DomainError("Collection not found", "NOT_FOUND"));
+  }
+
+  if (!(await matchesCurrentWorkspaceSelection(collectionResult.value.accountId))) {
+    return fail(
+      new DomainError(
+        "Collection does not belong to the current workspace",
+        "WORKSPACE_COLLECTION_MISMATCH",
+      ),
+    );
   }
 
   if (!templateResult.ok) {

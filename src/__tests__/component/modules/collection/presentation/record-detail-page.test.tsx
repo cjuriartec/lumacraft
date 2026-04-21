@@ -96,6 +96,10 @@ vi.mock("@/modules/collection/presentation/hooks/use-eager-record", () => ({
   }),
 }));
 
+vi.mock("@/modules/collection/presentation/hooks/use-collection-workspace-guard", () => ({
+  useCollectionWorkspaceGuard: () => false,
+}));
+
 vi.mock("@/modules/collection/presentation/components/record-quick-view-dialog", () => ({
   RecordQuickViewDialog: () => null,
 }));
