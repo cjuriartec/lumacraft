@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.3.2](https://github.com/cjuriartec/lumacraft/compare/v0.3.1...v0.3.2) (2026-04-21)
+
+
+### 🐛 Bug Fixes
+
+* implement consistent workspace selection and update tests ([22722df](https://github.com/cjuriartec/lumacraft/commit/22722dfbc4cac2de5cb640723c56d04449b7d82a))
+
+### [0.3.1](https://github.com/cjuriartec/lumacraft/compare/v0.3.0...v0.3.1) (2026-04-20)
+
+
+### ✨ Features
+
+* implement user profile management with profile editing UI ([e8e171d](https://github.com/cjuriartec/lumacraft/commit/e8e171de6551565a41ebcfc1647745993c060c6d))
+
+
+### 🐛 Bug Fixes
+
+* **template:** fix PDF justification and link wrapping for long tokens ([e2014f2](https://github.com/cjuriartec/lumacraft/commit/e2014f20aec7128fe831a9a3dbb9ca78ce74d949))
+
+## [0.3.0](https://github.com/cjuriartec/lumacraft/compare/v0.2.0...v0.3.0) (2026-04-19)
+
+
+### ✨ Features
+
+* implement granular template permissions and restrict settings access to authorized roles ([46d3e51](https://github.com/cjuriartec/lumacraft/commit/46d3e5178e039032688b084bc19cff07efda1f86))
+* implement workspace records page and update dashboard navigation to primary actions ([965aa24](https://github.com/cjuriartec/lumacraft/commit/965aa24ccff7880efbe41b6639c75f14dd124c2b))
+
 ## [0.2.0](https://github.com/cjuriartec/lumacraft/compare/v0.1.14...v0.2.0) (2026-04-18)
 
 

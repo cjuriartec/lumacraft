@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { resolveRecordLabel } from "@/modules/collection/domain/services/record-label.service";
 import { RecordDetailPage } from "@/modules/collection/presentation/pages/record-detail-page";
 import { createClient } from "@/shared/infrastructure/supabase/server";
+import { matchesCurrentWorkspaceSelection } from "@/shared/lib/current-workspace-selection.server";
 
 interface Params {
   params: Promise<{
@@ -25,12 +26,20 @@ async function getRecordPageContext(collectionId: string, recordId: string) {
 
   const { data: collection } = await supabase
     .from("collections")
-    .select("name, display_name, primary_field_name")
+    .select("name, display_name, primary_field_name, account_id")
     .eq("id", collectionId)
-    .single();
+    .maybeSingle();
 
   if (!collection) {
     return { unauthorized: false as const, missingCollection: true as const };
+  }
+
+  if (!(await matchesCurrentWorkspaceSelection(collection.account_id as string))) {
+    return {
+      unauthorized: false as const,
+      workspaceMismatch: true as const,
+      missingCollection: false as const,
+    };
   }
 
   const { data: record } = await supabase
@@ -43,6 +52,7 @@ async function getRecordPageContext(collectionId: string, recordId: string) {
   if (!record) {
     return {
       unauthorized: false as const,
+      workspaceMismatch: false as const,
       missingCollection: false as const,
       missingRecord: true as const,
       collection,
@@ -51,6 +61,7 @@ async function getRecordPageContext(collectionId: string, recordId: string) {
 
   return {
     unauthorized: false as const,
+    workspaceMismatch: false as const,
     missingCollection: false as const,
     missingRecord: false as const,
     collection,
@@ -64,6 +75,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 
   if (
     context.unauthorized ||
+    context.workspaceMismatch ||
     context.missingCollection ||
     context.missingRecord ||
     !context.collection ||
@@ -99,6 +111,10 @@ export default async function Page({ params }: Params) {
     redirect("/login");
   }
 
+  if (context.workspaceMismatch) {
+    redirect("/collections");
+  }
+
   if (context.missingCollection || context.missingRecord || !context.collection) {
     redirect(`/collections/${id}`);
   }
@@ -107,6 +123,7 @@ export default async function Page({ params }: Params) {
     <div className="w-full max-w-5xl mx-auto py-10 px-8 h-full">
       <RecordDetailPage
         collectionId={id}
+        collectionAccountId={context.collection.account_id as string}
         recordId={recordId}
         collectionName={
           ((context.collection.display_name as string | null) ||

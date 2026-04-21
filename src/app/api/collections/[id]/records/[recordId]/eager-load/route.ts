@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { CollectionUseCaseFactory } from "@/modules/collection/application/collection-use-case.factory";
 import { createClient } from "@/shared/infrastructure/supabase/server";
+import { matchesCurrentWorkspaceSelection } from "@/shared/lib/current-workspace-selection.server";
 
 interface RouteParams {
   params: Promise<{
@@ -20,6 +21,16 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { data: collection } = await supabase
+    .from("collections")
+    .select("account_id")
+    .eq("id", collectionId)
+    .maybeSingle();
+
+  if (!collection || !(await matchesCurrentWorkspaceSelection(collection.account_id))) {
+    return NextResponse.json({ error: "Collection not found" }, { status: 404 });
   }
 
   // Parse depth from query params

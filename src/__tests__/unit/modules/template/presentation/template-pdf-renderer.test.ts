@@ -14,11 +14,13 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 
 import type { TemplateBlocks } from "@/modules/template/domain/types/template-blocks";
 import {
+  formatPdfLinkDisplayText,
   PDF_TABLE_CELL_PADDING_HORIZONTAL,
   PDF_TABLE_CELL_PADDING_VERTICAL,
   renderTemplateToPdfBuffer,
   resolvePdfBlockSpacingForRenderMode,
   resolvePdfFontFamily,
+  resolvePdfTextAlign,
 } from "@/modules/template/presentation/lib/template-pdf-renderer";
 
 const PDF_MAGIC_BYTES = "%PDF";
@@ -271,6 +273,56 @@ describe("renderTemplateToPdfBuffer", () => {
     ];
     const result = await renderTemplateToPdfBuffer(blocks);
     expect(getPdfHeader(result)).toContain(PDF_MAGIC_BYTES);
+  });
+
+  it("keeps justify alignment for plain paragraphs without risky inline content", () => {
+    expect(
+      resolvePdfTextAlign({
+        align: "justify",
+        children: [{ text: "Texto plano sin enlaces ni tokens largos." }],
+      }),
+    ).toBe("justify");
+  });
+
+  it("keeps justify alignment for justified paragraphs with inline links once the link can wrap", () => {
+    expect(
+      resolvePdfTextAlign({
+        align: "justify",
+        children: [
+          { text: "Para referencia técnica, revisar " },
+          {
+            type: "a",
+            url: "https://git.mtc.gob.pe/equipo-odtd/equipo-chinchay/srfitac/tefi.git",
+            children: [
+              {
+                text: "https://git.mtc.gob.pe/equipo-odtd/equipo-chinchay/srfitac/tefi.git",
+              },
+            ],
+          },
+        ],
+      }),
+    ).toBe("justify");
+  });
+
+  it("falls back to left alignment for justified paragraphs with long unbreakable tokens", () => {
+    expect(
+      resolvePdfTextAlign({
+        align: "justify",
+        children: [{ text: "token-super-largo-para-forzar-un-corte-problematico-en-pdf" }],
+      }),
+    ).toBe("left");
+  });
+
+  it("adds soft break opportunities to long URL labels in PDF links", () => {
+    expect(
+      formatPdfLinkDisplayText(
+        "https://git.mtc.gob.pe/equipo-odtd/equipo-chinchay/srfitac/tefi.git",
+      ),
+    ).toContain("\u200B");
+  });
+
+  it("keeps short link labels untouched", () => {
+    expect(formatPdfLinkDisplayText("Lumacraft")).toBe("Lumacraft");
   });
 
   it("handles non-array blocks gracefully", async () => {

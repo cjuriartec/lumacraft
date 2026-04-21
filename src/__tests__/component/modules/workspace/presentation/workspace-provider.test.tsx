@@ -30,6 +30,7 @@ describe("WorkspaceProvider", () => {
     } else if (typeof storage?.removeItem === "function") {
       storage.removeItem("lumacraft.currentWorkspaceId");
     }
+    document.cookie = "lumacraft.currentWorkspaceId=; Path=/; Max-Age=0; SameSite=Lax";
   });
 
   it("selects the first workspace for the authenticated user", async () => {
@@ -79,6 +80,7 @@ describe("WorkspaceProvider", () => {
     if (typeof storage?.getItem === "function") {
       expect(storage.getItem("lumacraft.currentWorkspaceId")).toBe("workspace-2");
     }
+    expect(document.cookie).toContain("lumacraft.currentWorkspaceId=workspace-2");
   });
 
   it("does not re-fetch workspaces when auth emits the same user again", async () => {

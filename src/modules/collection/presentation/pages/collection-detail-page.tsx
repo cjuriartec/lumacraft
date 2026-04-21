@@ -24,6 +24,7 @@ import { ColumnFilter } from "../../domain/types/pagination.types";
 import { DataGrid } from "../components/data-grid";
 import { FieldManager } from "../components/field-manager";
 import { RecordFormDialog } from "../components/record-form-dialog";
+import { useCollectionWorkspaceGuard } from "../hooks/use-collection-workspace-guard";
 import { useCollections } from "../hooks/use-collections";
 import { useFields } from "../hooks/use-fields";
 import { useGridPersistence } from "../hooks/use-grid-persistence";
@@ -32,6 +33,7 @@ import { useRecords } from "../hooks/use-records";
 interface CollectionDetailPageProps {
   collectionId: string;
   collectionName: string;
+  collectionAccountId?: string | null;
 }
 
 type CollectionTab = "data" | "fields" | "templates";
@@ -47,8 +49,13 @@ function isFieldHidden(field: Field) {
   return Boolean((field.config?.value as { hidden?: boolean } | undefined)?.hidden);
 }
 
-export function CollectionDetailPage({ collectionId, collectionName }: CollectionDetailPageProps) {
+export function CollectionDetailPage({
+  collectionId,
+  collectionName,
+  collectionAccountId,
+}: CollectionDetailPageProps) {
   useBreadcrumbs([{ label: "Colecciones", href: "/collections" }, { label: collectionName }]);
+  const isWorkspaceMismatch = useCollectionWorkspaceGuard(collectionAccountId);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -237,7 +244,7 @@ export function CollectionDetailPage({ collectionId, collectionName }: Collectio
     }
   };
 
-  if (!isHydrated) return null;
+  if (isWorkspaceMismatch || !isHydrated) return null;
 
   const handleTabChange = (value: string) => {
     const nextTab = resolveTab(value, canManageSchema);

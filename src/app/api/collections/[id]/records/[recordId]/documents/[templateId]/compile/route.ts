@@ -19,7 +19,7 @@ interface RouteParams {
 
 function statusForError(code?: string) {
   if (code === "FORBIDDEN") return 403;
-  if (code === "NOT_FOUND") return 404;
+  if (code === "NOT_FOUND" || code === "WORKSPACE_COLLECTION_MISMATCH") return 404;
   if (code === "AI_EDGE_FUNCTION_NOT_CONFIGURED") return 500;
   return 400;
 }

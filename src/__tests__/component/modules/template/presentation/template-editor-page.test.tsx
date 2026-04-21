@@ -69,6 +69,10 @@ vi.mock("@/modules/collection/presentation/hooks/use-collections", () => ({
   useCollections: () => collectionsState,
 }));
 
+vi.mock("@/modules/collection/presentation/hooks/use-collection-workspace-guard", () => ({
+  useCollectionWorkspaceGuard: () => false,
+}));
+
 vi.mock("@/modules/authorization/presentation/providers/permission-provider", () => ({
   usePermissions: () => ({
     can: () => true,

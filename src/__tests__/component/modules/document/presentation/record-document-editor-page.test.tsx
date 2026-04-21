@@ -84,6 +84,10 @@ vi.mock("@/modules/collection/presentation/hooks/use-collections", () => ({
   useCollections: () => collectionState,
 }));
 
+vi.mock("@/modules/collection/presentation/hooks/use-collection-workspace-guard", () => ({
+  useCollectionWorkspaceGuard: () => false,
+}));
+
 vi.mock("@/shared/presentation/providers/breadcrumb-provider", () => ({
   useBreadcrumbs: breadcrumbState.useBreadcrumbs,
 }));

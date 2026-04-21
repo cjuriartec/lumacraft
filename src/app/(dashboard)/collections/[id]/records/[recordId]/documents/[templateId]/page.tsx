@@ -1,6 +1,8 @@
 import { Metadata } from "next";
+import { redirect } from "next/navigation";
 
 import { resolveRecordLabel } from "@/modules/collection/domain/services/record-label.service";
+import { resolveDocumentRouteContext } from "@/modules/document/infrastructure/document-server";
 import RecordDocumentEditorPage from "@/modules/document/presentation/pages/record-document-editor-page";
 import { createClient } from "@/shared/infrastructure/supabase/server";
 
@@ -8,8 +10,11 @@ interface Params {
   params: Promise<{ id: string; recordId: string; templateId: string }>;
 }
 
-export async function generateMetadata({ params }: Params): Promise<Metadata> {
-  const { id, recordId, templateId } = await params;
+async function getRecordDocumentPageContext(
+  collectionId: string,
+  recordId: string,
+  templateId: string,
+) {
   const supabase = await createClient();
 
   const {
@@ -17,23 +22,36 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   } = await supabase.auth.getUser();
 
   if (!user) {
+    return { unauthorized: true as const };
+  }
+
+  const contextResult = await resolveDocumentRouteContext({
+    collectionId,
+    recordId,
+    supabase,
+    templateId,
+    userId: user.id,
+  });
+
+  if (!contextResult.ok) {
     return {
-      title: "Documento del Registro | Lumacraft",
-      description: "Edita y descarga el documento persistido para un registro.",
+      unauthorized: false as const,
+      errorCode: contextResult.error.code,
     };
   }
 
-  const [{ data: collection }, { data: record }, { data: template }] = await Promise.all([
-    supabase
-      .from("collections")
-      .select("name, display_name, primary_field_name")
-      .eq("id", id)
-      .single(),
-    supabase.from("records").select("id, data").eq("id", recordId).eq("collection_id", id).single(),
-    supabase.from("templates").select("name").eq("id", templateId).single(),
-  ]);
+  return {
+    unauthorized: false as const,
+    errorCode: null,
+    context: contextResult.value,
+  };
+}
 
-  if (!collection || !record || !template) {
+export async function generateMetadata({ params }: Params): Promise<Metadata> {
+  const { id, recordId, templateId } = await params;
+  const pageContext = await getRecordDocumentPageContext(id, recordId, templateId);
+
+  if (pageContext.unauthorized || !pageContext.context) {
     return {
       title: "Documento del Registro | Lumacraft",
       description: "Edita y descarga el documento persistido para un registro.",
@@ -42,20 +60,40 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 
   const label = resolveRecordLabel(
     {
-      id: record.id,
-      data: (record.data as Record<string, unknown>) || {},
+      id: pageContext.context.record.id,
+      data: pageContext.context.record.data,
     },
-    collection.primary_field_name as string | null,
+    pageContext.context.collection.primaryFieldName ?? null,
   );
 
   return {
-    title: `${template.name} - ${label} | Lumacraft`,
+    title: `${pageContext.context.template.name} - ${label} | Lumacraft`,
     description: "Edita y descarga el documento persistido para un registro.",
   };
 }
 
 export default async function RecordDocumentPage({ params }: Params) {
   const { id, recordId, templateId } = await params;
+  const pageContext = await getRecordDocumentPageContext(id, recordId, templateId);
 
-  return <RecordDocumentEditorPage collectionId={id} recordId={recordId} templateId={templateId} />;
+  if (pageContext.unauthorized) {
+    redirect("/login");
+  }
+
+  if (!pageContext.context) {
+    if (pageContext.errorCode === "WORKSPACE_COLLECTION_MISMATCH") {
+      redirect("/collections");
+    }
+
+    redirect(`/collections/${id}`);
+  }
+
+  return (
+    <RecordDocumentEditorPage
+      collectionId={id}
+      collectionAccountId={pageContext.context.collection.accountId}
+      recordId={recordId}
+      templateId={templateId}
+    />
+  );
 }
